@@ -1,0 +1,474 @@
+"""
+handlers/curator.py — Kurator paneli va o'quvchi bilan relaye chat.
+
+Muhim: kurator relay handlerlari faqat BaseFilter orqali ishlaydi —
+        oddiy o'quvchi xabarlari bu handlerga HECH QACHON tushmaydi.
+"""
+
+import logging
+
+from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
+from aiogram.filters import BaseFilter, Command, StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, Message
+
+from credentials import MARS_GROUPS
+from curator_credentials import CURATORS
+from database import DatabaseService
+from keyboards import (
+    kb_curator_active_chat,
+    kb_curator_confirm_end,
+    kb_curator_contact,
+    kb_curator_panel,
+    kb_curator_read,
+    kb_curator_students,
+)
+
+logger = logging.getLogger(__name__)
+router = Router()
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# FILTRLAR
+# ════════════════════════════════════════════════════════════════════════════════
+
+class _CuratorHasActiveChat(BaseFilter):
+    """Faqat kurator sessiyasi + faol chati bo'lganda True."""
+    async def __call__(self, message: Message, db: DatabaseService) -> bool:
+        s = await db.get_curator_session(message.from_user.id)
+        if not s:
+            return False
+        return await db.get_active_curator_chat_by_curator(message.from_user.id) is not None
+
+
+class _StudentInCuratorChat(BaseFilter):
+    """Faqat o'quvchi faol kurator chatida bo'lganda True (kuratorlar bundan mustasno)."""
+    async def __call__(self, message: Message, db: DatabaseService) -> bool:
+        if await db.get_curator_session(message.from_user.id):
+            return False   # kurator — uning uchun alohida filter
+        return await db.get_active_curator_chat_by_student(message.from_user.id) is not None
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# YORDAMCHI
+# ════════════════════════════════════════════════════════════════════════════════
+
+def _cinfo(key: str) -> dict:
+    return CURATORS.get(key, {})
+
+def _cheader(key: str) -> str:
+    info = _cinfo(key)
+    name = info.get("full_name", "Kurator")
+    tg   = info.get("telegram_username", "")
+    return f"<b>Kurator {name}{' ' + tg if tg else ''}</b>"
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# LOGIN FSM
+# ════════════════════════════════════════════════════════════════════════════════
+
+class CuratorLoginFSM(StatesGroup):
+    waiting_login    = State()
+    waiting_password = State()
+
+
+@router.message(Command("curator"))
+async def cmd_curator(message: Message, state: FSMContext, db: DatabaseService) -> None:
+    await state.clear()
+    session = await db.get_curator_session(message.from_user.id)
+    if session:
+        cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
+        await message.answer(
+            f"👋 Xush kelibsiz, <b>Kurator {cname}</b>!\n\nPanel:",
+            reply_markup=kb_curator_panel(),
+        )
+        return
+    await state.set_state(CuratorLoginFSM.waiting_login)
+    await message.answer("🔐 <b>Kurator paneli</b>\n\nLoginni kiriting:")
+
+
+@router.message(StateFilter(CuratorLoginFSM.waiting_login))
+async def curator_enter_login(message: Message, state: FSMContext) -> None:
+    login = message.text.strip().lower() if message.text else ""
+    if login not in CURATORS:
+        await message.answer("❌ Bunday login topilmadi. Qayta kiriting:")
+        return
+    await state.update_data(curator_login=login)
+    await state.set_state(CuratorLoginFSM.waiting_password)
+    await message.answer("🔑 Parolni kiriting:")
+
+
+@router.message(StateFilter(CuratorLoginFSM.waiting_password))
+async def curator_enter_password(
+    message: Message, state: FSMContext, db: DatabaseService
+) -> None:
+    data     = await state.get_data()
+    login    = data.get("curator_login", "")
+    password = message.text.strip() if message.text else ""
+    cred     = CURATORS.get(login, {})
+
+    if cred.get("password") != password:
+        await message.answer("❌ Parol noto'g'ri. Qayta kiriting:")
+        return
+
+    await state.clear()
+    await db.set_curator_session(message.from_user.id, login)
+    cname = cred.get("full_name", login)
+    await message.answer(
+        f"✅ <b>Xush kelibsiz, Kurator {cname}!</b>\n\nPanel:",
+        reply_markup=kb_curator_panel(),
+    )
+    logger.info(f"Kurator login: {cname} (TG {message.from_user.id})")
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# PANEL TUGMALARI
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "cur:panel")
+async def cur_panel(cb: CallbackQuery, state: FSMContext, db: DatabaseService) -> None:
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+    await state.clear()
+    cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
+    try:
+        await cb.message.edit_text(
+            f"👋 <b>Kurator {cname}</b> — Panel:", reply_markup=kb_curator_panel()
+        )
+    except TelegramBadRequest:
+        await cb.message.answer(
+            f"👋 <b>Kurator {cname}</b> — Panel:", reply_markup=kb_curator_panel()
+        )
+    await cb.answer()
+
+
+@router.callback_query(F.data == "cur:logout")
+async def cur_logout(cb: CallbackQuery, db: DatabaseService) -> None:
+    await db.remove_curator_session(cb.from_user.id)
+    try:
+        await cb.message.edit_text("👋 Paneldan chiqdingiz. Qayta kirish: /curator")
+    except TelegramBadRequest:
+        await cb.message.answer("👋 Paneldan chiqdingiz. Qayta kirish: /curator")
+    await cb.answer()
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# O'QUVCHILAR RO'YXATI
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data.startswith("cur:list:"))
+async def cur_list(cb: CallbackQuery, db: DatabaseService) -> None:
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+
+    active_group = cb.data.split(":", 2)[2]
+    students     = await db.get_all_students()
+    try:
+        await cb.message.edit_text(
+            "👥 <b>O'quvchilar ro'yxati</b>\n\nO'quvchini tanlang:",
+            reply_markup=kb_curator_students(students, MARS_GROUPS, active_group),
+        )
+    except TelegramBadRequest:
+        await cb.message.answer(
+            "👥 <b>O'quvchilar ro'yxati</b>",
+            reply_markup=kb_curator_students(students, MARS_GROUPS, active_group),
+        )
+    await cb.answer()
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# O'QUVCHI BILAN BOG'LANISH
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data.startswith("cur:contact:"))
+async def cur_contact(cb: CallbackQuery, db: DatabaseService) -> None:
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+
+    student_id = int(cb.data.split(":")[2])
+    student    = await db.get_student(student_id)
+    if not student:
+        await cb.answer("❌ O'quvchi topilmadi!", show_alert=True); return
+
+    existing = await db.get_active_curator_chat_by_curator(cb.from_user.id)
+    has_chat = existing is not None and existing.student_user_id == student_id
+    last = student.last_active.strftime("%d.%m.%Y %H:%M") if student.last_active else "Noma'lum"
+
+    text = (
+        f"👤 <b>{student.full_name}</b>\n"
+        f"📚 Guruh: <b>{student.group_name}</b>\n"
+        f"💬 Telegram: {student.telegram_username or '—'}\n"
+        f"🕐 So'nggi faollik: {last}\n\n"
+        f"Bog'lanish usulini tanlang:"
+    )
+    try:
+        await cb.message.edit_text(text, reply_markup=kb_curator_contact(student, has_chat))
+    except TelegramBadRequest:
+        await cb.message.answer(text, reply_markup=kb_curator_contact(student, has_chat))
+    await cb.answer()
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# CHAT BOSHLASH
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data.startswith("cur:chat_start:"))
+async def cur_chat_start(
+    cb: CallbackQuery, db: DatabaseService, bot: Bot
+) -> None:
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+
+    student_id = int(cb.data.split(":")[2])
+
+    # Kuratorning o'zida allaqon faol chat bormi?
+    existing = await db.get_active_curator_chat_by_curator(cb.from_user.id)
+    if existing:
+        other = await db.get_student(existing.student_user_id)
+        oname = other.full_name if other else str(existing.student_user_id)
+        await cb.answer(
+            f"⚠️ Sizda faol chat bor: {oname}\nAvval uni yakunlang.",
+            show_alert=True,
+        ); return
+
+    # O'quvchi boshqa kurator chatidami?
+    if await db.get_active_curator_chat_by_student(student_id):
+        await cb.answer("⚠️ Bu o'quvchi hozir boshqa kurator bilan chatda.", show_alert=True)
+        return
+
+    student = await db.get_student(student_id)
+    if not student:
+        await cb.answer("❌ O'quvchi topilmadi!", show_alert=True); return
+
+    await db.start_curator_chat(cb.from_user.id, student_id, session.curator_key)
+
+    cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
+    ctg   = _cinfo(session.curator_key).get("telegram_username", "")
+    label = f"Kurator {cname}{' ' + ctg if ctg else ''}"
+
+    # O'quvchiga kirish xabari
+    try:
+        await bot.send_message(
+            student_id,
+            f"📞 <b>{label}</b> siz bilan aloqaga chiqmoqda.\n"
+            f"<i>Mars IT o'quv markazi</i>\n\n"
+            f"Javoblaringizni yuboring. Kurator kerakli ma'lumotni olgach chat yopiladi.",
+        )
+    except (TelegramForbiddenError, TelegramBadRequest) as e:
+        await db.end_curator_chat_by_curator(cb.from_user.id)
+        await cb.message.answer(
+            f"❌ <b>{student.full_name}</b> ga xabar yetkazib bo'lmadi.\n"
+            f"O'quvchi botni bloklagan yoki o'chirgan bo'lishi mumkin.\n"
+            f"<code>{e}</code>",
+        )
+        await cb.answer(); return
+
+    try:
+        await cb.message.edit_text(
+            f"✅ <b>{student.full_name}</b> bilan chat ochildi!\n\n"
+            f"📚 Guruh: {student.group_name}\n\n"
+            f"Xabarlaringizni yuboring — o'quvchiga boradi.\n\n"
+            f"⚠️ <b>Diqqat:</b> «Javobni oldim» tugmasini bossangiz\n"
+            f"o'quvchidan boshqa xabar ololmaysiz.\n"
+            f"Barcha kerakli ma'lumotni olgach bosing.",
+            reply_markup=kb_curator_active_chat(student_id),
+        )
+    except TelegramBadRequest:
+        await cb.message.answer(
+            f"✅ Chat ochildi: <b>{student.full_name}</b>",
+            reply_markup=kb_curator_active_chat(student_id),
+        )
+    await cb.answer()
+    logger.info(f"Curator chat: {cname} ↔ {student.full_name}")
+
+
+@router.callback_query(F.data.startswith("cur:resume:"))
+async def cur_resume(cb: CallbackQuery, db: DatabaseService) -> None:
+    student_id = int(cb.data.split(":")[2])
+    student    = await db.get_student(student_id)
+    if not student:
+        await cb.answer(); return
+    try:
+        await cb.message.edit_text(
+            f"💬 <b>{student.full_name}</b> bilan chat davom etmoqda.\n\nXabarlaringizni yuboring.",
+            reply_markup=kb_curator_active_chat(student_id),
+        )
+    except TelegramBadRequest:
+        await cb.message.answer(
+            f"💬 Xabarlaringizni yuboring.",
+            reply_markup=kb_curator_active_chat(student_id),
+        )
+    await cb.answer()
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# RELAY: KURATOR → O'QUVCHI
+# (Faqat kuratorda faol chat bo'lganda ishlaydi)
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.message(_CuratorHasActiveChat(), F.chat.type == "private")
+async def curator_relay_to_student(
+    message: Message, db: DatabaseService, bot: Bot
+) -> None:
+    session = await db.get_curator_session(message.from_user.id)
+    chat    = await db.get_active_curator_chat_by_curator(message.from_user.id)
+    student = await db.get_student(chat.student_user_id)
+    if not student:
+        return
+
+    cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
+    ctg   = _cinfo(session.curator_key).get("telegram_username", "")
+    label = f"Kurator {cname}{' ' + ctg if ctg else ''}"
+
+    try:
+        await bot.send_message(chat.student_user_id, f"💬 <b>{label}:</b>")
+        await bot.copy_message(
+            chat_id=chat.student_user_id,
+            from_chat_id=message.chat.id,
+            message_id=message.message_id,
+            reply_markup=kb_curator_read(message.from_user.id),
+        )
+    except (TelegramForbiddenError, TelegramBadRequest) as e:
+        await message.answer(
+            f"❌ <b>{student.full_name}</b> ga xabar yetkazib bo'lmadi.\n"
+            f"O'quvchi botni bloklagan bo'lishi mumkin.\n<code>{e}</code>",
+            reply_markup=kb_curator_active_chat(chat.student_user_id),
+        )
+        return
+
+    await message.answer(
+        f"✉️ Xabar <b>{student.full_name}</b> ga yuborildi.",
+        reply_markup=kb_curator_active_chat(chat.student_user_id),
+    )
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# RELAY: O'QUVCHI → KURATOR
+# (Faqat o'quvchi faol kurator chatida bo'lganda ishlaydi)
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.message(_StudentInCuratorChat(), F.chat.type == "private")
+async def student_relay_to_curator(
+    message: Message, db: DatabaseService, bot: Bot
+) -> None:
+    chat    = await db.get_active_curator_chat_by_student(message.from_user.id)
+    student = await db.get_student(message.from_user.id)
+    sname   = student.full_name if student else str(message.from_user.id)
+    sgroup  = student.group_name if student else "—"
+
+    try:
+        await bot.send_message(
+            chat.curator_telegram_id,
+            f"📩 <b>{sname}</b> ({sgroup}) javob berdi:",
+        )
+        await bot.copy_message(
+            chat_id=chat.curator_telegram_id,
+            from_chat_id=message.chat.id,
+            message_id=message.message_id,
+        )
+        await bot.send_message(
+            chat.curator_telegram_id,
+            f"<i>Barcha ma'lumotni oldingizmi? «Javobni oldim» tugmasini bosing.</i>",
+            reply_markup=kb_curator_active_chat(message.from_user.id),
+        )
+    except Exception as e:
+        logger.warning(f"Student relay error: {e}")
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# O'QIDIM TUGMASI (o'quvchi bosadi)
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data.startswith("cur_read:"))
+async def student_read_curator_msg(
+    cb: CallbackQuery, db: DatabaseService, bot: Bot
+) -> None:
+    curator_tg_id = int(cb.data.split(":")[1])
+    student = await db.get_student(cb.from_user.id)
+    sname   = student.full_name if student else str(cb.from_user.id)
+
+    try:
+        await cb.message.edit_reply_markup(reply_markup=None)
+    except TelegramBadRequest:
+        pass
+    await cb.answer("✅ O'qildi.")
+
+    try:
+        await bot.send_message(curator_tg_id, f"👁 <b>{sname}</b> xabarni o'qidi.")
+    except Exception:
+        pass
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# JAVOBNI OLDIM — OGOHLANTIRISH VA TASDIQLASH
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data.startswith("cur:got_answer:"))
+async def cur_got_answer_ask(cb: CallbackQuery, db: DatabaseService) -> None:
+    student_id = int(cb.data.split(":")[2])
+    student    = await db.get_student(student_id)
+    sname      = student.full_name if student else str(student_id)
+
+    await cb.message.answer(
+        f"⚠️ <b>Diqqat!</b>\n\n"
+        f"«Javobni oldim» tugmasini bossangiz,\n"
+        f"<b>{sname}</b> dan boshqa xabar ololmaysiz.\n\n"
+        f"<b>Barcha kerakli ma'lumotni olganingizga\n"
+        f"ishonch hosil qiling, shundan keyin bosing.</b>",
+        reply_markup=kb_curator_confirm_end(student_id),
+    )
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("cur:end_confirm:"))
+async def cur_end_confirm(
+    cb: CallbackQuery, db: DatabaseService, bot: Bot
+) -> None:
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer(); return
+
+    student_id = int(cb.data.split(":")[2])
+    student    = await db.get_student(student_id)
+    sname      = student.full_name if student else str(student_id)
+    cname      = _cinfo(session.curator_key).get("full_name", session.curator_key)
+
+    await db.end_curator_chat_by_curator(cb.from_user.id)
+
+    try:
+        await bot.send_message(
+            student_id,
+            f"✅ <b>Chat yakunlandi.</b>\n\n"
+            f"Kurator {cname} bilan suhbat tugatildi.\n"
+            f"Agar yana savolingiz bo'lsa, o'qituvchingizga murojaat qiling.",
+        )
+    except Exception:
+        pass
+
+    try:
+        await cb.message.edit_text(
+            f"✅ Chat yakunlandi: <b>{sname}</b>\n\n"
+            f"O'quvchiga «Chat yakunlandi» xabari yuborildi.",
+            reply_markup=kb_curator_panel(),
+        )
+    except TelegramBadRequest:
+        await cb.message.answer(
+            f"✅ Chat yakunlandi: <b>{sname}</b>", reply_markup=kb_curator_panel()
+        )
+    await cb.answer()
+    logger.info(f"Curator chat yakunlandi: {cname} ↔ {sname}")
+
+
+@router.callback_query(F.data == "cur:end_cancel")
+async def cur_end_cancel(cb: CallbackQuery) -> None:
+    try:
+        await cb.message.delete()
+    except TelegramBadRequest:
+        pass
+    await cb.answer("Chat davom etmoqda.")

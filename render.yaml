@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: otaOnaBot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: WEBAPP_URL
+        sync: false
+      - key: CHANNEL_LINK
+        value: https://t.me/sunnatbee_lessons
+      - key: TIMEZONE
+        value: Asia/Tashkent
+      - key: SEND_HOUR
+        value: "20"
+      - key: SEND_MINUTE
+        value: "0"
+      - key: PORT
+        value: "8080"

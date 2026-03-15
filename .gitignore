@@ -1,0 +1,22 @@
+# Maxfiy fayl — hech qachon git'ga push qilmang!
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Ma'lumotlar bazasi
+*.db
+*.sqlite
+
+# Logs
+*.log
+
+# Claude Code memory
+.claude/

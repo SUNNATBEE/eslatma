@@ -470,7 +470,12 @@ async function api(path, opts = {}) {
     headers: { 'X-Init-Data': INIT_DATA, 'Content-Type': 'application/json', ...(opts.headers || {}) },
     ...opts,
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const err  = new Error(body.error || res.statusText);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
@@ -515,29 +520,35 @@ async function init() {
     document.getElementById('hdrGroup').textContent  = group;
     document.getElementById('heroName').textContent  = name;
     document.getElementById('heroGroup').textContent = '📚 ' + group;
-
-    // Avatar letter
     document.getElementById('hdrAvatar').textContent = name.charAt(0).toUpperCase();
 
-    // Tomorrow info
     try {
       const tmr = await api('/tomorrow');
-      document.getElementById('tmDate').textContent  = tmr.tomorrow;
-      document.getElementById('tmType').textContent  = tmr.day_type;
+      document.getElementById('tmDate').textContent     = tmr.tomorrow;
+      document.getElementById('tmType').textContent     = tmr.day_type;
       document.getElementById('tmTypeIcon').textContent = tmr.day_type === 'Toq' ? '1️⃣' : '2️⃣';
-
-      const hasLesson = tmr.has_lesson;
       const lEl = document.getElementById('tmLesson');
       const lIc = document.getElementById('tmLessonIcon');
       const lPl = document.getElementById('tmLessonPill');
-      lEl.textContent  = hasLesson ? 'Bor' : 'Yo\'q';
-      lIc.textContent  = hasLesson ? '✅' : '❌';
-      lPl.classList.add(hasLesson ? 'pill-yes' : 'pill-no');
+      lEl.textContent = tmr.has_lesson ? 'Bor' : 'Yo\'q';
+      lIc.textContent = tmr.has_lesson ? '✅' : '❌';
+      lPl.classList.add(tmr.has_lesson ? 'pill-yes' : 'pill-no');
     } catch {}
+
   } catch (e) {
-    document.getElementById('hdrName').textContent = 'Ro\'yxatdan o\'tilmagan';
-    document.getElementById('heroName').textContent = 'Assalomu alaykum!';
-    document.getElementById('heroGroup').textContent = 'Botda ro\'yxatdan o\'ting';
+    if (e.status === 401) {
+      // initData yo'q yoki noto'g'ri — faqat Telegram ichida ishlaydi
+      document.getElementById('hdrName').textContent   = 'Telegram kerak';
+      document.getElementById('hdrGroup').textContent  = 'Botni Telegram orqali oching';
+      document.getElementById('heroName').textContent  = 'Xatolik ⚠️';
+      document.getElementById('heroGroup').textContent = 'Mini App faqat Telegram botidan ochiladi';
+    } else {
+      // 404 — ro'yxatdan o'tilmagan
+      document.getElementById('hdrName').textContent   = 'Ro\'yxatdan o\'ting';
+      document.getElementById('hdrGroup').textContent  = '@otaOnaMars_bot → /start';
+      document.getElementById('heroName').textContent  = 'Xush kelibsiz! 👋';
+      document.getElementById('heroGroup').textContent = 'Botda ro\'yxatdan o\'ting va qaytib keling';
+    }
   }
 }
 

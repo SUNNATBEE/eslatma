@@ -13,6 +13,13 @@ from database import AudienceType, BotChat, Group, GroupType
 
 def kb_admin_panel() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        builder.row(
+            InlineKeyboardButton(
+                text="🚀 Mini App (preview)",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/student.html"),
+            )
+        )
     builder.row(
         InlineKeyboardButton(text="📋 Guruhlar",        callback_data="admin:list:all"),
         InlineKeyboardButton(text="➕ Qo'shish",        callback_data="admin:add_start"),

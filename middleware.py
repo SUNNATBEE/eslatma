@@ -11,7 +11,8 @@ import logging
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import CallbackQuery, Message, TelegramObject
 
 from database import DatabaseService
 
@@ -39,6 +40,63 @@ class DatabaseMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        # Ma'lumotlar bazasi servisini handler kontekstiga qo'shamiz
         data["db"] = self.db
+        return await handler(event, data)
+
+
+class CallbackAnswerMiddleware(BaseMiddleware):
+    """
+    Inline tugma bosilganda DARHOL Telegram'ga javob beradi.
+
+    Render kabi sekin hosting'larda tugma ustida yuklanish animatsiyasi
+    uzoq turadi — foydalanuvchi botni buzilgan deb o'ylaydi.
+    Bu middleware tugmaning spinner'ini darhol o'chiradi, keyin handler
+    o'z ishini bajaradi va natijani yuboradi.
+    """
+
+    async def __call__(
+        self,
+        handler: Callable[[CallbackQuery, dict[str, Any]], Awaitable[Any]],
+        event: CallbackQuery,
+        data: dict[str, Any],
+    ) -> Any:
+        # Tugma spinner'ini darhol o'chirish
+        try:
+            await event.bot.answer_callback_query(callback_query_id=event.id)
+        except Exception:
+            pass
+
+        # Handler'ni ishlatamiz
+        # Agar handler callback.answer() qayta chaqirsa — xatoni e'tiborsiz qoldiramiz
+        try:
+            return await handler(event, data)
+        except TelegramBadRequest as e:
+            msg = str(e).lower()
+            if "query is too old" in msg or "query id is invalid" in msg:
+                pass  # Takror javob berish xatosi — kutilgan holat
+            else:
+                raise
+
+
+class TypingMiddleware(BaseMiddleware):
+    """
+    Xabar kelganda 'yozmoqda...' animatsiyasini ko'rsatadi.
+    Foydalanuvchi bot so'rovini qabul qilganini biladi.
+    Faqat shaxsiy chatlar uchun ishlaydi.
+    """
+
+    async def __call__(
+        self,
+        handler: Callable[[Message, dict[str, Any]], Awaitable[Any]],
+        event: Message,
+        data: dict[str, Any],
+    ) -> Any:
+        if getattr(event, "chat", None) and event.chat.type == "private":
+            try:
+                await event.bot.send_chat_action(
+                    chat_id=event.chat.id,
+                    action="typing",
+                )
+            except Exception:
+                pass
         return await handler(event, data)

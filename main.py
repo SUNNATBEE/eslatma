@@ -43,7 +43,7 @@ from handlers import (
     school_router,
     student_router,
 )
-from middleware import DatabaseMiddleware
+from middleware import CallbackAnswerMiddleware, DatabaseMiddleware, TypingMiddleware
 from scheduler import setup_scheduler
 
 
@@ -381,8 +381,10 @@ async def main() -> None:
     )
     dp = Dispatcher(storage=MemoryStorage())
 
-    # 3. Middleware — har bir handlerga 'db' ni uzatadi
+    # 3. Middleware'larni ulash
     dp.update.middleware(DatabaseMiddleware(db))
+    dp.callback_query.middleware(CallbackAnswerMiddleware())  # Tugma → darhol javob
+    dp.message.middleware(TypingMiddleware())                 # Xabar → "yozmoqda..."
 
     # 4. Handler router'larini ulash
     dp.include_router(commands_router)      # /start, /panel, ...

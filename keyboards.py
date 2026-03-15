@@ -384,6 +384,13 @@ def kb_read_confirm(admin_id: int) -> InlineKeyboardMarkup:
 
 def kb_curator_panel() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        builder.row(
+            InlineKeyboardButton(
+                text="🚀 Kurator Mini App",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/curator.html"),
+            )
+        )
     builder.row(
         InlineKeyboardButton(text="👥 O'quvchilar ro'yxati", callback_data="cur:list:all"),
     )

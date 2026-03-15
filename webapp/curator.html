@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mars IT — Kurator Paneli</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       var(--tg-theme-bg-color,           #17212b);
+      --bg2:      var(--tg-theme-secondary-bg-color,  #232e3c);
+      --accent:   var(--tg-theme-button-color,        #5288c1);
+      --accent2:  #3a7cbf;
+      --text:     var(--tg-theme-text-color,          #f5f5f5);
+      --sub:      var(--tg-theme-hint-color,          #708499);
+      --btn-text: var(--tg-theme-button-text-color,   #ffffff);
+      --danger:   #e05c5c;
+      --success:  #4caf7d;
+      --warn:     #f0ad4e;
+      --radius:   14px;
+      --radius-sm:10px;
+      --shadow:   0 4px 24px rgba(0,0,0,.35);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--bg2);
+      padding: 12px 16px 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .header-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e67e22, #d35400);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .header-info { flex: 1; min-width: 0; }
+    .header-name { font-weight: 700; font-size: 15px; }
+    .header-role { font-size: 12px; color: var(--sub); }
+    .header-logout {
+      background: rgba(224,92,92,.15);
+      color: var(--danger);
+      border: 1px solid rgba(224,92,92,.3);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Content ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .content::-webkit-scrollbar { display: none; }
+
+    /* ── Pages ── */
+    .page { display: none; }
+    .page.active { display: flex; flex-direction: column; height: 100%; }
+
+    /* ─────────────────────────────────────────────────────── */
+    /* LOGIN PAGE                                              */
+    /* ─────────────────────────────────────────────────────── */
+    #page-login {
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      background: var(--bg);
+    }
+
+    .login-logo {
+      font-size: 56px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .login-title {
+      font-size: 22px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .login-sub {
+      font-size: 13px;
+      color: var(--sub);
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-form {
+      width: 100%;
+      max-width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--sub);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .field-wrap { display: flex; flex-direction: column; }
+    .field-input {
+      background: var(--bg2);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    .field-input:focus { border-color: var(--accent); }
+    .field-input::placeholder { color: var(--sub); }
+
+    .login-btn {
+      background: var(--accent);
+      color: var(--btn-text);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .login-btn:active { opacity: .8; }
+    .login-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .login-error {
+      background: rgba(224,92,92,.15);
+      border: 1px solid rgba(224,92,92,.3);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-size: 13px;
+      color: var(--danger);
+      text-align: center;
+      display: none;
+    }
+    .login-error.show { display: block; }
+
+    /* ─────────────────────────────────────────────────────── */
+    /* MAIN PAGE (students)                                    */
+    /* ─────────────────────────────────────────────────────── */
+    #page-main { padding: 0; }
+
+    /* Search + filter */
+    .search-bar {
+      padding: 12px 16px 8px;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      flex-shrink: 0;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      padding: 10px 14px 10px 38px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23708499' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 12px center;
+    }
+    .search-input::placeholder { color: var(--sub); }
+
+    /* Group filter tabs */
+    .group-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 8px 16px;
+      overflow-x: auto;
+      flex-shrink: 0;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      scrollbar-width: none;
+    }
+    .group-tabs::-webkit-scrollbar { display: none; }
+    .group-tab {
+      flex-shrink: 0;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255,255,255,.06);
+      color: var(--sub);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .group-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px 6px;
+      flex-shrink: 0;
+    }
+    .stat-chip {
+      background: var(--bg2);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .stat-chip span { color: var(--text); font-weight: 700; }
+
+    /* Students list */
+    .students-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 16px 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .students-list::-webkit-scrollbar { display: none; }
+
+    .student-card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .1s, opacity .1s;
+      border: 1px solid rgba(255,255,255,.04);
+    }
+    .student-card:active { transform: scale(.98); opacity: .85; }
+
+    .student-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .student-info { flex: 1; min-width: 0; }
+    .student-name {
+      font-size: 14px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .student-meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .student-arrow { color: var(--sub); font-size: 16px; }
+
+    .has-tg { border-left: 3px solid var(--success); }
+    .no-tg  { border-left: 3px solid rgba(255,255,255,.1); }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--sub);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; }
+
+    /* ─────────────────────────────────────────────────────── */
+    /* STUDENT DETAIL BOTTOM SHEET                             */
+    /* ─────────────────────────────────────────────────────── */
+    .sheet-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+    .sheet-overlay.show { display: flex; align-items: flex-end; }
+
+    .sheet {
+      background: var(--bg2);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      padding: 0 0 32px;
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    .sheet-handle {
+      width: 36px; height: 4px;
+      background: rgba(255,255,255,.2);
+      border-radius: 2px;
+      margin: 12px auto 0;
+    }
+    .sheet-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .sheet-avatar {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .sheet-name { font-size: 17px; font-weight: 700; }
+    .sheet-group { font-size: 13px; color: var(--sub); margin-top: 2px; }
+
+    .sheet-body { padding: 16px 20px; }
+    .sheet-info-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      font-size: 14px;
+    }
+    .sheet-info-row:last-child { border-bottom: none; }
+    .sir-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+    .sir-label { color: var(--sub); flex-shrink: 0; width: 90px; }
+    .sir-value { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .sheet-actions { padding: 4px 20px 0; display: flex; flex-direction: column; gap: 10px; }
+    .action-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 15px;
+      border-radius: var(--radius-sm);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity .15s;
+    }
+    .action-btn:active { opacity: .8; }
+    .btn-tg    { background: var(--accent);  color: #fff; }
+    .btn-bot   { background: rgba(82,136,193,.2); color: var(--accent); border: 1px solid rgba(82,136,193,.3); }
+    .btn-close { background: rgba(255,255,255,.06); color: var(--sub); }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px;
+    }
+    .spinner::after {
+      content: ""; width: 28px; height: 28px;
+      border: 3px solid rgba(255,255,255,.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(30,40,55,.95);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px; font-weight: 600;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      white-space: nowrap;
+      z-index: 999;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── LOGIN PAGE ──────────────────────────────────────────── -->
+  <div class="page active" id="page-login">
+    <div class="login-logo">👩‍💼</div>
+    <div class="login-title">Kurator Paneli</div>
+    <div class="login-sub">Mars IT O'quv Markazi</div>
+
+    <div class="login-form">
+      <div id="loginError" class="login-error"></div>
+
+      <div class="field-wrap">
+        <div class="field-label">Login</div>
+        <input class="field-input" id="loginInput" type="text"
+               placeholder="diyora yoki zuhra" autocomplete="off"
+               autocapitalize="none" spellcheck="false" />
+      </div>
+
+      <div class="field-wrap">
+        <div class="field-label">Parol</div>
+        <input class="field-input" id="passInput" type="password"
+               placeholder="••••••••" />
+      </div>
+
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">
+        Kirish →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── MAIN PAGE ───────────────────────────────────────────── -->
+  <div class="page" id="page-main">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-avatar" id="curAvatar">👩‍💼</div>
+      <div class="header-info">
+        <div class="header-name" id="curName">Kurator</div>
+        <div class="header-role">Mars IT Kurator</div>
+      </div>
+      <button class="header-logout" onclick="doLogout()">Chiqish</button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <input class="search-input" id="searchInput"
+             placeholder="Ism bo'yicha qidirish..."
+             oninput="renderStudents()" />
+    </div>
+
+    <!-- Group tabs -->
+    <div class="group-tabs" id="groupTabs"></div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-chip">Jami: <span id="statTotal">0</span></div>
+      <div class="stat-chip">Ko'rsatilmoqda: <span id="statShown">0</span></div>
+      <div class="stat-chip">Telegram: <span id="statTg">0</span></div>
+    </div>
+
+    <!-- List -->
+    <div class="students-list" id="studentsList"></div>
+  </div>
+
+</div>
+
+<!-- Student detail sheet -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet(event)">
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-avatar" id="sheetAvatar">?</div>
+      <div>
+        <div class="sheet-name" id="sheetName"></div>
+        <div class="sheet-group" id="sheetGroup"></div>
+      </div>
+    </div>
+    <div class="sheet-body">
+      <div class="sheet-info-row">
+        <span class="sir-icon">📚</span>
+        <span class="sir-label">Guruh</span>
+        <span class="sir-value" id="siGroup"></span>
+      </div>
+      <div class="sheet-info-row">
+        <span class="sir-icon">📱</span>
+        <span class="sir-label">Telegram</span>
+        <span class="sir-value" id="siTg"></span>
+      </div>
+      <div class="sheet-info-row">
+        <span class="sir-icon">🕐</span>
+        <span class="sir-label">Oxirgi aktiv</span>
+        <span class="sir-value" id="siActive"></span>
+      </div>
+    </div>
+    <div class="sheet-actions" id="sheetActions"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+/* ── Telegram WebApp ─────────────────────────────────────── */
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const INIT_DATA = tg?.initData || '';
+const BASE_URL  = window.location.origin;
+
+/* ── API ─────────────────────────────────────────────────── */
+async function api(path, opts = {}) {
+  const res = await fetch(BASE_URL + '/api' + path, {
+    headers: {
+      'X-Init-Data': INIT_DATA,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+/* ── State ───────────────────────────────────────────────── */
+let allStudents   = [];
+let activeGroup   = 'all';
+let selectedSt    = null;
+
+/* ── Toast ───────────────────────────────────────────────── */
+function toast(msg, dur = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+/* ── Page switch ─────────────────────────────────────────── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+}
+
+/* ── Init ────────────────────────────────────────────────── */
+async function init() {
+  try {
+    const me = await api('/curator/me');
+    if (me.logged_in) {
+      setupMain(me);
+      showPage('main');
+      loadStudents();
+    }
+  } catch {}
+}
+
+/* ── Login ───────────────────────────────────────────────── */
+async function doLogin() {
+  const login  = document.getElementById('loginInput').value.trim().toLowerCase();
+  const pass   = document.getElementById('passInput').value.trim();
+  const errEl  = document.getElementById('loginError');
+  const btn    = document.getElementById('loginBtn');
+
+  if (!login || !pass) {
+    errEl.textContent = 'Login va parolni kiriting';
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Tekshirilmoqda...';
+  errEl.classList.remove('show');
+
+  try {
+    const res = await api('/curator/login', {
+      method: 'POST',
+      body: JSON.stringify({ login, password: pass }),
+    });
+    tg?.HapticFeedback?.notificationOccurred('success');
+    setupMain(res);
+    showPage('main');
+    loadStudents();
+  } catch (e) {
+    errEl.textContent = e.message || 'Xatolik yuz berdi';
+    errEl.classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred('error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Kirish →';
+  }
+}
+
+/* ── Logout ──────────────────────────────────────────────── */
+async function doLogout() {
+  try {
+    await api('/curator/logout', { method: 'POST' });
+  } catch {}
+  allStudents = [];
+  activeGroup = 'all';
+  document.getElementById('loginInput').value = '';
+  document.getElementById('passInput').value  = '';
+  document.getElementById('loginError').classList.remove('show');
+  showPage('login');
+  toast('Chiqish amalga oshirildi');
+}
+
+/* ── Setup main ──────────────────────────────────────────── */
+function setupMain(info) {
+  const name = info.full_name || 'Kurator';
+  document.getElementById('curName').textContent  = name;
+  document.getElementById('curAvatar').textContent = name.charAt(0).toUpperCase();
+}
+
+/* ── Load students ───────────────────────────────────────── */
+async function loadStudents() {
+  document.getElementById('studentsList').innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await api('/curator/students');
+    allStudents = data.students || [];
+    buildGroupTabs();
+    renderStudents();
+  } catch (e) {
+    document.getElementById('studentsList').innerHTML =
+      '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">' + e.message + '</div></div>';
+  }
+}
+
+/* ── Group tabs ──────────────────────────────────────────── */
+function buildGroupTabs() {
+  const groups = [...new Set(allStudents.map(s => s.group_name))].sort();
+  const container = document.getElementById('groupTabs');
+  container.innerHTML = '';
+
+  const allTab = document.createElement('div');
+  allTab.className = 'group-tab active';
+  allTab.textContent = `Hammasi (${allStudents.length})`;
+  allTab.onclick = () => setGroup('all', allTab);
+  container.appendChild(allTab);
+
+  groups.forEach(g => {
+    const cnt = allStudents.filter(s => s.group_name === g).length;
+    const tab = document.createElement('div');
+    tab.className = 'group-tab';
+    tab.textContent = `${g} (${cnt})`;
+    tab.onclick = () => setGroup(g, tab);
+    container.appendChild(tab);
+  });
+}
+
+function setGroup(g, el) {
+  activeGroup = g;
+  document.querySelectorAll('.group-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderStudents();
+}
+
+/* ── Render students ─────────────────────────────────────── */
+function renderStudents() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase();
+  let list = activeGroup === 'all'
+    ? allStudents
+    : allStudents.filter(s => s.group_name === activeGroup);
+  if (q) list = list.filter(s => s.full_name.toLowerCase().includes(q));
+
+  const tgCount = list.filter(s => s.username).length;
+  document.getElementById('statTotal').textContent = allStudents.length;
+  document.getElementById('statShown').textContent = list.length;
+  document.getElementById('statTg').textContent    = tgCount;
+
+  const container = document.getElementById('studentsList');
+  if (!list.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">O\'quvchilar topilmadi</div></div>';
+    return;
+  }
+
+  container.innerHTML = list.map(s => `
+    <div class="student-card ${s.username ? 'has-tg' : 'no-tg'}"
+         onclick="openSheet(${s.user_id})">
+      <div class="student-avatar">${s.full_name.charAt(0).toUpperCase()}</div>
+      <div class="student-info">
+        <div class="student-name">${esc(s.full_name)}</div>
+        <div class="student-meta">
+          📚 ${esc(s.group_name)}
+          ${s.username ? ' · <span style="color:var(--success)">✓ Telegram</span>' : ''}
+        </div>
+      </div>
+      <div class="student-arrow">›</div>
+    </div>`).join('');
+}
+
+/* ── Sheet ───────────────────────────────────────────────── */
+function openSheet(userId) {
+  selectedSt = allStudents.find(s => s.user_id === userId);
+  if (!selectedSt) return;
+  const s = selectedSt;
+
+  tg?.HapticFeedback?.impactOccurred('light');
+
+  document.getElementById('sheetAvatar').textContent = s.full_name.charAt(0).toUpperCase();
+  document.getElementById('sheetName').textContent   = s.full_name;
+  document.getElementById('sheetGroup').textContent  = s.group_name;
+  document.getElementById('siGroup').textContent     = s.group_name;
+  document.getElementById('siTg').textContent        = s.username || '—';
+  document.getElementById('siActive').textContent    = s.last_active || 'Noma\'lum';
+
+  // Action buttons
+  const acts = document.getElementById('sheetActions');
+  acts.innerHTML = '';
+
+  if (s.username) {
+    const tgUrl = s.username.startsWith('@')
+      ? `https://t.me/${s.username.slice(1)}`
+      : `https://t.me/${s.username}`;
+    acts.innerHTML += `
+      <a class="action-btn btn-tg" href="${tgUrl}" target="_blank">
+        ✈️ Telegramda yozish (${esc(s.username)})
+      </a>`;
+  } else {
+    acts.innerHTML += `
+      <button class="action-btn btn-bot" onclick="startBotChat()">
+        💬 Bot orqali aloqa
+      </button>`;
+  }
+  acts.innerHTML += `
+    <button class="action-btn btn-close" onclick="closeSheet()">
+      Yopish
+    </button>`;
+
+  document.getElementById('sheetOverlay').classList.add('show');
+}
+
+function closeSheet(e) {
+  if (!e || e.target === document.getElementById('sheetOverlay')) {
+    document.getElementById('sheetOverlay').classList.remove('show');
+  }
+}
+
+function startBotChat() {
+  closeSheet();
+  tg?.close();
+  toast('Botda "Bot orqali aloqa" tugmasini bosing');
+}
+
+/* ── Helpers ─────────────────────────────────────────────── */
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/* ── Enter key login ─────────────────────────────────────── */
+document.getElementById('passInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+/* ── Start ───────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>

@@ -31,6 +31,7 @@ from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
 import pytz
 
 from config import BOT_TOKEN, DATABASE_URL, PORT, TIMEZONE, WEBAPP_URL
+from curator_credentials import CURATORS
 from database import DatabaseService, GroupType
 from handlers import (
     admin_extras_router,
@@ -242,6 +243,71 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             "status": rec.status if rec else None,
         })
 
+    # ── Curator API ───────────────────────────────────────────────────────────
+
+    async def api_curator_me(request: web.Request) -> web.Response:
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"logged_in": False})
+        c = CURATORS.get(session.curator_key, {})
+        return web.json_response({
+            "logged_in":  True,
+            "curator_key": session.curator_key,
+            "full_name":  c.get("full_name", session.curator_key),
+            "username":   c.get("telegram_username", ""),
+        })
+
+    async def api_curator_login(request: web.Request) -> web.Response:
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        login    = (body.get("login") or "").strip().lower()
+        password = (body.get("password") or "").strip()
+        cred = CURATORS.get(login)
+        if not cred or cred["password"] != password:
+            return web.json_response({"error": "Login yoki parol noto'g'ri"}, status=403)
+        await db.set_curator_session(user_id, login)
+        return web.json_response({
+            "ok":        True,
+            "full_name": cred["full_name"],
+            "username":  cred.get("telegram_username", ""),
+        })
+
+    async def api_curator_logout(request: web.Request) -> web.Response:
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        await db.remove_curator_session(user_id)
+        return web.json_response({"ok": True})
+
+    async def api_curator_students(request: web.Request) -> web.Response:
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+        students = await db.get_all_students()
+        return web.json_response({
+            "students": [
+                {
+                    "user_id":    s.user_id,
+                    "full_name":  s.full_name,
+                    "group_name": s.group_name,
+                    "username":   s.telegram_username or "",
+                    "last_active": s.last_active.strftime("%d.%m.%Y %H:%M") if s.last_active else None,
+                }
+                for s in students
+            ]
+        })
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -260,6 +326,10 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/hw-history",       api_hw_history)
     app.router.add_post("/api/attendance",      api_attendance)
     app.router.add_get("/api/attendance",       api_attendance_today)
+    app.router.add_get("/api/curator/me",       api_curator_me)
+    app.router.add_post("/api/curator/login",   api_curator_login)
+    app.router.add_post("/api/curator/logout",  api_curator_logout)
+    app.router.add_get("/api/curator/students", api_curator_students)
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)

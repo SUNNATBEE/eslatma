@@ -229,6 +229,75 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
     logger.debug(f"check_class_reminders: {today_str} {now.strftime('%H:%M')} ({day_type})")
 
 
+# ─── Kurator davomat eslatmasi: dars boshlanganidan 20 daqiqa o'tgach ────────
+
+_sent_davomat_notify: set[str] = set()  # {group_name:date_str} — qayta yubormaslik
+
+
+async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Har 10 daqiqada tekshiradi: dars boshlanganidan 20-30 daqiqa o'tgan
+    guruhlar uchun kuratorlarga davomat yuborish eslatmasi ketadi.
+    """
+    from sqlalchemy import select
+    from database import CuratorSession
+    from keyboards import kb_davomat_start
+
+    tz  = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+
+    if not (6 * 60 <= now.hour * 60 + now.minute <= 21 * 60):
+        return
+
+    weekday = now.weekday()
+    if weekday == 6:  # Yakshanba — dars yo'q
+        return
+
+    day_type  = "ODD" if weekday in (0, 2, 4) else "EVEN"
+    schedule  = CLASS_SCHEDULE.get(day_type, {})
+    today_str = now.strftime("%Y-%m-%d")
+
+    for group_name, class_time_str in schedule.items():
+        notify_key = f"{group_name}:{today_str}"
+        if notify_key in _sent_davomat_notify:
+            continue
+
+        class_hour, class_min = map(int, class_time_str.split(":"))
+        class_dt     = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+        window_start = class_dt + timedelta(minutes=20)
+        window_end   = class_dt + timedelta(minutes=30)
+
+        if not (window_start <= now < window_end):
+            continue
+
+        # Faol kurator sessiyalarini olamiz
+        async with db.session_factory() as session:
+            result = await session.execute(select(CuratorSession))
+            curator_sessions = list(result.scalars().all())
+
+        _sent_davomat_notify.add(notify_key)  # Belgilaymiz (kuratorlar bo'lmasa ham)
+
+        if not curator_sessions:
+            continue
+
+        notify_text = (
+            f"📋 <b>{group_name}</b> guruhi dars boshlangandan "
+            f"<b>20 daqiqa</b> o'tdi!\n\n"
+            f"Davomat yoqlamasini ota-ona guruhiga yuborishingiz mumkin."
+        )
+        for cs in curator_sessions:
+            try:
+                await bot.send_message(
+                    cs.telegram_id,
+                    notify_text,
+                    reply_markup=kb_davomat_start(group_name, today_str),
+                )
+            except Exception:
+                pass
+
+        logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
+
+
 # ─── Reschedule helper ───────────────────────────────────────────────────────
 
 def reschedule_reminder(hour: int, minute: int) -> None:
@@ -272,9 +341,20 @@ def setup_scheduler(bot: Bot, db: DatabaseService, timezone_str: str) -> AsyncIO
         misfire_grace_time=60,
     )
 
+    # Kurator davomat eslatmasi (har 10 daqiqada)
+    scheduler.add_job(
+        func=check_davomat_notify,
+        trigger=IntervalTrigger(minutes=10, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="davomat_curator_notify",
+        name="Kurator davomat eslatmasi",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
     _scheduler_ref = scheduler
     logger.info(
         f"Scheduler sozlandi: har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} + "
-        f"har 10 daqiqada dars eslatmasi ({timezone_str})"
+        f"har 10 daqiqada dars/davomat eslatmasi ({timezone_str})"
     )
     return scheduler

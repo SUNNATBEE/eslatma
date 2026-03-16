@@ -565,6 +565,54 @@ def kb_hw_delete_confirm(group_name: str) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+# ─── Kurator: davomat yoqlamasi ───────────────────────────────────────────────
+
+def kb_davomat_start(group_name: str, date_str: str) -> InlineKeyboardMarkup:
+    """Kuratorga yuborilgan — dars boshlanganidan 20 daqiqa o'tgach yuboriladi."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(
+        text="📋 Yoqlamani to'ldirish",
+        callback_data=f"cur:davomat:{group_name}:{date_str}",
+    ))
+    return builder.as_markup()
+
+
+def kb_davomat_mark(students_marks: list[dict]) -> InlineKeyboardMarkup:
+    """
+    O'quvchilarni belgilash klaviaturasi.
+    students_marks: [{"full_name": str, "present": bool, "idx": int}, ...]
+    """
+    builder = InlineKeyboardBuilder()
+    for item in students_marks:
+        emoji = "✅" if item["present"] else "❌"
+        builder.row(InlineKeyboardButton(
+            text=f"{emoji} {item['full_name']}",
+            callback_data=f"cur:tog:{item['idx']}",
+        ))
+    builder.row(
+        InlineKeyboardButton(text="📩 Yuborish", callback_data="cur:davomat_send"),
+        InlineKeyboardButton(text="❌ Bekor",    callback_data="cur:davomat_cancel"),
+    )
+    return builder.as_markup()
+
+
+def kb_select_parent_group(parent_groups: list) -> InlineKeyboardMarkup:
+    """Ota-ona guruhini tanlash."""
+    builder = InlineKeyboardBuilder()
+    if not parent_groups:
+        builder.row(InlineKeyboardButton(
+            text="⚠️ Ota-ona guruhlari topilmadi", callback_data="noop",
+        ))
+    else:
+        for g in parent_groups:
+            builder.row(InlineKeyboardButton(
+                text=f"👨‍👩‍👧 {g.name}",
+                callback_data=f"cur:pgroup:{g.chat_id}",
+            ))
+    builder.row(InlineKeyboardButton(text="◀️ Orqaga", callback_data="cur:davomat_back"))
+    return builder.as_markup()
+
+
 def kb_cancel_fsm() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="❌ Bekor qilish", callback_data="fsm:cancel"))

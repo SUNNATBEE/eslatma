@@ -16,7 +16,7 @@ from aiogram.types import CallbackQuery, Message
 
 from credentials import MARS_GROUPS
 from curator_credentials import CURATORS
-from database import DatabaseService
+from database import AudienceType, DatabaseService
 from keyboards import (
     kb_curator_active_chat,
     kb_curator_confirm_end,
@@ -24,6 +24,8 @@ from keyboards import (
     kb_curator_panel,
     kb_curator_read,
     kb_curator_students,
+    kb_davomat_mark,
+    kb_select_parent_group,
 )
 
 logger = logging.getLogger(__name__)
@@ -502,3 +504,227 @@ async def cur_end_cancel(cb: CallbackQuery) -> None:
     except TelegramBadRequest:
         pass
     await cb.answer("Chat davom etmoqda.")
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# DAVOMAT YOQLAMASI: BELGILASH VA OTA-ONA GURUHIGA YUBORISH
+# ════════════════════════════════════════════════════════════════════════════════
+
+class DavomatFSM(StatesGroup):
+    marking         = State()  # O'quvchilarni belgilash
+    selecting_group = State()  # Ota-ona guruhini tanlash
+
+
+def _davomat_marks_for_kb(students_data: list[dict]) -> list[dict]:
+    return [
+        {"full_name": s["full_name"], "present": s["present"], "idx": i}
+        for i, s in enumerate(students_data)
+    ]
+
+
+def _davomat_header_text(group_name: str, date_str: str, students_data: list[dict]) -> str:
+    present = sum(1 for s in students_data if s["present"])
+    absent  = len(students_data) - present
+    return (
+        f"📋 <b>{group_name}</b> — Davomat yoqlamasi\n"
+        f"📅 Sana: {date_str}\n\n"
+        f"✅ Keldi: {present}  |  ❌ Kelmadi: {absent}\n\n"
+        f"O'quvchilarni belgilang (bosish orqali ✅/❌ almashtiring):"
+    )
+
+
+@router.callback_query(F.data.startswith("cur:davomat:"))
+async def start_davomat_marking(
+    cb: CallbackQuery, db: DatabaseService, state: FSMContext
+) -> None:
+    """Yoqlamani to'ldirish — dars boshlanganidan 20 daqiqa o'tgach."""
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
+
+    parts      = cb.data.split(":", 3)   # ["cur", "davomat", "nF-2506", "2026-03-16"]
+    group_name = parts[2]
+    date_str   = parts[3]
+
+    students = await db.get_students_by_group(group_name)
+    if not students:
+        await cb.answer(f"❌ {group_name} guruhida o'quvchilar topilmadi!", show_alert=True)
+        return
+
+    # Bugungi davomatni pre-fill: "yes"→✅, "no"→❌, javob yo'q→✅
+    students_data = []
+    for s in students:
+        rec     = await db.get_student_attendance(s.user_id, date_str)
+        present = (rec.status == "yes") if rec else True
+        students_data.append({"user_id": s.user_id, "full_name": s.full_name, "present": present})
+
+    await state.set_state(DavomatFSM.marking)
+    await state.update_data(group_name=group_name, date_str=date_str, students=students_data)
+
+    text  = _davomat_header_text(group_name, date_str, students_data)
+    marks = _davomat_marks_for_kb(students_data)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb_davomat_mark(marks))
+    except TelegramBadRequest:
+        await cb.message.answer(text, reply_markup=kb_davomat_mark(marks))
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("cur:tog:"))
+async def toggle_student_mark(cb: CallbackQuery, state: FSMContext) -> None:
+    """O'quvchi davomatini ✅↔❌ almashtiradi."""
+    data          = await state.get_data()
+    students_data = data.get("students")
+    if not students_data:
+        await cb.answer("⚠️ Sessiya tugadi. Qayta bosing.", show_alert=True)
+        return
+
+    idx = int(cb.data.split(":")[2])
+    if 0 <= idx < len(students_data):
+        students_data[idx]["present"] = not students_data[idx]["present"]
+        await state.update_data(students=students_data)
+
+    group_name = data.get("group_name", "—")
+    date_str   = data.get("date_str", "—")
+    text       = _davomat_header_text(group_name, date_str, students_data)
+    marks      = _davomat_marks_for_kb(students_data)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb_davomat_mark(marks))
+    except TelegramBadRequest:
+        pass
+    await cb.answer()
+
+
+@router.callback_query(F.data == "cur:davomat_send")
+async def davomat_choose_group(
+    cb: CallbackQuery, db: DatabaseService, state: FSMContext
+) -> None:
+    """Ota-ona guruhini tanlash sahifasiga o'tish."""
+    data = await state.get_data()
+    if not data.get("students"):
+        await cb.answer("⚠️ Sessiya tugadi. Qayta bosing.", show_alert=True)
+        return
+
+    all_groups    = await db.get_all_groups()
+    parent_groups = [g for g in all_groups if g.audience == AudienceType.PARENT and g.is_active]
+
+    await state.set_state(DavomatFSM.selecting_group)
+
+    group_name = data.get("group_name", "—")
+    text = (
+        f"📋 <b>{group_name}</b> — Yoqlama yuborish\n\n"
+        f"Qaysi ota-ona guruhiga yuborasiz?"
+    )
+    try:
+        await cb.message.edit_text(text, reply_markup=kb_select_parent_group(parent_groups))
+    except TelegramBadRequest:
+        await cb.message.answer(text, reply_markup=kb_select_parent_group(parent_groups))
+    await cb.answer()
+
+
+@router.callback_query(F.data == "cur:davomat_back")
+async def davomat_back_to_marking(cb: CallbackQuery, state: FSMContext) -> None:
+    """Guruh tanlashdan belgilash sahifasiga qaytish."""
+    data          = await state.get_data()
+    students_data = data.get("students")
+    if not students_data:
+        await cb.answer("⚠️ Sessiya tugadi.", show_alert=True)
+        await state.clear()
+        return
+
+    await state.set_state(DavomatFSM.marking)
+    group_name = data.get("group_name", "—")
+    date_str   = data.get("date_str", "—")
+    text       = _davomat_header_text(group_name, date_str, students_data)
+    marks      = _davomat_marks_for_kb(students_data)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb_davomat_mark(marks))
+    except TelegramBadRequest:
+        await cb.message.answer(text, reply_markup=kb_davomat_mark(marks))
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("cur:pgroup:"))
+async def davomat_send_to_group(
+    cb: CallbackQuery, db: DatabaseService, bot: Bot, state: FSMContext
+) -> None:
+    """Tanlangan ota-ona guruhiga davomat yoqlamasini yuboradi."""
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
+
+    data          = await state.get_data()
+    students_data = data.get("students")
+    group_name    = data.get("group_name", "—")
+    date_str      = data.get("date_str", "—")
+
+    if not students_data:
+        await cb.answer("⚠️ Sessiya tugadi.", show_alert=True)
+        await state.clear()
+        return
+
+    chat_id = int(cb.data.split(":")[2])
+
+    # Kurator ismi
+    cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
+
+    # Sanani formatlash: "2026-03-16" → "16.03.2026"
+    try:
+        y, m, d = date_str.split("-")
+        date_formatted = f"{d}.{m}.{y}"
+    except Exception:
+        date_formatted = date_str
+
+    # Rasmdagidek xabar matni
+    lines = [
+        f"{cname} | MARS IT",
+        f"{date_formatted}",
+        "📌Davomat",
+        "",
+    ]
+    for s in students_data:
+        emoji = "✅" if s["present"] else "❌"
+        lines.append(f"{s['full_name']} {emoji}")
+    message_text = "\n".join(lines)
+
+    try:
+        await bot.send_message(chat_id, message_text)
+        await state.clear()
+
+        present = sum(1 for s in students_data if s["present"])
+        absent  = len(students_data) - present
+        try:
+            await cb.message.edit_text(
+                f"✅ <b>Yoqlama yuborildi!</b>\n\n"
+                f"📚 Guruh: <b>{group_name}</b>\n"
+                f"📅 Sana: {date_formatted}\n"
+                f"✅ Keldi: {present}  |  ❌ Kelmadi: {absent}",
+                reply_markup=kb_curator_panel(),
+            )
+        except TelegramBadRequest:
+            await cb.message.answer(
+                f"✅ Yoqlama yuborildi! Guruh: {group_name}",
+                reply_markup=kb_curator_panel(),
+            )
+        await cb.answer("✅ Yuborildi!")
+        logger.info(f"Davomat yuborildi: {group_name} → {chat_id} | {cname}")
+
+    except Exception as e:
+        await cb.answer(f"❌ Yuborib bo'lmadi: {e}", show_alert=True)
+        logger.error(f"Davomat yuborishda xato: {e}")
+
+
+@router.callback_query(F.data == "cur:davomat_cancel")
+async def davomat_cancel(cb: CallbackQuery, state: FSMContext) -> None:
+    """Davomat to'ldirishni bekor qilish."""
+    await state.clear()
+    try:
+        await cb.message.edit_text(
+            "❌ Davomat to'ldirish bekor qilindi.",
+            reply_markup=kb_curator_panel(),
+        )
+    except TelegramBadRequest:
+        await cb.message.answer("❌ Bekor qilindi.", reply_markup=kb_curator_panel())
+    await cb.answer()

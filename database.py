@@ -242,6 +242,16 @@ class DatabaseService:
     async def init_db(self) -> None:
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            # Migration: phone_number ustuni yo'q bo'lsa qo'shamiz
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "ALTER TABLE students ADD COLUMN phone_number VARCHAR(20)"
+                    )
+                )
+                logger.info("Migration: students.phone_number ustuni qo'shildi.")
+            except Exception:
+                pass  # Ustun allaqon mavjud — xato e'tiborsiz qoldiriladi
         logger.info("Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi.")
 
     # ── CREATE / UPDATE ────────────────────────────────────────────────────────

@@ -308,6 +308,118 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             ]
         })
 
+    # ── Admin API ─────────────────────────────────────────────────────────────
+
+    def _admin_auth(request: web.Request) -> int | None:
+        uid = _auth(request)
+        return uid if uid and uid in ADMIN_IDS else None
+
+    async def api_admin_me(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        return web.json_response({"ok": True, "user_id": user_id})
+
+    async def api_admin_stats(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        today     = datetime.now(tz).strftime("%Y-%m-%d")
+        students  = await db.get_all_students()
+        groups    = await db.get_all_groups()
+        att_recs  = await db.get_attendance_by_date(today)
+
+        present = sum(1 for r in att_recs if r.status == "yes")
+        absent  = sum(1 for r in att_recs if r.status == "no")
+
+        return web.json_response({
+            "total_students":  len(students),
+            "active_groups":   sum(1 for g in groups if g.is_active),
+            "total_groups":    len(groups),
+            "today_present":   present,
+            "today_absent":    absent,
+            "today_pending":   len(students) - present - absent,
+            "today":           today,
+        })
+
+    async def api_admin_students(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        today    = datetime.now(tz).strftime("%Y-%m-%d")
+        students = await db.get_all_students()
+        att_recs = await db.get_attendance_by_date(today)
+        att_map  = {r.user_id: r.status for r in att_recs}
+
+        return web.json_response({
+            "students": [
+                {
+                    "user_id":    s.user_id,
+                    "full_name":  s.full_name,
+                    "group_name": s.group_name,
+                    "mars_id":    s.mars_id,
+                    "username":   s.telegram_username or "",
+                    "phone":      s.phone_number or "",
+                    "last_active": s.last_active.strftime("%d.%m.%Y %H:%M") if s.last_active else None,
+                    "att_today":  att_map.get(s.user_id),
+                }
+                for s in students
+            ]
+        })
+
+    async def api_admin_attendance(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        today    = datetime.now(tz).strftime("%Y-%m-%d")
+        students = await db.get_all_students()
+        att_recs = await db.get_attendance_by_date(today)
+        att_map  = {r.user_id: r for r in att_recs}
+
+        present, absent, pending = [], [], []
+        for s in students:
+            entry = {
+                "user_id":    s.user_id,
+                "full_name":  s.full_name,
+                "group_name": s.group_name,
+                "username":   s.telegram_username or "",
+            }
+            rec = att_map.get(s.user_id)
+            if rec is None:
+                pending.append(entry)
+            elif rec.status == "yes":
+                present.append(entry)
+            else:
+                entry["reason"] = rec.reason or ""
+                absent.append(entry)
+
+        return web.json_response({
+            "date": today, "present": present, "absent": absent, "pending": pending,
+        })
+
+    async def api_admin_groups(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        groups = await db.get_all_groups()
+        return web.json_response({
+            "groups": [
+                {
+                    "id":         g.id,
+                    "chat_id":    g.chat_id,
+                    "name":       g.name,
+                    "group_type": g.group_type.value,
+                    "audience":   g.audience.value,
+                    "is_active":  g.is_active,
+                }
+                for g in groups
+            ]
+        })
+
     # ── Curator Attendance API ────────────────────────────────────────────────
 
     async def api_curator_attendance(request: web.Request) -> web.Response:
@@ -404,6 +516,11 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/hw-history",       api_hw_history)
     app.router.add_post("/api/attendance",      api_attendance)
     app.router.add_get("/api/attendance",       api_attendance_today)
+    app.router.add_get("/api/admin/me",           api_admin_me)
+    app.router.add_get("/api/admin/stats",        api_admin_stats)
+    app.router.add_get("/api/admin/students",     api_admin_students)
+    app.router.add_get("/api/admin/attendance",   api_admin_attendance)
+    app.router.add_get("/api/admin/groups",       api_admin_groups)
     app.router.add_get("/api/curator/me",         api_curator_me)
     app.router.add_post("/api/curator/login",     api_curator_login)
     app.router.add_post("/api/curator/logout",    api_curator_logout)

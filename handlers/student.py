@@ -466,6 +466,35 @@ async def student_change_phone_start(cb: CallbackQuery, state: FSMContext, db: D
     await cb.answer()
 
 
+@router.callback_query(F.data == "student:report")
+async def student_report_issue(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
+    """O'quvchi bot muammosi haqida admin ga xabar yuboradi."""
+    student = await db.get_student(cb.from_user.id)
+    name    = student.full_name if student else cb.from_user.full_name
+    group   = student.group_name if student else "—"
+    tg      = cb.from_user.username or str(cb.from_user.id)
+
+    notify = (
+        f"⚠️ <b>Bot muammosi haqida xabar</b>\n\n"
+        f"👤 O'quvchi: <b>{name}</b>\n"
+        f"📚 Guruh: <b>{group}</b>\n"
+        f"💬 Telegram: @{tg}\n\n"
+        f"📌 O'quvchi botda muammo borligini bildirmoqda."
+    )
+    sent = 0
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, notify)
+            sent += 1
+        except Exception:
+            pass
+
+    if sent:
+        await cb.answer("✅ Xabar adminga yuborildi! Tez orada hal qilinadi.", show_alert=True)
+    else:
+        await cb.answer("⚠️ Xabar yuborib bo'lmadi. Keyinroq urinib ko'ring.", show_alert=True)
+
+
 @router.message(StateFilter(ChangePhoneFSM.waiting_phone))
 async def student_change_phone_save(
     message: Message,

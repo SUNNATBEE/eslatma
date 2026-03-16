@@ -16,8 +16,8 @@ def kb_admin_panel() -> InlineKeyboardMarkup:
     if WEBAPP_URL:
         builder.row(
             InlineKeyboardButton(
-                text="🚀 Mini App (preview)",
-                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/student.html"),
+                text="🖥 Admin Panel (Mini App)",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/admin.html"),
             )
         )
     builder.row(
@@ -175,17 +175,23 @@ def kb_student_menu() -> InlineKeyboardMarkup:
                 web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/student.html"),
             )
         )
+        builder.row(
+            InlineKeyboardButton(
+                text="📖 Qo'llanma / Инструкция",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/guide.html?role=student"),
+            )
+        )
     builder.row(
         InlineKeyboardButton(text="📚 Uy vazifasi",    callback_data="student:homework"),
         InlineKeyboardButton(text="📺 Darslar kanali", url=CHANNEL_LINK),
     )
     builder.row(
         InlineKeyboardButton(text="📅 Dars jadvali",   callback_data="student:schedule"),
-        InlineKeyboardButton(text="❓ Ustozga savol",   callback_data="student:ask"),
+        InlineKeyboardButton(text="📜 Vazifa tarixi",  callback_data="student:hw_history"),
     )
     builder.row(
-        InlineKeyboardButton(text="📜 Vazifa tarixi",  callback_data="student:hw_history"),
         InlineKeyboardButton(text="📱 Telefon",        callback_data="student:change_phone"),
+        InlineKeyboardButton(text="⚠️ Muammo bildirish", callback_data="student:report"),
     )
     return builder.as_markup()
 
@@ -392,11 +398,18 @@ def kb_curator_panel() -> InlineKeyboardMarkup:
                 web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/curator.html"),
             )
         )
+        builder.row(
+            InlineKeyboardButton(
+                text="📖 Qo'llanma / Инструкция",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/guide.html?role=curator"),
+            )
+        )
     builder.row(
         InlineKeyboardButton(text="👥 O'quvchilar ro'yxati", callback_data="cur:list:all"),
     )
     builder.row(
-        InlineKeyboardButton(text="🚪 Chiqish",             callback_data="cur:logout"),
+        InlineKeyboardButton(text="⚠️ Muammo bildirish",     callback_data="cur:report"),
+        InlineKeyboardButton(text="🚪 Chiqish",              callback_data="cur:logout"),
     )
     return builder.as_markup()
 

@@ -155,6 +155,34 @@ async def cur_logout(cb: CallbackQuery, db: DatabaseService) -> None:
     await cb.answer()
 
 
+@router.callback_query(F.data == "cur:report")
+async def cur_report_issue(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
+    """Kurator bot muammosi haqida adminga xabar yuboradi."""
+    from config import ADMIN_IDS
+    session = await db.get_curator_session(cb.from_user.id)
+    curator_key = session.curator_key if session else "—"
+    tg = cb.from_user.username or str(cb.from_user.id)
+
+    notify = (
+        f"⚠️ <b>Bot muammosi — Kurator xabari</b>\n\n"
+        f"👩‍💼 Kurator: <b>{curator_key}</b>\n"
+        f"💬 Telegram: @{tg}\n\n"
+        f"📌 Kurator botda muammo borligini bildirmoqda."
+    )
+    sent = 0
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, notify)
+            sent += 1
+        except Exception:
+            pass
+
+    if sent:
+        await cb.answer("✅ Xabar adminga yuborildi! Tez orada hal qilinadi.", show_alert=True)
+    else:
+        await cb.answer("⚠️ Xabar yuborib bo'lmadi.", show_alert=True)
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 # O'QUVCHILAR RO'YXATI
 # ════════════════════════════════════════════════════════════════════════════════

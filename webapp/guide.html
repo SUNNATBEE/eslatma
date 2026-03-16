@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mars IT — Qo'llanma / Инструкция</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      var(--tg-theme-bg-color,           #17212b);
+      --bg2:     var(--tg-theme-secondary-bg-color,  #232e3c);
+      --accent:  var(--tg-theme-button-color,        #5288c1);
+      --accent2: #3a7cbf;
+      --text:    var(--tg-theme-text-color,          #f5f5f5);
+      --sub:     var(--tg-theme-hint-color,          #708499);
+      --btn-txt: var(--tg-theme-button-text-color,   #ffffff);
+      --danger:  #e05c5c;
+      --success: #4caf7d;
+      --warn:    #f0ad4e;
+      --r:       14px;
+      --r-sm:    10px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--bg2);
+      padding: 12px 16px 10px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .header-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .header-title { font-weight: 800; font-size: 16px; }
+    .header-sub   { font-size: 11px; color: var(--sub); }
+
+    /* ── Lang switch ── */
+    .lang-bar {
+      display: flex; gap: 0;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+      padding: 8px 16px;
+    }
+    .lang-btn {
+      flex: 1; padding: 8px;
+      background: rgba(255,255,255,.06);
+      color: var(--sub);
+      border: none; cursor: pointer;
+      font-size: 13px; font-weight: 700;
+      transition: background .15s, color .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lang-btn:first-child { border-radius: 10px 0 0 10px; }
+    .lang-btn:last-child  { border-radius: 0 10px 10px 0; }
+    .lang-btn.active { background: var(--accent); color: #fff; }
+
+    /* ── Role tabs ── */
+    .role-tabs {
+      display: flex; gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      flex-shrink: 0;
+    }
+    .role-tab {
+      flex: 1; padding: 7px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 700;
+      cursor: pointer; text-align: center;
+      background: rgba(255,255,255,.06); color: var(--sub);
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s, color .15s;
+    }
+    .role-tab.active { background: var(--accent); color: #fff; }
+
+    /* ── Content ── */
+    .content {
+      flex: 1; overflow-y: auto;
+      padding: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .content::-webkit-scrollbar { display: none; }
+
+    /* ── Section ── */
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: var(--r) var(--r) 0 0;
+      padding: 12px 16px;
+    }
+    .section-icon  { font-size: 22px; }
+    .section-title { font-size: 15px; font-weight: 800; color: #fff; }
+
+    .item-list {
+      background: var(--bg2);
+      border-radius: 0 0 var(--r) var(--r);
+      overflow: hidden;
+    }
+    .item {
+      display: flex; gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .item:last-child { border-bottom: none; }
+    .item-icon {
+      font-size: 20px;
+      width: 28px; text-align: center;
+      flex-shrink: 0; padding-top: 1px;
+    }
+    .item-content { flex: 1; }
+    .item-btn  {
+      font-size: 13px; font-weight: 700;
+      color: var(--text); margin-bottom: 2px;
+    }
+    .item-desc { font-size: 12px; color: var(--sub); line-height: 1.4; }
+    .item-desc b { color: var(--text); }
+
+    /* ── Tip card ── */
+    .tip-card {
+      background: rgba(82,136,193,.12);
+      border: 1px solid rgba(82,136,193,.25);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .tip-icon { font-size: 20px; flex-shrink: 0; }
+    .tip-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+
+    /* ── Warning card ── */
+    .warn-card {
+      background: rgba(224,92,92,.1);
+      border: 1px solid rgba(224,92,92,.2);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex; gap: 10px;
+    }
+    .warn-card .tip-text { color: var(--text); }
+
+    .close-btn {
+      width: 100%;
+      padding: 15px;
+      background: var(--accent);
+      color: var(--btn-txt);
+      border: none; border-radius: var(--r);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; margin-top: 8px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .close-btn:active { opacity: .85; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-icon">📖</div>
+    <div>
+      <div class="header-title">Qo'llanma / Инструкция</div>
+      <div class="header-sub">Mars IT O'quv Markazi</div>
+    </div>
+  </div>
+
+  <div class="lang-bar">
+    <button class="lang-btn active" id="btn-uz" onclick="setLang('uz')">🇺🇿 O'zbekcha</button>
+    <button class="lang-btn"        id="btn-ru" onclick="setLang('ru')">🇷🇺 Русский</button>
+  </div>
+
+  <div class="role-tabs">
+    <div class="role-tab active" id="rtab-student" onclick="setRole('student')">🎓 O'quvchi</div>
+    <div class="role-tab"        id="rtab-curator" onclick="setRole('curator')">👩‍💼 Kurator</div>
+  </div>
+
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+let lang = 'uz';
+let role = 'student';
+
+// Read role from URL query param
+const urlRole = new URLSearchParams(window.location.search).get('role');
+if (urlRole === 'curator') role = 'curator';
+
+/* ─────────────────────────────────── DATA ─────────────────────────────────── */
+
+const DATA = {
+  student: {
+    uz: {
+      tip: "Bu qo'llanma botdagi barcha tugmalar va funksiyalarni tushuntiradi. Har bir bo'limni o'qib chiqing!",
+      sections: [
+        {
+          icon: "🚀", title: "Mini App — Shaxsiy Kabinet",
+          items: [
+            { icon: "🏠", btn: "Bosh sahifa", desc: "Bugungi dars vaqtini, davomatni va asosiy menyuni ko'rasiz." },
+            { icon: "⏰", btn: "Dars kartochkasi", desc: "Bugungi dars vaqtini ko'rsatadi. Dars bo'lsa ✅/❌ tugmalar paydo bo'ladi." },
+            { icon: "✅", btn: "Ha, boraman", desc: "Bugun darsga kelishingizni tasdiqlaysiz. Kurator va admin xabardor bo'ladi." },
+            { icon: "❌", btn: "Kela olmayman", desc: "Kelmasligingiz sababini yozasiz. Sabab admin va kuratorga yuboriladi." },
+            { icon: "📚", btn: "Uy Vazifasi", desc: "Guruhingizga berilgan so'nggi uy vazifasini ko'rasiz." },
+            { icon: "📜", btn: "Tarix", desc: "Oldingi barcha uy vazifalari ro'yxati." },
+            { icon: "👤", btn: "Profil", desc: "Ism, guruh, Mars ID ko'rinadi." },
+            { icon: "📱", btn: "Telefon", desc: "Saqlangan telefon raqamingiz. O'zgartirish tugmasi bor." },
+          ]
+        },
+        {
+          icon: "📚", title: "Bot Tugmalari",
+          items: [
+            { icon: "📚", btn: "Uy Vazifasi", desc: "Guruhingizning joriy uy vazifasini ko'rsatadi (video, matn, fayl)." },
+            { icon: "📺", btn: "Darslar Kanali", desc: "Mars IT YouTube kanaliga o'tadi — barcha dars yozuvlari shu yerda." },
+            { icon: "📅", btn: "Dars Jadvali", desc: "Guruhingizning dars jadvali rasm yoki matn ko'rinishida ko'rinadi." },
+            { icon: "📜", btn: "Vazifa Tarixi", desc: "Oxirgi 10 ta uy vazifasi sanasi ko'rinadi." },
+            { icon: "📱", btn: "Telefon", desc: "Telefon raqamingizni yangilaysiz. Format: +998901234567" },
+            { icon: "⚠️", btn: "Muammo Bildirish", desc: "Bot ishlamayotgan bo'lsa, admin xabardor qilinadi. Tez javob berishadi." },
+          ]
+        },
+        {
+          icon: "⏰", title: "Eslatmalar",
+          items: [
+            { icon: "📅", btn: "Kechki eslatma (20:00)", desc: "Har kuni kechki 8 da ertangi dars haqida xabar keladi." },
+            { icon: "⏰", btn: "Dars eslatmasi", desc: "Dars vaqtidan 3 soat oldin davomat so'raladi. Javob bermasangiz har 10 daqiqada takrorlanadi." },
+            { icon: "✅", btn: "Davomat tugmalari", desc: "Ha/Yo'q tugmalari bilan darsga kelishingizni bildiring." },
+          ]
+        },
+      ],
+      warn: "Bot yozganingizda javob bermasa — ⚠️ Muammo Bildirish tugmasini bosing va admin 10 daqiqa ichida muammoni hal qiladi."
+    },
+    ru: {
+      tip: "Эта инструкция объясняет все кнопки и функции бота. Прочитайте каждый раздел!",
+      sections: [
+        {
+          icon: "🚀", title: "Mini App — Личный кабинет",
+          items: [
+            { icon: "🏠", btn: "Главная страница", desc: "Показывает время сегодняшнего урока, посещаемость и главное меню." },
+            { icon: "⏰", btn: "Карточка урока", desc: "Показывает время сегодняшнего урока. Если урок есть — появляются кнопки ✅/❌." },
+            { icon: "✅", btn: "Да, приду", desc: "Подтверждаете, что придёте на урок. Куратор и администратор будут уведомлены." },
+            { icon: "❌", btn: "Не смогу прийти", desc: "Вы пишете причину отсутствия. Причина отправляется администратору и куратору." },
+            { icon: "📚", btn: "Домашнее задание", desc: "Просмотр последнего домашнего задания для вашей группы." },
+            { icon: "📜", btn: "История", desc: "Список всех предыдущих домашних заданий." },
+            { icon: "👤", btn: "Профиль", desc: "Отображается имя, группа, Mars ID." },
+            { icon: "📱", btn: "Телефон", desc: "Сохранённый номер телефона. Есть кнопка изменения." },
+          ]
+        },
+        {
+          icon: "📚", title: "Кнопки бота",
+          items: [
+            { icon: "📚", btn: "Домашнее задание", desc: "Показывает текущее домашнее задание вашей группы (видео, текст, файл)." },
+            { icon: "📺", btn: "Канал уроков", desc: "Переходит на YouTube-канал Mars IT — все записи уроков там." },
+            { icon: "📅", btn: "Расписание уроков", desc: "Расписание вашей группы в виде изображения или текста." },
+            { icon: "📜", btn: "История заданий", desc: "Отображаются даты последних 10 домашних заданий." },
+            { icon: "📱", btn: "Телефон", desc: "Обновите номер телефона. Формат: +998901234567" },
+            { icon: "⚠️", btn: "Сообщить о проблеме", desc: "Если бот не отвечает, администратор будет уведомлён. Ответят быстро." },
+          ]
+        },
+        {
+          icon: "⏰", title: "Уведомления",
+          items: [
+            { icon: "📅", btn: "Вечернее напоминание (20:00)", desc: "Каждый вечер в 8 приходит сообщение о завтрашнем уроке." },
+            { icon: "⏰", btn: "Напоминание об уроке", desc: "За 3 часа до урока запрашивается посещаемость. Если не ответить — повтор каждые 10 минут." },
+            { icon: "✅", btn: "Кнопки посещаемости", desc: "Кнопками Да/Нет сообщите, придёте ли на урок." },
+          ]
+        },
+      ],
+      warn: "Если бот не отвечает — нажмите ⚠️ Сообщить о проблеме, и администратор решит проблему в течение 10 минут."
+    },
+  },
+
+  curator: {
+    uz: {
+      tip: "Kurator paneli orqali o'quvchilarni kuzating, davomatni tekshiring va ular bilan bog'laning.",
+      sections: [
+        {
+          icon: "🚀", title: "Kurator Mini App",
+          items: [
+            { icon: "👥", btn: "O'quvchilar tab", desc: "Barcha o'quvchilar ro'yxati. Ism yoki guruh bo'yicha qidiring." },
+            { icon: "🔍", btn: "Qidiruv", desc: "Ism yozib filtrlaysiz. Natijalar real vaqtda yangilanadi." },
+            { icon: "📚", btn: "Guruh filtrlari", desc: "Guruh tugmasini bosib faqat o'sha guruh o'quvchilarini ko'rasiz." },
+            { icon: "👤", btn: "O'quvchi kartochkasi", desc: "Bosib batafsil ma'lumot: guruh, Telegram, oxirgi faollik ko'rinadi." },
+            { icon: "📞", btn: "Telegram havola", desc: "Telegramda to'g'ridan-to'g'ri yozish imkoniyati (username bo'lsa)." },
+            { icon: "💬", btn: "Bot orqali aloqa", desc: "Telegram yo'q bo'lsa, bot orqali xabar yuborasiz." },
+            { icon: "📊", btn: "Davomat tab", desc: "Bugungi davomat holati: kim keldi, kim kelmadi, sababi nima." },
+          ]
+        },
+        {
+          icon: "📊", title: "Davomat sahifasi",
+          items: [
+            { icon: "✅", btn: "Bor (✅)", desc: "Bugun darsga kelishini tasdiqlagan o'quvchilar." },
+            { icon: "❌", btn: "Yo'q (❌)", desc: "Kela olmasligini bildirgan o'quvchilar. Sababi ko'rsatiladi." },
+            { icon: "⏳", btn: "Javob yo'q (⏳)", desc: "Hali davomat to'ldirmagan o'quvchilar — ular bilan bog'laning." },
+            { icon: "📞", btn: "📞 TG tugma", desc: "Kelmagan o'quvchining Telegram profiliga o'tish tugmasi." },
+          ]
+        },
+        {
+          icon: "🤖", title: "Bot Tugmalari",
+          items: [
+            { icon: "👥", btn: "O'quvchilar ro'yxati", desc: "Bot orqali barcha o'quvchilar ro'yxati va guruhlar." },
+            { icon: "💬", btn: "Bot orqali aloqa", desc: "O'quvchiga bot orqali xabar yuborasiz. O'quvchi 'O'qidim' bosishi kerak." },
+            { icon: "⚠️", btn: "Muammo bildirish", desc: "Bot ishlamayotgan bo'lsa, admin xabardor qilinadi." },
+            { icon: "🚪", btn: "Chiqish", desc: "Kurator panelidan chiqish." },
+          ]
+        },
+        {
+          icon: "⚠️", title: "Muhim eslatmalar",
+          items: [
+            { icon: "📩", btn: "Kelmaslik xabari", desc: "O'quvchi 'Kela olmayman' bosganda siz xabardor bo'lasiz. Sabab ham ko'rinadi." },
+            { icon: "🔔", btn: "Real-time bildirishnomalar", desc: "O'quvchi sabab yozganda darhol botda xabar olasiz." },
+          ]
+        },
+      ],
+      warn: "Bot ishlamayotgan bo'lsa — ⚠️ Muammo Bildirish tugmasini bosing. Admin darhol xabardor bo'ladi."
+    },
+    ru: {
+      tip: "Через панель куратора отслеживайте учеников, проверяйте посещаемость и связывайтесь с ними.",
+      sections: [
+        {
+          icon: "🚀", title: "Mini App куратора",
+          items: [
+            { icon: "👥", btn: "Вкладка учеников", desc: "Список всех учеников. Поиск по имени или группе." },
+            { icon: "🔍", btn: "Поиск", desc: "Введите имя для фильтрации. Результаты обновляются в реальном времени." },
+            { icon: "📚", btn: "Фильтр по группе", desc: "Нажмите кнопку группы, чтобы видеть только её учеников." },
+            { icon: "👤", btn: "Карточка ученика", desc: "Нажмите для просмотра деталей: группа, Telegram, последняя активность." },
+            { icon: "📞", btn: "Ссылка Telegram", desc: "Написать напрямую в Telegram (если есть username)." },
+            { icon: "💬", btn: "Связь через бот", desc: "Если нет Telegram, отправьте сообщение через бота." },
+            { icon: "📊", btn: "Вкладка посещаемости", desc: "Посещаемость за сегодня: кто пришёл, кто нет, причины." },
+          ]
+        },
+        {
+          icon: "📊", title: "Страница посещаемости",
+          items: [
+            { icon: "✅", btn: "Присутствует (✅)", desc: "Ученики, подтвердившие присутствие на уроке сегодня." },
+            { icon: "❌", btn: "Отсутствует (❌)", desc: "Ученики, сообщившие об отсутствии. Показывается причина." },
+            { icon: "⏳", btn: "Нет ответа (⏳)", desc: "Ученики, ещё не заполнившие посещаемость — свяжитесь с ними." },
+            { icon: "📞", btn: "Кнопка 📞 TG", desc: "Перейти в профиль Telegram отсутствующего ученика." },
+          ]
+        },
+        {
+          icon: "🤖", title: "Кнопки бота",
+          items: [
+            { icon: "👥", btn: "Список учеников", desc: "Список всех учеников и групп через бота." },
+            { icon: "💬", btn: "Связь через бот", desc: "Отправить ученику сообщение через бота. Ученик должен нажать «Прочитал»." },
+            { icon: "⚠️", btn: "Сообщить о проблеме", desc: "Если бот не работает, администратор будет уведомлён." },
+            { icon: "🚪", btn: "Выход", desc: "Выйти из панели куратора." },
+          ]
+        },
+        {
+          icon: "⚠️", title: "Важные напоминания",
+          items: [
+            { icon: "📩", btn: "Сообщение об отсутствии", desc: "Когда ученик нажимает «Не смогу прийти», вы получаете уведомление с причиной." },
+            { icon: "🔔", btn: "Уведомления в реальном времени", desc: "Когда ученик пишет причину, вы сразу получаете сообщение в боте." },
+          ]
+        },
+      ],
+      warn: "Если бот не работает — нажмите ⚠️ Сообщить о проблеме. Администратор будет уведомлён немедленно."
+    },
+  },
+};
+
+/* ─────────────────────────────────── RENDER ────────────────────────────────── */
+
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-uz').classList.toggle('active', l === 'uz');
+  document.getElementById('btn-ru').classList.toggle('active', l === 'ru');
+  render();
+}
+
+function setRole(r) {
+  role = r;
+  document.getElementById('rtab-student').classList.toggle('active', r === 'student');
+  document.getElementById('rtab-curator').classList.toggle('active', r === 'curator');
+  render();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function render() {
+  const d = DATA[role]?.[lang];
+  if (!d) return;
+  const el = document.getElementById('content');
+
+  let html = '';
+
+  // Tip card
+  html += `<div class="tip-card"><div class="tip-icon">💡</div><div class="tip-text">${esc(d.tip)}</div></div>`;
+
+  // Sections
+  for (const sec of d.sections) {
+    html += `
+      <div class="section">
+        <div class="section-header">
+          <div class="section-icon">${sec.icon}</div>
+          <div class="section-title">${esc(sec.title)}</div>
+        </div>
+        <div class="item-list">
+          ${sec.items.map(item => `
+            <div class="item">
+              <div class="item-icon">${item.icon}</div>
+              <div class="item-content">
+                <div class="item-btn">${esc(item.btn)}</div>
+                <div class="item-desc">${esc(item.desc)}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  // Warning
+  html += `<div class="warn-card"><div class="tip-icon">⚠️</div><div class="tip-text">${esc(d.warn)}</div></div>`;
+
+  // Close button
+  html += `<button class="close-btn" onclick="closePage()">✅ ${lang === 'uz' ? 'Tushundim, yopish' : 'Понял, закрыть'}</button>`;
+
+  el.innerHTML = html;
+  el.scrollTop = 0;
+}
+
+function closePage() {
+  tg?.close();
+}
+
+/* ── Init ── */
+setRole(role);
+render();
+</script>
+</body>
+</html>

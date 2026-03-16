@@ -72,8 +72,29 @@ MARS_CREDENTIALS: dict[str, dict] = {
     "1306449": {"name": "Arzuddinov Bunyod",          "password": "74896", "group": "nF-2957"},
     "1306455": {"name": "Arzuddinov Farrux",          "password": "76095", "group": "nF-2957"},
     "1298402": {"name": "Azimov Abduqodir",           "password": "63091", "group": "nF-2957"},
+
+    # ── 2996-Pro ─────────────────────────────────────────────────────────────
+    "1053838": {"name": "Sunnatxo'jayev Boisxon",     "password": "94703", "group": "2996-Pro"},
+    "1143086": {"name": "Baxtiyorov Suhrobek",        "password": "60479", "group": "2996-Pro"},
+    "935267":  {"name": "Xoliboyev Doniyor",          "password": "47612", "group": "2996-Pro"},
+    "1027372": {"name": "Qudratov Qudratjon",         "password": "54092", "group": "2996-Pro"},
+
+    # ── 2997-Pro ─────────────────────────────────────────────────────────────
+    "1146165": {"name": "Mominjonov Akbar",           "password": "03547", "group": "2997-Pro"},
+    "1115299": {"name": "Abdulazizov Jahongir",       "password": "61207", "group": "2997-Pro"},
+    "1116290": {"name": "A'loyev Sardorxo'ja",        "password": "20314", "group": "2997-Pro"},
+    "1118584": {"name": "Yalgasheva Sitora",          "password": "70139", "group": "2997-Pro"},
+    "1031560": {"name": "Baxtiyorov Hayotbek",        "password": "89543", "group": "2997-Pro"},
+    "1165391": {"name": "Nosiraliyev Muhammadyahyo",  "password": "42015", "group": "2997-Pro"},
+    "1228619": {"name": "Hudoyberdiyev Azizbek",      "password": "6437892", "group": "2997-Pro"},
+
+    # ── nFPro-120 ─────────────────────────────────────────────────────────────
+    "842138":  {"name": "Aliyev Azizbek",             "password": "83145", "group": "nFPro-120"},
+    "1229261": {"name": "Fazilov Kamron",             "password": "21759", "group": "nFPro-120"},
+    "1064165": {"name": "Abdullayev Bobur",           "password": "46817", "group": "nFPro-120"},
 }
 
 MARS_GROUPS: list[str] = [
-    "nF-2506", "nF-2694", "nF-2749", "nF-2803", "nF-2941", "nF-2957"
+    "nF-2506", "nF-2694", "nF-2749", "nF-2803", "nF-2941", "nF-2957",
+    "2996-Pro", "2997-Pro", "nFPro-120",
 ]

@@ -5,6 +5,7 @@ handlers/student.py — O'quvchi paneli + admin amallar:
 """
 
 import logging
+import re
 from datetime import datetime
 
 from aiogram import Bot, F, Router
@@ -143,11 +144,13 @@ async def admin_student_detail(cb: CallbackQuery, db: DatabaseService) -> None:
 
     tg = student.telegram_username or f"ID: {student.user_id}"
     reg_date = student.registered_at.strftime("%d.%m.%Y %H:%M") if student.registered_at else "—"
+    phone = student.phone_number or "—"
 
     text = (
         f"👤 <b>{student.full_name}</b>\n\n"
         f"📚 Guruh: <b>{student.group_name}</b>\n"
         f"🆔 Mars ID: <code>{student.mars_id}</code>\n"
+        f"📱 Telefon: <code>{phone}</code>\n"
         f"💬 Telegram: {tg}\n"
         f"🔗 User ID: <code>{student.user_id}</code>\n"
         f"📅 Ro'yxatdan: {reg_date}"
@@ -430,3 +433,82 @@ async def admin_hw_content(
         f"   guruh chatiga avtomatik yuboriladi.",
         reply_markup=kb_back_to_panel(),
     )
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# O'QUVCHI: TELEFON RAQAMNI O'ZGARTIRISH
+# ════════════════════════════════════════════════════════════════════════════════
+
+class ChangePhoneFSM(StatesGroup):
+    waiting_phone = State()
+
+
+def _valid_phone(phone: str) -> bool:
+    return bool(re.fullmatch(r"\+998\d{9}", phone))
+
+
+@router.callback_query(F.data == "student:change_phone")
+async def student_change_phone_start(cb: CallbackQuery, state: FSMContext, db: DatabaseService) -> None:
+    student = await db.get_student(cb.from_user.id)
+    if not student:
+        await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True)
+        return
+    current = student.phone_number or "kiritilmagan"
+    await state.set_state(ChangePhoneFSM.waiting_phone)
+    await cb.message.answer(
+        f"📱 <b>Telefon raqamni o'zgartirish</b>\n\n"
+        f"Hozirgi raqam: <code>{current}</code>\n\n"
+        f"Yangi raqamni kiriting:\n"
+        f"Namuna: <code>+998901234567</code>\n"
+        f"<i>(+998 dan boshlang, jami 12 raqam)</i>\n\n"
+        f"<i>Bekor qilish: /start</i>",
+    )
+    await cb.answer()
+
+
+@router.message(StateFilter(ChangePhoneFSM.waiting_phone))
+async def student_change_phone_save(
+    message: Message,
+    state: FSMContext,
+    db: DatabaseService,
+    bot: Bot,
+) -> None:
+    phone = message.text.strip() if message.text else ""
+
+    if not _valid_phone(phone):
+        await message.answer(
+            "❌ <b>Noto'g'ri format!</b>\n\n"
+            "Format: <code>+998901234567</code>\n"
+            "<i>+998 dan boshlang, keyin 9 ta raqam (jami 12 raqam).</i>\n\n"
+            "Qayta kiriting:"
+        )
+        return
+
+    await db.update_student_phone(message.from_user.id, phone)
+    await state.clear()
+
+    student = await db.get_student(message.from_user.id)
+    name = student.full_name if student else str(message.from_user.id)
+
+    await message.answer(
+        f"✅ <b>Telefon raqam yangilandi!</b>\n\n"
+        f"📱 Yangi raqam: <code>{phone}</code>",
+        reply_markup=kb_student_menu(),
+    )
+
+    # Adminga bildirishnoma
+    from config import ADMIN_IDS
+    tg = student.telegram_username if student else str(message.from_user.id)
+    group = student.group_name if student else "—"
+    admin_text = (
+        f"📱 <b>O'quvchi telefon raqamini o'zgartirdi</b>\n\n"
+        f"👤 Ism: <b>{name}</b>\n"
+        f"📚 Guruh: <b>{group}</b>\n"
+        f"📱 Yangi raqam: <code>{phone}</code>\n"
+        f"💬 Telegram: {tg}"
+    )
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, admin_text)
+        except Exception:
+            pass

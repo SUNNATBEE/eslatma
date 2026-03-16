@@ -185,6 +185,7 @@ def kb_student_menu() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="📜 Vazifa tarixi",  callback_data="student:hw_history"),
+        InlineKeyboardButton(text="📱 Telefon",        callback_data="student:change_phone"),
     )
     return builder.as_markup()
 

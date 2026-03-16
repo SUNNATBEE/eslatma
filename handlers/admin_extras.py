@@ -85,7 +85,7 @@ async def admin_excel_export(cb: CallbackQuery, db: DatabaseService, bot: Bot) -
         ws.title = "O'quvchilar"
 
         # Header
-        headers = ["#", "Ism Familya", "Guruh", "Mars ID", "Telegram", "Ro'yxatdan"]
+        headers = ["#", "Ism Familya", "Guruh", "Mars ID", "Telefon", "Telegram", "Ro'yxatdan"]
         header_fill = PatternFill("solid", fgColor="4472C4")
         header_font = Font(bold=True, color="FFFFFF")
         for col, h in enumerate(headers, 1):
@@ -99,14 +99,16 @@ async def admin_excel_export(cb: CallbackQuery, db: DatabaseService, bot: Bot) -
         ws.column_dimensions["B"].width = 30
         ws.column_dimensions["C"].width = 12
         ws.column_dimensions["D"].width = 12
-        ws.column_dimensions["E"].width = 20
-        ws.column_dimensions["F"].width = 18
+        ws.column_dimensions["E"].width = 16
+        ws.column_dimensions["F"].width = 20
+        ws.column_dimensions["G"].width = 18
 
         # Data (sorted by group then name)
         sorted_students = sorted(students, key=lambda s: (s.group_name, s.full_name))
         for i, s in enumerate(sorted_students, 1):
             reg = s.registered_at.strftime("%d.%m.%Y") if s.registered_at else "—"
             ws.append([i, s.full_name, s.group_name, s.mars_id,
+                       s.phone_number or "—",
                        s.telegram_username or str(s.user_id), reg])
 
         # Save to buffer

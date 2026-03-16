@@ -28,6 +28,13 @@ class RegFSM(StatesGroup):
     waiting_group    = State()
     waiting_mars_id  = State()
     waiting_password = State()
+    waiting_phone    = State()
+
+
+def _is_valid_phone(phone: str) -> bool:
+    """Telefon formati: +998XXXXXXXXX (jami 13 belgi, 12 raqam)."""
+    import re
+    return bool(re.fullmatch(r"\+998\d{9}", phone))
 
 
 async def start_registration(message: Message, state: FSMContext) -> None:
@@ -116,8 +123,45 @@ async def reg_enter_password(
         await state.set_state(RegFSM.waiting_group)
         return
 
-    # ── Ro'yxatdan o'tkazish ────────────────────────────────────────────────
-    full_name = cred["name"]
+    # ── Ma'lumotlarni saqlab, telefon so'raymiz ─────────────────────────────
+    await state.update_data(
+        full_name=cred["name"],
+        confirmed_group=sel_group,
+        confirmed_mars_id=mars_id,
+    )
+    await state.set_state(RegFSM.waiting_phone)
+    await message.answer(
+        f"✅ <b>Parol to'g'ri!</b>\n\n"
+        f"📱 Shaxsiy <b>telefon raqamingizni</b> kiriting:\n\n"
+        f"Namuna: <code>+998901234567</code>\n"
+        f"<i>(+998 dan boshlang, jami 12 raqam)</i>",
+    )
+
+
+# ── 4-qadam: telefon raqam → ro'yxatga olish ──────────────────────────────────
+
+@router.message(StateFilter(RegFSM.waiting_phone))
+async def reg_enter_phone(
+    message: Message,
+    state: FSMContext,
+    db: DatabaseService,
+    bot: Bot,
+) -> None:
+    phone = message.text.strip() if message.text else ""
+
+    if not _is_valid_phone(phone):
+        await message.answer(
+            "❌ <b>Noto'g'ri telefon raqami!</b>\n\n"
+            "Format: <code>+998901234567</code>\n"
+            "<i>+998 dan boshlang, keyin 9 ta raqam kiriting (jami 12 raqam).</i>\n\n"
+            "Qayta kiriting:"
+        )
+        return
+
+    data      = await state.get_data()
+    full_name = data.get("full_name", "")
+    sel_group = data.get("confirmed_group", "")
+    mars_id   = data.get("confirmed_mars_id", "")
     user      = message.from_user
     tg_user   = f"@{user.username}" if user.username else str(user.id)
 
@@ -127,13 +171,15 @@ async def reg_enter_password(
         full_name=full_name,
         mars_id=mars_id,
         group_name=sel_group,
+        phone_number=phone,
     )
     await state.clear()
 
     await message.answer(
         f"✅ <b>Salom, {full_name}!</b>\n\n"
         f"Siz muvaffaqiyatli ro'yxatdan o'tdingiz! 🎉\n"
-        f"📚 Guruh: <b>{sel_group}</b>\n\n"
+        f"📚 Guruh: <b>{sel_group}</b>\n"
+        f"📱 Telefon: <code>{phone}</code>\n\n"
         f"Quyidagi tugmalardan foydalaning:",
         reply_markup=kb_student_menu(),
     )
@@ -144,6 +190,7 @@ async def reg_enter_password(
         f"👤 Ism: <b>{full_name}</b>\n"
         f"📚 Guruh: <b>{sel_group}</b>\n"
         f"🆔 Mars ID: <code>{mars_id}</code>\n"
+        f"📱 Telefon: <code>{phone}</code>\n"
         f"💬 Telegram: {tg_user}\n"
         f"🔗 User ID: <code>{user.id}</code>"
     )

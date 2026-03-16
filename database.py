@@ -100,6 +100,7 @@ class Student(Base):
     full_name:          Mapped[str]           = mapped_column(String(255), nullable=False)
     mars_id:            Mapped[str]           = mapped_column(String(50),  nullable=False)
     group_name:         Mapped[str]           = mapped_column(String(50),  nullable=False)
+    phone_number:       Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)
     registered_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
     last_active:        Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -371,6 +372,7 @@ class DatabaseService:
         full_name: str,
         mars_id: str,
         group_name: str,
+        phone_number: Optional[str] = None,
     ) -> "Student":
         """Yangi o'quvchi qo'shadi yoki mavjudini yangilaydi."""
         async with self.session_factory() as session:
@@ -383,6 +385,8 @@ class DatabaseService:
                 existing.full_name         = full_name
                 existing.mars_id           = mars_id
                 existing.group_name        = group_name
+                if phone_number:
+                    existing.phone_number  = phone_number
                 await session.commit()
                 return existing
             student = Student(
@@ -391,12 +395,24 @@ class DatabaseService:
                 full_name=full_name,
                 mars_id=mars_id,
                 group_name=group_name,
+                phone_number=phone_number,
             )
             session.add(student)
             await session.commit()
             await session.refresh(student)
             logger.info(f"Yangi o'quvchi: {full_name} | {group_name} | TG:{user_id}")
             return student
+
+    async def update_student_phone(self, user_id: int, phone_number: str) -> bool:
+        """O'quvchining telefon raqamini yangilaydi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if not s:
+                return False
+            s.phone_number = phone_number
+            await session.commit()
+            return True
 
     async def get_student(self, user_id: int) -> Optional["Student"]:
         async with self.session_factory() as session:

@@ -199,9 +199,11 @@ async def cur_contact(cb: CallbackQuery, db: DatabaseService) -> None:
     has_chat = existing is not None and existing.student_user_id == student_id
     last = student.last_active.strftime("%d.%m.%Y %H:%M") if student.last_active else "Noma'lum"
 
+    phone = student.phone_number or "—"
     text = (
         f"👤 <b>{student.full_name}</b>\n"
         f"📚 Guruh: <b>{student.group_name}</b>\n"
+        f"📱 Telefon: <code>{phone}</code>\n"
         f"💬 Telegram: {student.telegram_username or '—'}\n"
         f"🕐 So'nggi faollik: {last}\n\n"
         f"Bog'lanish usulini tanlang:"

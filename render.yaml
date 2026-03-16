@@ -5,6 +5,10 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /health
+    disk:
+      name: botdata
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: BOT_TOKEN
         sync: false
@@ -22,3 +26,5 @@ services:
         value: "0"
       - key: PORT
         value: "8080"
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:////data/bot.db

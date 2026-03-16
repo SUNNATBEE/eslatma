@@ -24,9 +24,9 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY . .
 
 # ─── Ma'lumotlar bazasi uchun papka ───────────────────────────────────────────
-# SQLite fayli /app/bot.db da saqlanadi
-# Agar persistent volume bo'lsa, /app ni mount qiling
-RUN mkdir -p /app/data
+# /data — Render persistent disk mount point
+# /app/data — fallback (disk yo'q bo'lsa)
+RUN mkdir -p /data && mkdir -p /app/data
 
 # ─── Portni ochish (keep-alive uchun) ────────────────────────────────────────
 EXPOSE 8080

@@ -30,7 +30,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
 import pytz
 
-from config import BOT_TOKEN, DATABASE_URL, PORT, TIMEZONE, WEBAPP_URL
+from config import ADMIN_IDS, BOT_TOKEN, DATABASE_URL, PORT, TIMEZONE, WEBAPP_URL
 from curator_credentials import CURATORS
 from database import DatabaseService, GroupType
 from handlers import (

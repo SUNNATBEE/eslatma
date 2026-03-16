@@ -1,12 +1,17 @@
 """
 handlers/attendance.py — Darsga boraman / kela olmayman tugmalari.
+
+attend:yes:DATE  → darhol "boraman" saqlanadi
+attend:no:DATE   → FSM: sabab so'raladi → admin + kuratorga yuboriladi
 """
 import logging
 from datetime import datetime
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, Message
 
 from config import ADMIN_IDS
 from database import DatabaseService
@@ -15,42 +20,137 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-@router.callback_query(F.data.startswith("attend:"))
-async def handle_attendance(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
-    """attend:yes:2026-03-17  yoki  attend:no:2026-03-17"""
-    parts    = cb.data.split(":")
-    status   = parts[1]   # "yes" / "no"
-    date_str = parts[2]   # "2026-03-17"
+# ─── FSM ──────────────────────────────────────────────────────────────────────
+
+class AbsenceReasonFSM(StatesGroup):
+    waiting_reason = State()
+
+
+# ─── attend:yes ───────────────────────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("attend:yes:"))
+async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
+    """attend:yes:2026-03-17"""
+    date_str = cb.data.split(":")[2]
 
     student = await db.get_student(cb.from_user.id)
     if not student:
         await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True)
         return
 
-    await db.save_attendance(cb.from_user.id, date_str, status)
+    await db.save_attendance(cb.from_user.id, date_str, "yes")
     await db.update_last_active(cb.from_user.id)
-
-    label = "✅ Boraman" if status == "yes" else "❌ Kela olmayman"
-    emoji = "✅" if status == "yes" else "❌"
 
     try:
         await cb.message.edit_reply_markup(reply_markup=None)
     except TelegramBadRequest:
         pass
 
-    await cb.answer(f"{emoji} Javobingiz qabul qilindi!")
+    await cb.answer("✅ Javobingiz qabul qilindi!")
 
-    # Adminga bildirishnoma
     time_str = datetime.now().strftime("%H:%M")
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(
                 admin_id,
-                f"{emoji} <b>{student.full_name}</b> — {label}\n"
+                f"✅ <b>{student.full_name}</b> — Boraman\n"
                 f"📚 Guruh: <b>{student.group_name}</b>\n"
                 f"📅 Kun: {date_str} | 🕐 {time_str}",
             )
         except Exception:
             pass
 
-    logger.info(f"Davomat: {student.full_name} — {label} | {date_str}")
+    logger.info(f"Davomat: {student.full_name} — Boraman | {date_str}")
+
+
+# ─── attend:no → sabab so'rash ────────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("attend:no:"))
+async def handle_attendance_no(
+    cb: CallbackQuery, db: DatabaseService, state: FSMContext
+) -> None:
+    """attend:no:2026-03-17 — sabab so'raladi"""
+    date_str = cb.data.split(":")[2]
+
+    student = await db.get_student(cb.from_user.id)
+    if not student:
+        await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True)
+        return
+
+    try:
+        await cb.message.edit_reply_markup(reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    await cb.answer()
+    await state.set_state(AbsenceReasonFSM.waiting_reason)
+    await state.update_data(date_str=date_str)
+
+    await cb.message.answer(
+        "❌ Tushundik.\n\n"
+        "Iltimos, <b>kela olmasligingiz sababini</b> yozing:\n"
+        "<i>(Masalan: Kasal, Safarda, Oilaviy sabab...)</i>",
+        parse_mode="HTML",
+    )
+
+    logger.info(f"Davomat: {student.full_name} → sabab so'raldi | {date_str}")
+
+
+# ─── Sabab qabul qilish ────────────────────────────────────────────────────────
+
+@router.message(AbsenceReasonFSM.waiting_reason)
+async def handle_absence_reason(
+    msg: Message, db: DatabaseService, bot: Bot, state: FSMContext
+) -> None:
+    """O'quvchi sababini yozadi."""
+    data     = await state.get_data()
+    date_str = data.get("date_str", datetime.now().strftime("%Y-%m-%d"))
+    reason   = msg.text.strip() if msg.text else "Sabab ko'rsatilmagan"
+
+    student = await db.get_student(msg.from_user.id)
+    if not student:
+        await state.clear()
+        return
+
+    # Attendanceni sabab bilan saqlaymiz
+    await db.save_attendance(msg.from_user.id, date_str, "no", reason=reason)
+    await db.update_last_active(msg.from_user.id)
+    await state.clear()
+
+    await msg.answer(
+        "✅ Sababingiz qabul qilindi. Tezroq tuzalib keling! 💪"
+    )
+
+    # Admin va kuratorlarga bildirish
+    time_str = datetime.now().strftime("%H:%M")
+    notify_text = (
+        f"❌ <b>{student.full_name}</b> — Kela olmayman\n"
+        f"📚 Guruh: <b>{student.group_name}</b>\n"
+        f"📅 Kun: {date_str} | 🕐 {time_str}\n"
+        f"💬 Sabab: <i>{reason}</i>"
+    )
+
+    # Adminlarga
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, notify_text)
+        except Exception:
+            pass
+
+    # Faol kuratorlarga
+    try:
+        from sqlalchemy import select
+        from database import CuratorSession
+        async with db.session_factory() as session:
+            result = await session.execute(select(CuratorSession))
+            curator_sessions = list(result.scalars().all())
+        for cs in curator_sessions:
+            if cs.telegram_id not in ADMIN_IDS:  # Adminga ikki marta yubormaslik
+                try:
+                    await bot.send_message(cs.telegram_id, notify_text)
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"Kuratorgа bildirishnoma yuborishda xato: {e}")
+
+    logger.info(f"Davomat: {student.full_name} — Kelmaydi | {date_str} | Sabab: {reason}")

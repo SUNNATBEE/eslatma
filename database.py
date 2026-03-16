@@ -134,11 +134,12 @@ class AttendanceRecord(Base):
     __tablename__ = "attendance"
     __table_args__ = (UniqueConstraint("user_id", "date_str"),)
 
-    id:         Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id:    Mapped[int] = mapped_column(BigInteger, nullable=False)
-    date_str:   Mapped[str] = mapped_column(String(20),  nullable=False)  # "2026-03-16"
-    status:     Mapped[str] = mapped_column(String(20),  nullable=False)  # "attending"/"absent"
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    id:         Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    user_id:    Mapped[int]           = mapped_column(BigInteger, nullable=False)
+    date_str:   Mapped[str]           = mapped_column(String(20),  nullable=False)  # "2026-03-16"
+    status:     Mapped[str]           = mapped_column(String(20),  nullable=False)  # "yes"/"no"
+    reason:     Mapped[Optional[str]] = mapped_column(String(500), nullable=True)   # Kelmaslik sababi
+    created_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
 
 # ─── Model: Dars jadvali ──────────────────────────────────────────────────────
@@ -250,6 +251,15 @@ class DatabaseService:
                     )
                 )
                 logger.info("Migration: students.phone_number ustuni qo'shildi.")
+            except Exception:
+                pass  # Ustun allaqon mavjud — xato e'tiborsiz qoldiriladi
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "ALTER TABLE attendance ADD COLUMN reason VARCHAR(500)"
+                    )
+                )
+                logger.info("Migration: attendance.reason ustuni qo'shildi.")
             except Exception:
                 pass  # Ustun allaqon mavjud — xato e'tiborsiz qoldiriladi
         logger.info("Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi.")
@@ -564,8 +574,9 @@ class DatabaseService:
 
     # ── ATTENDANCE ─────────────────────────────────────────────────────────────
 
-    async def save_attendance(self, user_id: int, date_str: str, status: str) -> None:
-        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    async def save_attendance(
+        self, user_id: int, date_str: str, status: str, reason: Optional[str] = None
+    ) -> None:
         async with self.session_factory() as session:
             existing = await session.execute(
                 select(AttendanceRecord).where(
@@ -576,9 +587,26 @@ class DatabaseService:
             rec = existing.scalar_one_or_none()
             if rec:
                 rec.status = status
+                if reason is not None:
+                    rec.reason = reason
             else:
-                session.add(AttendanceRecord(user_id=user_id, date_str=date_str, status=status))
+                session.add(AttendanceRecord(
+                    user_id=user_id, date_str=date_str, status=status, reason=reason
+                ))
             await session.commit()
+
+    async def get_absent_students_today(self, date_str: str) -> list[tuple["AttendanceRecord", "Student"]]:
+        """Bugungi kelmagan o'quvchilar va ularning sabablari."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(AttendanceRecord, Student).join(
+                    Student, Student.user_id == AttendanceRecord.user_id
+                ).where(
+                    AttendanceRecord.date_str == date_str,
+                    AttendanceRecord.status == "no",
+                ).order_by(Student.group_name, Student.full_name)
+            )
+            return list(result.all())
 
     async def get_attendance_by_date(self, date_str: str) -> list["AttendanceRecord"]:
         async with self.session_factory() as session:

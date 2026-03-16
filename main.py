@@ -222,24 +222,24 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         except Exception:
             return web.json_response({"error": "Bad JSON"}, status=400)
 
-        status_val = body.get("status")  # "attending" | "absent"
-        if status_val not in ("attending", "absent"):
+        status_val = body.get("status")  # "yes" | "no"
+        if status_val not in ("yes", "no"):
             return web.json_response({"error": "Invalid status"}, status=400)
 
-        tomorrow = (datetime.now(tz) + timedelta(days=1)).strftime("%Y-%m-%d")
-        await db.save_attendance(user_id, tomorrow, status_val)
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        await db.save_attendance(user_id, today, status_val)
         await db.update_last_active(user_id)
-        return web.json_response({"ok": True, "date": tomorrow, "status": status_val})
+        return web.json_response({"ok": True, "date": today, "status": status_val})
 
     async def api_attendance_today(request: web.Request) -> web.Response:
-        """O'quvchining ertangi davomati holatini qaytaradi."""
+        """O'quvchining bugungi davomati holatini qaytaradi."""
         user_id = _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        tomorrow = (datetime.now(tz) + timedelta(days=1)).strftime("%Y-%m-%d")
-        rec = await db.get_student_attendance(user_id, tomorrow)
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        rec = await db.get_student_attendance(user_id, today)
         return web.json_response({
-            "date":   tomorrow,
+            "date":   today,
             "status": rec.status if rec else None,
         })
 
@@ -308,6 +308,84 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             ]
         })
 
+    # ── Curator Attendance API ────────────────────────────────────────────────
+
+    async def api_curator_attendance(request: web.Request) -> web.Response:
+        """Bugungi davomat holati — kurator uchun."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+
+        group_filter = request.rel_url.query.get("group", "all")
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+
+        all_students = await db.get_all_students()
+        if group_filter != "all":
+            all_students = [s for s in all_students if s.group_name == group_filter]
+
+        att_records = await db.get_attendance_by_date(today)
+        att_map = {r.user_id: r for r in att_records}
+
+        present, absent, pending = [], [], []
+        for s in all_students:
+            rec = att_map.get(s.user_id)
+            entry = {
+                "user_id":    s.user_id,
+                "full_name":  s.full_name,
+                "group_name": s.group_name,
+                "username":   s.telegram_username or "",
+            }
+            if rec is None:
+                pending.append(entry)
+            elif rec.status == "yes":
+                present.append(entry)
+            else:
+                entry["reason"] = rec.reason or ""
+                absent.append(entry)
+
+        return web.json_response({
+            "date":    today,
+            "present": present,
+            "absent":  absent,
+            "pending": pending,
+        })
+
+    async def api_class_schedule(request: web.Request) -> web.Response:
+        """O'quvchi uchun bugungi dars vaqtini qaytaradi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+
+        from class_schedule import CLASS_SCHEDULE
+
+        now     = datetime.now(tz)
+        weekday = now.weekday()
+
+        if weekday == 6:
+            return web.json_response({"has_class": False, "class_time": None, "group_name": student.group_name})
+
+        day_type = "ODD" if weekday in (0, 2, 4) else "EVEN"
+        schedule = CLASS_SCHEDULE.get(day_type, {})
+        class_time = schedule.get(student.group_name)
+
+        today_str = now.strftime("%Y-%m-%d")
+        rec = await db.get_student_attendance(user_id, today_str)
+
+        return web.json_response({
+            "has_class":  class_time is not None,
+            "class_time": class_time,
+            "group_name": student.group_name,
+            "day_type":   day_type,
+            "today":      today_str,
+            "att_status": rec.status if rec else None,
+        })
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -326,10 +404,12 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/hw-history",       api_hw_history)
     app.router.add_post("/api/attendance",      api_attendance)
     app.router.add_get("/api/attendance",       api_attendance_today)
-    app.router.add_get("/api/curator/me",       api_curator_me)
-    app.router.add_post("/api/curator/login",   api_curator_login)
-    app.router.add_post("/api/curator/logout",  api_curator_logout)
-    app.router.add_get("/api/curator/students", api_curator_students)
+    app.router.add_get("/api/curator/me",         api_curator_me)
+    app.router.add_post("/api/curator/login",     api_curator_login)
+    app.router.add_post("/api/curator/logout",    api_curator_logout)
+    app.router.add_get("/api/curator/students",   api_curator_students)
+    app.router.add_get("/api/curator/attendance", api_curator_attendance)
+    app.router.add_get("/api/class-schedule",     api_class_schedule)
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)

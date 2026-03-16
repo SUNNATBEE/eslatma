@@ -13,7 +13,9 @@ import pytz
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
+from class_schedule import CLASS_SCHEDULE
 from config import SEND_HOUR, SEND_MINUTE, TIMEZONE
 from database import AudienceType, DatabaseService, GroupType
 
@@ -147,30 +149,84 @@ async def send_daily_reminders(
             f"NATIJA: {ok} yuborildi, {fail} xato | "
             f"{info.date_str} | {info.type_label} kun"
         )
-
-        # Davomat so'rovi barcha ro'yxatdagi o'quvchilarga
-        from keyboards import kb_attendance
-        date_str     = info.date.strftime("%Y-%m-%d")
-        all_students = await db.get_all_students()
-        att_ok = 0
-        for s in all_students:
-            try:
-                await bot.send_message(
-                    s.user_id,
-                    f"📅 <b>Ertaga dars!</b>\n"
-                    f"{info.date_str} — {info.weekday_uz}\n\n"
-                    f"Kela olasizmi?",
-                    reply_markup=kb_attendance(date_str),
-                )
-                att_ok += 1
-            except Exception:
-                pass
-        logger.info(f"Davomat so'rovi: {att_ok}/{len(all_students)} o'quvchiga yuborildi")
+        # Shaxsiy davomat so'rovlari check_class_reminders() orqali yuboriladi
 
     except Exception as e:
         logger.exception(f"KRITIK XATO: {e}")
 
     logger.info("=" * 55)
+
+
+# ─── Dars eslatmasi: har 10 daqiqada ────────────────────────────────────────
+
+async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Har 10 daqiqada ishga tushadi (06:00–19:30 Tashkent oralig'ida).
+    Har guruh uchun dars vaqtidan 3 soat oldin eslatma yuboradi.
+    Javob bermaganlar uchun takror eslatma yuboriladi.
+    """
+    from keyboards import kb_attendance
+
+    tz  = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+
+    # Faqat 06:00–19:30 oralig'ida ishlaydi
+    if not (6 * 60 <= now.hour * 60 + now.minute <= 19 * 60 + 30):
+        return
+
+    weekday = now.weekday()
+    if weekday == 6:  # Yakshanba — dars yo'q
+        return
+
+    day_type = "ODD" if weekday in (0, 2, 4) else "EVEN"
+    schedule = CLASS_SCHEDULE.get(day_type, {})
+    today_str = now.strftime("%Y-%m-%d")
+
+    for group_name, class_time_str in schedule.items():
+        class_hour, class_min = map(int, class_time_str.split(":"))
+        class_dt      = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+        reminder_start = class_dt - timedelta(hours=3)
+
+        # Eslatma oynasidan tashqarida — o'tkazib yuboramiz
+        if now < reminder_start or now >= class_dt:
+            continue
+
+        # Guruh o'quvchilarini olamiz
+        students = await db.get_students_by_group(group_name)
+        if not students:
+            continue
+
+        # Birinchi eslatma mi yoki takror?
+        is_first = now < reminder_start + timedelta(minutes=10)
+
+        for student in students:
+            # Allaqon javob bergan bo'lsa — yubormaymiz
+            rec = await db.get_student_attendance(student.user_id, today_str)
+            if rec:
+                continue
+
+            if is_first:
+                text = (
+                    f"📚 Bugun soat <b>{class_time_str}</b> da dars bor!\n"
+                    f"Kelasizmi?"
+                )
+            else:
+                text = (
+                    f"⏰ Hali javob bermagansiz!\n"
+                    f"Dars <b>{class_time_str}</b> da boshlanadi."
+                )
+
+            try:
+                await bot.send_message(
+                    student.user_id,
+                    text,
+                    reply_markup=kb_attendance(today_str),
+                    parse_mode="HTML",
+                )
+            except Exception:
+                pass
+
+    logger.debug(f"check_class_reminders: {today_str} {now.strftime('%H:%M')} ({day_type})")
 
 
 # ─── Reschedule helper ───────────────────────────────────────────────────────
@@ -193,6 +249,8 @@ def reschedule_reminder(hour: int, minute: int) -> None:
 def setup_scheduler(bot: Bot, db: DatabaseService, timezone_str: str) -> AsyncIOScheduler:
     global _scheduler_ref
     scheduler = AsyncIOScheduler(timezone=timezone_str)
+
+    # Kunlik eslatma (20:00)
     scheduler.add_job(
         func=send_daily_reminders,
         trigger=CronTrigger(hour=SEND_HOUR, minute=SEND_MINUTE, timezone=timezone_str),
@@ -202,8 +260,21 @@ def setup_scheduler(bot: Bot, db: DatabaseService, timezone_str: str) -> AsyncIO
         replace_existing=True,
         misfire_grace_time=300,
     )
+
+    # Dars vaqti eslatmasi (har 10 daqiqada)
+    scheduler.add_job(
+        func=check_class_reminders,
+        trigger=IntervalTrigger(minutes=10, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="class_attendance_reminder",
+        name="Dars vaqti davomat eslatmasi",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
     _scheduler_ref = scheduler
     logger.info(
-        f"Scheduler sozlandi: har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} ({timezone_str})"
+        f"Scheduler sozlandi: har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} + "
+        f"har 10 daqiqada dars eslatmasi ({timezone_str})"
     )
     return scheduler

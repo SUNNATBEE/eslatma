@@ -50,7 +50,7 @@ PORT: int = int(os.getenv("PORT", "8080"))
 
 # ─── O'quvchilar kanali ───────────────────────────────────────────────────────
 # Frontend darslari kanali havolasi (.env da CHANNEL_LINK=https://t.me/...)
-CHANNEL_LINK: str = os.getenv("CHANNEL_LINK", "https://t.me/frontend_darslar")
+CHANNEL_LINK: str = os.getenv("CHANNEL_LINK", "https://t.me/sunnatbee_lessons")
 
 # ─── Telegram Mini App (WebApp) ───────────────────────────────────────────────
 # Render/Koyeb HTTPS URL: "https://your-app.onrender.com"

@@ -6,14 +6,19 @@ Muhim: kurator relay handlerlari faqat BaseFilter orqali ishlaydi —
 """
 
 import logging
+from datetime import datetime
 
+import pytz
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.filters import BaseFilter, Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from class_schedule import CLASS_SCHEDULE
+from config import ADMIN_IDS, TIMEZONE
 from credentials import MARS_GROUPS
 from curator_credentials import CURATORS
 from database import AudienceType, DatabaseService
@@ -160,7 +165,6 @@ async def cur_logout(cb: CallbackQuery, db: DatabaseService) -> None:
 @router.callback_query(F.data == "cur:report")
 async def cur_report_issue(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     """Kurator bot muammosi haqida adminga xabar yuboradi."""
-    from config import ADMIN_IDS
     session = await db.get_curator_session(cb.from_user.id)
     curator_key = session.curator_key if session else "—"
     tg = cb.from_user.username or str(cb.from_user.id)
@@ -183,6 +187,60 @@ async def cur_report_issue(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> 
         await cb.answer("✅ Xabar adminga yuborildi! Tez orada hal qilinadi.", show_alert=True)
     else:
         await cb.answer("⚠️ Xabar yuborib bo'lmadi.", show_alert=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# DAVOMAT MENYUSI — MANUAL START
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "cur:davomat_menu")
+async def cur_davomat_menu(
+    cb: CallbackQuery, db: DatabaseService, state: FSMContext
+) -> None:
+    """Kurator paneldan manual davomat boshlash — bugungi guruhlar ro'yxati."""
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
+
+    tz        = pytz.timezone(TIMEZONE)
+    now       = datetime.now(tz)
+    today_str = now.strftime("%Y-%m-%d")
+    weekday   = now.weekday()
+
+    if weekday == 6:
+        await cb.answer("Yakshanba — dars yo'q!", show_alert=True)
+        return
+
+    day_type = "ODD" if weekday in (0, 2, 4) else "EVEN"
+    schedule = CLASS_SCHEDULE.get(day_type, {})
+
+    if not schedule:
+        await cb.answer("Bugun uchun jadval topilmadi!", show_alert=True)
+        return
+
+    builder = InlineKeyboardBuilder()
+    for group_name in sorted(schedule.keys()):
+        builder.row(InlineKeyboardButton(
+            text=f"📚 {group_name}  ({schedule[group_name]})",
+            callback_data=f"cur:davomat:{group_name}:{today_str}",
+        ))
+    builder.row(InlineKeyboardButton(text="◀️ Panel", callback_data="cur:panel"))
+
+    day_label = "Toq" if day_type == "ODD" else "Juft"
+    try:
+        await cb.message.edit_text(
+            f"📋 <b>Davomat yoqlama</b>\n\n"
+            f"📅 Sana: {today_str.replace('-', '.')} ({day_label} kun)\n\n"
+            f"Guruhni tanlang:",
+            reply_markup=builder.as_markup(),
+        )
+    except TelegramBadRequest:
+        await cb.message.answer(
+            f"📋 Davomat yoqlama — guruhni tanlang:",
+            reply_markup=builder.as_markup(),
+        )
+    await cb.answer()
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -691,6 +749,18 @@ async def davomat_send_to_group(
 
     try:
         await bot.send_message(chat_id, message_text)
+
+        # DB ga ham saqlaymiz (user_id mavjud bo'lganda)
+        for s in students_data:
+            if s.get("user_id"):
+                try:
+                    await db.save_attendance(
+                        s["user_id"], date_str,
+                        "yes" if s["present"] else "no",
+                    )
+                except Exception as db_err:
+                    logger.warning(f"Davomat DB saqlashda xato ({s['full_name']}): {db_err}")
+
         await state.clear()
 
         present = sum(1 for s in students_data if s["present"])
@@ -728,3 +798,72 @@ async def davomat_cancel(cb: CallbackQuery, state: FSMContext) -> None:
     except TelegramBadRequest:
         await cb.message.answer("❌ Bekor qilindi.", reply_markup=kb_curator_panel())
     await cb.answer()
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# KECHIKKAN O'QUVCHI — DAVOMATNI O'ZGARTIRISH
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data.startswith("cur:att_update:"))
+async def cur_att_update(
+    cb: CallbackQuery, db: DatabaseService, bot: Bot
+) -> None:
+    """
+    cur:att_update:USER_ID:DATE:STATUS
+    Kurator kechikkan o'quvchining davomatini o'zgartiradi.
+    """
+    session = await db.get_curator_session(cb.from_user.id)
+    if not session:
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
+
+    parts      = cb.data.split(":", 4)  # ["cur", "att_update", uid, date, status]
+    user_id    = int(parts[2])
+    date_str   = parts[3]
+    new_status = parts[4]  # "yes" | "no"
+
+    student = await db.get_student(user_id)
+    if not student:
+        await cb.answer("❌ O'quvchi topilmadi!", show_alert=True)
+        return
+
+    old_emoji = "❌" if new_status == "yes" else "✅"
+    new_emoji = "✅" if new_status == "yes" else "❌"
+
+    await db.save_attendance(user_id, date_str, new_status)
+
+    cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
+    notify = (
+        f"✏️ <b>Davomat o'zgartirildi</b>\n\n"
+        f"👤 {student.full_name} ({student.group_name})\n"
+        f"📅 Sana: {date_str}\n"
+        f"{old_emoji} → {new_emoji}\n"
+        f"👩‍💼 Kurator: {cname}"
+    )
+
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, notify)
+        except Exception:
+            pass
+
+    try:
+        from sqlalchemy import select
+        from database import CuratorSession
+        async with db.session_factory() as db_sess:
+            result = await db_sess.execute(select(CuratorSession))
+            curator_sessions = list(result.scalars().all())
+        for cs in curator_sessions:
+            if cs.telegram_id != cb.from_user.id and cs.telegram_id not in ADMIN_IDS:
+                try:
+                    await bot.send_message(cs.telegram_id, notify)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    await cb.answer(f"✅ Davomat o'zgartirildi: {new_emoji}", show_alert=True)
+    logger.info(
+        f"Davomat o'zgartirildi: {student.full_name} | {date_str} | "
+        f"{old_emoji}→{new_emoji} | Kurator: {cname}"
+    )

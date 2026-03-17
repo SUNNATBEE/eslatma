@@ -408,6 +408,9 @@ def kb_curator_panel() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="👥 O'quvchilar ro'yxati", callback_data="cur:list:all"),
     )
     builder.row(
+        InlineKeyboardButton(text="📋 Davomat yoqlama", callback_data="cur:davomat_menu"),
+    )
+    builder.row(
         InlineKeyboardButton(text="⚠️ Muammo bildirish",     callback_data="cur:report"),
         InlineKeyboardButton(text="🚪 Chiqish",              callback_data="cur:logout"),
     )

@@ -226,9 +226,49 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         if status_val not in ("yes", "no"):
             return web.json_response({"error": "Invalid status"}, status=400)
 
+        reason = body.get("reason") or None  # "no" uchun sabab (ixtiyoriy)
+
         today = datetime.now(tz).strftime("%Y-%m-%d")
-        await db.save_attendance(user_id, today, status_val)
+        await db.save_attendance(user_id, today, status_val, reason=reason)
         await db.update_last_active(user_id)
+
+        # Admin + kuratorlarga bildirishnoma
+        time_str = datetime.now(tz).strftime("%H:%M")
+        if status_val == "yes":
+            notify_text = (
+                f"✅ <b>{student.full_name}</b> — Boraman (Mini App)\n"
+                f"📚 Guruh: <b>{student.group_name}</b>\n"
+                f"📅 Kun: {today} | 🕐 {time_str}"
+            )
+        else:
+            notify_text = (
+                f"❌ <b>{student.full_name}</b> — Kela olmayman (Mini App)\n"
+                f"📚 Guruh: <b>{student.group_name}</b>\n"
+                f"📅 Kun: {today} | 🕐 {time_str}\n"
+                + (f"💬 Sabab: <i>{reason}</i>" if reason else "")
+            )
+
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, notify_text)
+            except Exception:
+                pass
+
+        try:
+            from sqlalchemy import select as sa_select
+            from database import CuratorSession
+            async with db.session_factory() as sess:
+                result = await sess.execute(sa_select(CuratorSession))
+                curator_sessions = list(result.scalars().all())
+            for cs in curator_sessions:
+                if cs.telegram_id not in ADMIN_IDS:
+                    try:
+                        await bot.send_message(cs.telegram_id, notify_text)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
         return web.json_response({"ok": True, "date": today, "status": status_val})
 
     async def api_attendance_today(request: web.Request) -> web.Response:
@@ -465,6 +505,117 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             "pending": pending,
         })
 
+    async def api_curator_parent_groups(request: web.Request) -> web.Response:
+        """Kurator uchun ota-ona guruhlar ro'yxati."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+        from database import AudienceType
+        all_groups    = await db.get_all_groups()
+        parent_groups = [
+            {"chat_id": g.chat_id, "name": g.name}
+            for g in all_groups if g.audience == AudienceType.PARENT and g.is_active
+        ]
+        return web.json_response({"groups": parent_groups})
+
+    async def api_curator_send_yoqlama(request: web.Request) -> web.Response:
+        """Davomat yoqlamasini ota-ona guruhiga yuboradi (Mini App dan)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        group_name      = body.get("group_name", "—")
+        marks           = body.get("marks", [])   # [{"full_name": "...", "present": true}]
+        parent_chat_id  = body.get("parent_chat_id")
+        date_str        = body.get("date_str", datetime.now(tz).strftime("%Y-%m-%d"))
+        if not parent_chat_id or not marks:
+            return web.json_response({"error": "Missing fields"}, status=400)
+        cname = CURATORS.get(session.curator_key, {}).get("full_name", session.curator_key)
+        try:
+            y, m, d = date_str.split("-")
+            date_fmt = f"{d}.{m}.{y}"
+        except Exception:
+            date_fmt = date_str
+        lines = [f"{cname} | MARS IT", f"{date_fmt}", "📌Davomat", ""]
+        for mark in marks:
+            emoji = "✅" if mark.get("present") else "❌"
+            lines.append(f"{mark.get('full_name', '—')} {emoji}")
+        try:
+            await bot.send_message(int(parent_chat_id), "\n".join(lines))
+            return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def api_curator_update_attendance(request: web.Request) -> web.Response:
+        """Kurator kechikkan o'quvchining davomatini yangilaydi (Mini App dan)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+
+        student_id = body.get("user_id")
+        date_str   = body.get("date_str")
+        new_status = body.get("status")
+
+        if not student_id or not date_str or new_status not in ("yes", "no"):
+            return web.json_response({"error": "Missing or invalid fields"}, status=400)
+
+        student = await db.get_student(int(student_id))
+        if not student:
+            return web.json_response({"error": "Student not found"}, status=404)
+
+        await db.save_attendance(int(student_id), date_str, new_status)
+
+        old_emoji = "❌" if new_status == "yes" else "✅"
+        new_emoji = "✅" if new_status == "yes" else "❌"
+        cname = CURATORS.get(session.curator_key, {}).get("full_name", session.curator_key)
+        notify = (
+            f"✏️ <b>Davomat o'zgartirildi</b>\n\n"
+            f"👤 {student.full_name} ({student.group_name})\n"
+            f"📅 Sana: {date_str}\n"
+            f"{old_emoji} → {new_emoji}\n"
+            f"👩‍💼 Kurator: {cname} (Mini App)"
+        )
+
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, notify)
+            except Exception:
+                pass
+
+        try:
+            from sqlalchemy import select as sa_select
+            from database import CuratorSession
+            async with db.session_factory() as sess:
+                result = await sess.execute(sa_select(CuratorSession))
+                curator_sessions = list(result.scalars().all())
+            for cs in curator_sessions:
+                if cs.telegram_id != user_id and cs.telegram_id not in ADMIN_IDS:
+                    try:
+                        await bot.send_message(cs.telegram_id, notify)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        return web.json_response({"ok": True})
+
     async def api_class_schedule(request: web.Request) -> web.Response:
         """O'quvchi uchun bugungi dars vaqtini qaytaradi."""
         user_id = _auth(request)
@@ -525,8 +676,11 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/curator/login",     api_curator_login)
     app.router.add_post("/api/curator/logout",    api_curator_logout)
     app.router.add_get("/api/curator/students",   api_curator_students)
-    app.router.add_get("/api/curator/attendance", api_curator_attendance)
-    app.router.add_get("/api/class-schedule",     api_class_schedule)
+    app.router.add_get("/api/curator/attendance",     api_curator_attendance)
+    app.router.add_get("/api/curator/parent-groups",         api_curator_parent_groups)
+    app.router.add_post("/api/curator/send-yoqlama",         api_curator_send_yoqlama)
+    app.router.add_post("/api/curator/update-attendance",    api_curator_update_attendance)
+    app.router.add_get("/api/class-schedule",                api_class_schedule)
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)

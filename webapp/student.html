@@ -151,6 +151,76 @@
     .att-btn:active { transform: scale(.96); opacity: .85; }
     .att-yes { background: rgba(255,255,255,.25); color: #fff; }
     .att-no  { background: rgba(0,0,0,.25); color: rgba(255,255,255,.85); }
+
+    /* ── "Kela olmayman" warning modal ── */
+    .no-modal-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,.6);
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .no-modal-overlay.show { display: flex; }
+    .no-modal {
+      background: var(--bg2);
+      border-radius: 20px 20px 0 0;
+      padding: 20px 20px 32px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .no-modal-handle {
+      width: 40px; height: 4px;
+      background: rgba(255,255,255,.2);
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+    .no-modal-warn {
+      background: rgba(240,173,78,.12);
+      border: 1px solid rgba(240,173,78,.35);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--warn);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .no-modal-label {
+      font-size: 13px; color: var(--sub);
+      margin-bottom: 8px;
+    }
+    .no-modal-textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 14px;
+      resize: none; outline: none;
+      font-family: inherit;
+      -webkit-appearance: none;
+      transition: border-color .2s;
+    }
+    .no-modal-textarea:focus { border-color: var(--accent); }
+    .no-modal-btns {
+      display: flex; gap: 10px; margin-top: 14px;
+    }
+    .no-modal-submit {
+      flex: 1; padding: 14px;
+      background: var(--danger); color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-modal-cancel {
+      padding: 14px 20px;
+      background: rgba(255,255,255,.08); color: var(--text);
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
     .att-status-badge {
       display: inline-flex; align-items: center; gap: 6px;
       margin-top: 12px;
@@ -521,18 +591,20 @@ function buildAttStatusHtml(status) {
   return `
     <div class="att-btns">
       <button class="att-btn att-yes" onclick="sendAttend('yes')">✅ Ha, boraman</button>
-      <button class="att-btn att-no"  onclick="sendAttend('no')">❌ Kela olmayman</button>
+      <button class="att-btn att-no"  onclick="showNoModal()">❌ Kela olmayman</button>
     </div>`;
 }
 
 /* ── Send attendance ────────────────────────────────────────────── */
-async function sendAttend(status) {
+async function sendAttend(status, reason) {
   if (!classInfo || !classInfo.has_class) return;
   try {
     tg?.HapticFeedback?.impactOccurred('light');
+    const body = { status };
+    if (reason) body.reason = reason;
     await api('/attendance', {
       method: 'POST',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
     });
     // Update local info and re-render
     classInfo.att_status = status;
@@ -541,6 +613,28 @@ async function sendAttend(status) {
   } catch {
     toast('⚠️ Xatolik yuz berdi');
   }
+}
+
+/* ── "Kela olmayman" warning modal ─────────────────────────────── */
+function showNoModal() {
+  document.getElementById('noModal').classList.add('show');
+  document.getElementById('noReason').value = '';
+  document.getElementById('noReason').focus();
+}
+
+function hideNoModal() {
+  document.getElementById('noModal').classList.remove('show');
+}
+
+async function submitNoAttend() {
+  const reason = document.getElementById('noReason').value.trim();
+  if (!reason) {
+    document.getElementById('noReason').style.borderColor = 'var(--danger)';
+    setTimeout(() => document.getElementById('noReason').style.borderColor = '', 1500);
+    return;
+  }
+  hideNoModal();
+  await sendAttend('no', reason);
 }
 
 /* ── Init ───────────────────────────────────────────────────────── */
@@ -662,5 +756,22 @@ function openInBot() { tg?.close(); }
 /* ── Start ──────────────────────────────────────────────────────── */
 init();
 </script>
+
+<!-- "Kela olmayman" warning modal -->
+<div class="no-modal-overlay" id="noModal" onclick="if(event.target===this)hideNoModal()">
+  <div class="no-modal">
+    <div class="no-modal-handle"></div>
+    <div class="no-modal-warn">
+      ⚠️ <b>Diqqat!</b> Bu habar <b>ota-onangizga, ustozingizga va kuratorigizga</b> yuboriladi!
+    </div>
+    <div class="no-modal-label">Kela olmasligingiz sababini yozing:</div>
+    <textarea class="no-modal-textarea" id="noReason" rows="3"
+      placeholder="Masalan: Kasal, Safarda, Oilaviy sabab..."></textarea>
+    <div class="no-modal-btns">
+      <button class="no-modal-cancel" onclick="hideNoModal()">Bekor</button>
+      <button class="no-modal-submit" onclick="submitNoAttend()">❌ Yuborish</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

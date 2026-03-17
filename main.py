@@ -148,12 +148,15 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         student = await db.get_student(user_id)
         if not student:
             return web.json_response({"error": "Not registered"}, status=404)
+        from config import CHANNEL_LINK
         return web.json_response({
-            "full_name":   student.full_name,
-            "group_name":  student.group_name,
-            "mars_id":     student.mars_id,
-            "registered":  student.registered_at.isoformat() if student.registered_at else None,
-            "last_active": student.last_active.isoformat() if student.last_active else None,
+            "full_name":    student.full_name,
+            "group_name":   student.group_name,
+            "mars_id":      student.mars_id,
+            "phone_number": student.phone_number or "",
+            "registered":   student.registered_at.isoformat() if student.registered_at else None,
+            "last_active":  student.last_active.isoformat() if student.last_active else None,
+            "channel_link": CHANNEL_LINK,
         })
 
     async def api_tomorrow(request: web.Request) -> web.Response:

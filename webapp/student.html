@@ -530,6 +530,7 @@ async function api(path, opts = {}) {
 /* ── State ─────────────────────────────────────────────────────── */
 let student      = null;
 let classInfo    = null;
+let channelLink  = 'https://t.me/sunnatbee_lessons';  // default, API'dan yangilanadi
 let currentPage  = 'home';
 const PAGES      = ['home', 'homework', 'history'];
 
@@ -646,6 +647,7 @@ async function init() {
       api('/class-schedule').catch(() => null),
     ]);
     student = me;
+    if (me.channel_link) channelLink = me.channel_link;
 
     const name  = student.full_name;
     const group = student.group_name;
@@ -686,8 +688,13 @@ async function init() {
 
 async function loadStats() {
   try {
-    const hw = await api('/homework');
-    document.getElementById('statHw').textContent = hw.exists ? '✅' : '—';
+    const [hw, att] = await Promise.all([
+      api('/homework').catch(() => null),
+      api('/attendance').catch(() => null),
+    ]);
+    document.getElementById('statHw').textContent     = hw?.exists ? '✅' : '—';
+    const attIcon = att?.status === 'yes' ? '✅' : att?.status === 'no' ? '❌' : '—';
+    document.getElementById('statAttend').textContent = attIcon;
   } catch {}
 }
 
@@ -748,10 +755,18 @@ function changePhone() {
 }
 
 function openChannel() {
-  tg?.openTelegramLink?.('https://t.me/otaOnaMars') || tg?.close();
+  // openTelegramLink void qaytaradi — || ishlatish noto'g'ri, if ishlatamiz
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(channelLink);
+  } else {
+    window.open(channelLink, '_blank');
+  }
 }
 
-function openInBot() { tg?.close(); }
+function openInBot() {
+  toast('Botga qaytib uy vazifasini ko\'ring 📖');
+  setTimeout(() => tg?.close(), 1200);
+}
 
 /* ── Start ──────────────────────────────────────────────────────── */
 init();

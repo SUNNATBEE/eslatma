@@ -463,6 +463,203 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             ]
         })
 
+    async def api_admin_groups_detail(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        from class_schedule import CLASS_SCHEDULE
+
+        groups   = await db.get_all_groups()
+        students = await db.get_all_students()
+
+        student_count: dict[str, int] = {}
+        for s in students:
+            student_count[s.group_name] = student_count.get(s.group_name, 0) + 1
+
+        hw_map: dict[str, str] = {}
+        for gname in {s.group_name for s in students}:
+            hw = await db.get_homework(gname)
+            if hw:
+                hw_map[gname] = hw.sent_at.strftime("%d.%m.%Y %H:%M")
+
+        result = []
+        for g in groups:
+            day_type   = g.group_type.value
+            class_time = CLASS_SCHEDULE.get(day_type, {}).get(g.name)
+            result.append({
+                "id":            g.id,
+                "chat_id":       g.chat_id,
+                "name":          g.name,
+                "group_type":    day_type,
+                "audience":      g.audience.value,
+                "is_active":     g.is_active,
+                "class_time":    class_time,
+                "student_count": student_count.get(g.name, 0),
+                "has_homework":  g.name in hw_map,
+                "hw_sent_at":    hw_map.get(g.name),
+            })
+
+        return web.json_response({"groups": result})
+
+    async def api_admin_toggle_group(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        chat_id  = body.get("chat_id")
+        is_active = body.get("is_active")
+        if chat_id is None or is_active is None:
+            return web.json_response({"error": "Missing fields"}, status=400)
+        await db.set_group_active(int(chat_id), bool(is_active))
+        return web.json_response({"ok": True})
+
+    async def api_admin_hw_schedule(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        from class_schedule import CLASS_SCHEDULE
+
+        students = await db.get_all_students()
+        unique_groups = sorted({s.group_name for s in students})
+
+        result = []
+        for gname in unique_groups:
+            hw        = await db.get_homework(gname)
+            odd_time  = CLASS_SCHEDULE.get("ODD",  {}).get(gname)
+            even_time = CLASS_SCHEDULE.get("EVEN", {}).get(gname)
+            day_type  = "ODD" if odd_time else ("EVEN" if even_time else None)
+            class_time = odd_time or even_time
+            cnt = sum(1 for s in students if s.group_name == gname)
+            result.append({
+                "group_name":    gname,
+                "day_type":      day_type,
+                "class_time":    class_time,
+                "student_count": cnt,
+                "has_homework":  hw is not None,
+                "hw_sent_at":    hw.sent_at.strftime("%d.%m.%Y %H:%M") if hw else None,
+            })
+
+        result.sort(key=lambda x: (x.get("day_type") or "ZZ", x.get("class_time") or ""))
+        return web.json_response({
+            "groups":     result,
+            "odd_days":   "Dushanba, Chorshanba, Juma",
+            "even_days":  "Seshanba, Payshanba, Shanba",
+        })
+
+    async def api_admin_broadcast(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+
+        text   = (body.get("text") or "").strip()
+        target = body.get("target", "all")
+        if not text:
+            return web.json_response({"error": "Empty message"}, status=400)
+
+        ok = fail = 0
+        if target == "parents":
+            from database import AudienceType as AT
+            all_groups = await db.get_all_groups()
+            for g in all_groups:
+                if g.audience == AT.PARENT and g.is_active:
+                    try:
+                        await bot.send_message(g.chat_id, text)
+                        ok += 1
+                    except Exception:
+                        fail += 1
+        elif target == "students_group":
+            all_groups = await db.get_all_groups()
+            from database import AudienceType as AT
+            for g in all_groups:
+                if g.audience == AT.STUDENT and g.is_active:
+                    try:
+                        await bot.send_message(g.chat_id, text)
+                        ok += 1
+                    except Exception:
+                        fail += 1
+        else:
+            if target == "all":
+                students = await db.get_all_students()
+            else:
+                students = await db.get_students_by_group(target)
+            for s in students:
+                try:
+                    await bot.send_message(s.user_id, text)
+                    ok += 1
+                except Exception:
+                    fail += 1
+
+        return web.json_response({"ok": True, "sent": ok, "failed": fail})
+
+    async def api_admin_reminder_get(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        h = await db.get_setting("SEND_HOUR",   str(SEND_HOUR))
+        m = await db.get_setting("SEND_MINUTE", str(SEND_MINUTE))
+        return web.json_response({"hour": int(h), "minute": int(m)})
+
+    async def api_admin_reminder_set(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        hour   = body.get("hour")
+        minute = body.get("minute")
+        if hour is None or minute is None:
+            return web.json_response({"error": "Missing fields"}, status=400)
+        hour, minute = int(hour), int(minute)
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            return web.json_response({"error": "Invalid time"}, status=400)
+        await db.set_setting("SEND_HOUR",   str(hour))
+        await db.set_setting("SEND_MINUTE", str(minute))
+        from scheduler import reschedule_reminder
+        reschedule_reminder(hour, minute)
+        return web.json_response({"ok": True, "hour": hour, "minute": minute})
+
+    async def api_admin_inactive(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        days    = int(request.rel_url.query.get("days", "7"))
+        inactive = await db.get_inactive_students(days=days)
+        return web.json_response({
+            "days": days,
+            "students": [
+                {
+                    "user_id":    s.user_id,
+                    "full_name":  s.full_name,
+                    "group_name": s.group_name,
+                    "username":   s.telegram_username or "",
+                    "last_active": s.last_active.strftime("%d.%m.%Y %H:%M") if s.last_active else None,
+                }
+                for s in inactive
+            ],
+        })
+
+    async def api_admin_test_send(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            from scheduler import send_daily_reminders
+            asyncio.create_task(send_daily_reminders(bot=bot, db=db, timezone_str=TIMEZONE))
+            return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
     # ── Curator Attendance API ────────────────────────────────────────────────
 
     async def api_curator_attendance(request: web.Request) -> web.Response:
@@ -674,7 +871,15 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/admin/stats",        api_admin_stats)
     app.router.add_get("/api/admin/students",     api_admin_students)
     app.router.add_get("/api/admin/attendance",   api_admin_attendance)
-    app.router.add_get("/api/admin/groups",       api_admin_groups)
+    app.router.add_get("/api/admin/groups",            api_admin_groups)
+    app.router.add_get("/api/admin/groups-detail",     api_admin_groups_detail)
+    app.router.add_post("/api/admin/toggle-group",     api_admin_toggle_group)
+    app.router.add_get("/api/admin/hw-schedule",       api_admin_hw_schedule)
+    app.router.add_post("/api/admin/broadcast",        api_admin_broadcast)
+    app.router.add_get("/api/admin/reminder-time",     api_admin_reminder_get)
+    app.router.add_post("/api/admin/reminder-time",    api_admin_reminder_set)
+    app.router.add_get("/api/admin/inactive",          api_admin_inactive)
+    app.router.add_post("/api/admin/test-send",        api_admin_test_send)
     app.router.add_get("/api/curator/me",         api_curator_me)
     app.router.add_post("/api/curator/login",     api_curator_login)
     app.router.add_post("/api/curator/logout",    api_curator_logout)

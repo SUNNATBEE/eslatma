@@ -116,7 +116,7 @@
       flex: 1;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 8px 4px 10px;
+      padding: 7px 2px 9px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
@@ -124,8 +124,8 @@
       color: var(--sub);
     }
     .tab-item.active { color: var(--accent); }
-    .tab-item .tab-icon  { font-size: 20px; }
-    .tab-item .tab-label { font-size: 10px; font-weight: 600; margin-top: 2px; }
+    .tab-item .tab-icon  { font-size: 18px; }
+    .tab-item .tab-label { font-size: 9px; font-weight: 600; margin-top: 2px; }
 
     /* ─────────────────────── SECTION TITLE */
     .section-title {
@@ -137,7 +137,6 @@
 
     /* ─────────────────────── DASHBOARD PAGE */
 
-    /* Date + refresh row */
     .dash-toprow {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 16px;
@@ -160,7 +159,6 @@
     .refresh-btn:active { opacity: .7; }
     .refresh-btn.spinning .ri { display: inline-block; animation: spin .6s linear infinite; }
 
-    /* Stats 2x2 grid */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -178,35 +176,19 @@
       transition: transform .12s;
     }
     .stat-card:active { transform: scale(.97); }
-    .stat-card-icon {
-      font-size: 26px; margin-bottom: 8px;
-      display: block;
-    }
-    .stat-card-val {
-      font-size: 28px; font-weight: 900;
-      line-height: 1;
-      margin-bottom: 4px;
-    }
-    .stat-card-label {
-      font-size: 11px; color: var(--sub); font-weight: 600;
-      text-transform: uppercase; letter-spacing: .5px;
-    }
-    .stat-card.accent-card { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); }
-    .stat-card.accent-card .stat-card-val,
-    .stat-card.accent-card .stat-card-label { color: #fff; }
-    .stat-card.accent-card .stat-card-label { color: rgba(255,255,255,.75); }
-
+    .stat-card-icon { font-size: 26px; margin-bottom: 8px; display: block; }
+    .stat-card-val  { font-size: 28px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+    .stat-card-label { font-size: 11px; color: var(--sub); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-card.accent-card  { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); }
+    .stat-card.accent-card  .stat-card-val, .stat-card.accent-card  .stat-card-label { color: #fff; }
+    .stat-card.accent-card  .stat-card-label { color: rgba(255,255,255,.75); }
     .stat-card.success-card { background: linear-gradient(135deg, #3a9d5d, #2d7e4a); }
-    .stat-card.success-card .stat-card-val,
-    .stat-card.success-card .stat-card-label { color: #fff; }
+    .stat-card.success-card .stat-card-val, .stat-card.success-card .stat-card-label { color: #fff; }
     .stat-card.success-card .stat-card-label { color: rgba(255,255,255,.75); }
-
     .stat-card.danger-card  { background: linear-gradient(135deg, #c94444, #a33535); }
-    .stat-card.danger-card .stat-card-val,
-    .stat-card.danger-card .stat-card-label { color: #fff; }
-    .stat-card.danger-card .stat-card-label { color: rgba(255,255,255,.75); }
+    .stat-card.danger-card  .stat-card-val, .stat-card.danger-card  .stat-card-label { color: #fff; }
+    .stat-card.danger-card  .stat-card-label { color: rgba(255,255,255,.75); }
 
-    /* Pending card — wide */
     .pending-card {
       background: var(--bg2);
       border-radius: var(--radius);
@@ -216,173 +198,72 @@
       box-shadow: var(--shadow);
       margin-bottom: 16px;
     }
-    .pending-icon {
-      width: 48px; height: 48px; border-radius: 50%;
-      background: rgba(240,173,78,.15);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0;
-    }
+    .pending-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(240,173,78,.15); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
     .pending-info { flex: 1; }
     .pending-val  { font-size: 26px; font-weight: 900; color: var(--warn); line-height: 1; }
     .pending-label { font-size: 12px; color: var(--sub); font-weight: 600; margin-top: 2px; }
 
-    /* Progress bar */
     .progress-wrap { margin-bottom: 16px; }
-    .progress-label {
-      display: flex; justify-content: space-between;
-      font-size: 12px; color: var(--sub); margin-bottom: 6px;
-    }
-    .progress-bar {
-      height: 6px; border-radius: 3px;
-      background: rgba(255,255,255,.08);
-      overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%; border-radius: 3px;
-      background: linear-gradient(90deg, var(--success), #3abf6a);
-      transition: width .4s ease;
-    }
+    .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .progress-bar   { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .progress-fill  { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--success), #3abf6a); transition: width .4s ease; }
 
-    /* Quick info row */
-    .quick-row {
-      display: flex; gap: 8px;
-      margin-bottom: 6px;
-    }
-    .quick-chip {
-      flex: 1; background: var(--bg2);
-      border-radius: 10px; padding: 10px 10px;
-      text-align: center; border: 1px solid rgba(255,255,255,.04);
-    }
+    .quick-row { display: flex; gap: 8px; margin-bottom: 6px; }
+    .quick-chip { flex: 1; background: var(--bg2); border-radius: 10px; padding: 10px 10px; text-align: center; border: 1px solid rgba(255,255,255,.04); }
     .quick-chip-val   { font-size: 16px; font-weight: 800; }
     .quick-chip-label { font-size: 10px; color: var(--sub); margin-top: 1px; }
 
     /* ─────────────────────── STUDENTS PAGE */
-    .search-wrap {
-      position: relative; margin-bottom: 10px;
-    }
-    .search-icon-inner {
-      position: absolute; left: 12px; top: 50%;
-      transform: translateY(-50%);
-      color: var(--sub); font-size: 14px; pointer-events: none;
-    }
+    .search-wrap { position: relative; margin-bottom: 10px; }
+    .search-icon-inner { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 14px; pointer-events: none; }
     .search-input {
-      width: 100%;
-      background: var(--bg2);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 10px;
-      padding: 11px 14px 11px 36px;
-      color: var(--text);
-      font-size: 14px;
-      outline: none;
-      -webkit-appearance: none;
-      transition: border-color .2s;
+      width: 100%; background: var(--bg2); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; padding: 11px 14px 11px 36px;
+      color: var(--text); font-size: 14px; outline: none;
+      -webkit-appearance: none; transition: border-color .2s;
     }
     .search-input:focus { border-color: var(--accent); }
     .search-input::placeholder { color: var(--sub); }
 
-    /* Group filter tabs */
-    .group-tabs {
-      display: flex; gap: 8px;
-      overflow-x: auto; padding-bottom: 2px;
-      scrollbar-width: none; margin-bottom: 12px;
-    }
+    .group-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; margin-bottom: 12px; }
     .group-tabs::-webkit-scrollbar { display: none; }
     .group-tab {
-      flex-shrink: 0;
-      padding: 5px 14px;
-      border-radius: 20px;
-      font-size: 12px; font-weight: 600;
-      background: rgba(255,255,255,.06);
-      color: var(--sub);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: background .15s, color .15s;
-      white-space: nowrap;
-      border: 1px solid transparent;
+      flex-shrink: 0; padding: 5px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; background: rgba(255,255,255,.06);
+      color: var(--sub); cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: background .15s, color .15s; white-space: nowrap; border: 1px solid transparent;
     }
-    .group-tab.active {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
+    .group-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-    /* Students summary row */
-    .students-meta {
-      display: flex; gap: 8px; margin-bottom: 12px;
-    }
-    .students-meta-chip {
-      background: var(--bg2);
-      border-radius: 8px; padding: 5px 12px;
-      font-size: 12px; color: var(--sub);
-    }
+    .students-meta { display: flex; gap: 8px; margin-bottom: 12px; }
+    .students-meta-chip { background: var(--bg2); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: var(--sub); }
     .students-meta-chip b { color: var(--text); }
 
-    /* Student card */
     .student-card {
-      background: var(--bg2);
-      border-radius: var(--radius);
-      padding: 13px 14px;
-      margin-bottom: 8px;
-      display: flex; align-items: center; gap: 12px;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
+      background: var(--bg2); border-radius: var(--radius); padding: 13px 14px;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
       transition: transform .1s, opacity .1s;
-      border: 1px solid rgba(255,255,255,.04);
-      border-left: 4px solid transparent;
+      border: 1px solid rgba(255,255,255,.04); border-left: 4px solid transparent;
     }
     .student-card:active { transform: scale(.98); opacity: .85; }
-    .student-card.att-yes { border-left-color: var(--success); }
-    .student-card.att-no  { border-left-color: var(--danger); }
+    .student-card.att-yes  { border-left-color: var(--success); }
+    .student-card.att-no   { border-left-color: var(--danger); }
     .student-card.att-null { border-left-color: var(--warn); }
-
-    .student-avatar {
-      width: 42px; height: 42px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 17px; font-weight: 800; color: #fff;
-      flex-shrink: 0;
-    }
+    .student-avatar { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; color: #fff; flex-shrink: 0; }
     .student-info { flex: 1; min-width: 0; }
-    .student-name {
-      font-size: 14px; font-weight: 600;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
+    .student-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .student-meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
-    .att-badge {
-      font-size: 16px; flex-shrink: 0;
-    }
+    .att-badge { font-size: 16px; flex-shrink: 0; }
 
     /* ─────────────────────── ATTENDANCE PAGE */
-    .att-sub-tabs {
-      display: flex; gap: 6px;
-      margin-bottom: 14px; overflow-x: auto;
-      scrollbar-width: none; padding-bottom: 2px;
-    }
+    .att-sub-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
     .att-sub-tabs::-webkit-scrollbar { display: none; }
-    .att-sub-tab {
-      flex-shrink: 0;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 12px; font-weight: 700;
-      background: rgba(255,255,255,.06);
-      color: var(--sub);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: background .15s, color .15s;
-      white-space: nowrap;
-    }
+    .att-sub-tab { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,.06); color: var(--sub); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s, color .15s; white-space: nowrap; }
     .att-sub-tab.active { background: var(--accent); color: #fff; }
 
-    .att-stats-row {
-      display: flex; gap: 8px; margin-bottom: 14px;
-    }
-    .att-stat-chip {
-      flex: 1; text-align: center;
-      background: var(--bg2);
-      border-radius: 10px; padding: 10px 6px;
-      border: 1px solid rgba(255,255,255,.04);
-    }
+    .att-stats-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .att-stat-chip { flex: 1; text-align: center; background: var(--bg2); border-radius: 10px; padding: 10px 6px; border: 1px solid rgba(255,255,255,.04); }
     .att-stat-chip .asc-val   { font-size: 18px; font-weight: 900; }
     .att-stat-chip .asc-label { font-size: 10px; color: var(--sub); margin-top: 1px; }
     .asc-present .asc-val { color: var(--success); }
@@ -390,175 +271,156 @@
     .asc-pending .asc-val { color: var(--warn); }
 
     .att-card {
-      background: var(--bg2);
-      border-radius: var(--radius);
-      padding: 13px 14px;
-      margin-bottom: 8px;
-      display: flex; align-items: center; gap: 12px;
-      border-left: 4px solid transparent;
-      border: 1px solid rgba(255,255,255,.04);
-      border-left: 4px solid transparent;
+      background: var(--bg2); border-radius: var(--radius); padding: 13px 14px;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+      border: 1px solid rgba(255,255,255,.04); border-left: 4px solid transparent;
     }
     .att-card.present { border-left-color: var(--success); }
     .att-card.absent  { border-left-color: var(--danger); }
     .att-card.pending { border-left-color: var(--warn); }
-
-    .att-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px; font-weight: 800; color: #fff;
-      flex-shrink: 0;
-    }
-    .att-info { flex: 1; min-width: 0; }
-    .att-name {
-      font-size: 14px; font-weight: 600;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
+    .att-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0; }
+    .att-info  { flex: 1; min-width: 0; }
+    .att-name  { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .att-meta  { font-size: 12px; color: var(--sub); margin-top: 2px; }
-    .att-reason {
-      font-size: 12px; color: var(--danger);
-      margin-top: 3px; font-style: italic;
+    .att-reason { font-size: 12px; color: var(--danger); margin-top: 3px; font-style: italic; }
+    .att-date-badge { background: var(--bg2); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 700; color: var(--sub); border: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 8px; }
+
+    /* ─────────────────────── GROUPS PAGE */
+    .day-type-tabs { display: flex; gap: 6px; margin-bottom: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .day-type-tabs::-webkit-scrollbar { display: none; }
+    .day-type-tab { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,.06); color: var(--sub); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s, color .15s; white-space: nowrap; }
+    .day-type-tab.active { background: var(--accent); color: #fff; }
+
+    .day-type-info { font-size: 12px; color: var(--sub); margin-bottom: 14px; min-height: 18px; }
+
+    .group-card {
+      background: var(--bg2); border-radius: var(--radius); padding: 14px;
+      margin-bottom: 10px; border: 1px solid rgba(255,255,255,.05);
+      border-left: 4px solid rgba(255,255,255,.08);
     }
-    .att-date-badge {
-      background: var(--bg2);
-      border-radius: 10px;
-      padding: 10px 14px;
-      margin-bottom: 14px;
-      font-size: 13px; font-weight: 700;
-      color: var(--sub);
-      border: 1px solid rgba(255,255,255,.06);
-      display: flex; align-items: center; gap: 8px;
+    .group-card.odd  { border-left-color: var(--accent); }
+    .group-card.even { border-left-color: var(--success); }
+    .group-card.inactive { opacity: .55; }
+
+    .group-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .group-name { font-size: 15px; font-weight: 700; }
+    .day-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 10px; text-transform: uppercase; letter-spacing: .5px; }
+    .day-badge.odd  { background: rgba(82,136,193,.2); color: #6ab3f3; }
+    .day-badge.even { background: rgba(76,175,125,.2); color: #4caf7d; }
+
+    .group-card-info { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .gc-chip { font-size: 11px; color: var(--sub); background: rgba(255,255,255,.05); border-radius: 6px; padding: 3px 8px; }
+    .gc-chip b { color: var(--text); }
+
+    .group-card-footer { display: flex; align-items: center; justify-content: space-between; }
+    .hw-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 8px; border-radius: 8px; font-weight: 600; }
+    .hw-badge.has  { background: rgba(76,175,125,.12); color: var(--success); }
+    .hw-badge.none { background: rgba(255,255,255,.05); color: var(--sub); }
+
+    /* Toggle switch */
+    .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sub); }
+    .toggle { position: relative; width: 42px; height: 23px; flex-shrink: 0; }
+    .toggle input { display: none; }
+    .toggle-slider { position: absolute; inset: 0; border-radius: 12px; background: rgba(255,255,255,.12); cursor: pointer; transition: background .2s; }
+    .toggle input:checked + .toggle-slider { background: var(--success); }
+    .toggle-slider::before { content: ""; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: transform .2s; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(19px); }
+
+    /* ─────────────────────── ACTIONS PAGE */
+    .action-section {
+      background: var(--bg2); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 14px;
+      border: 1px solid rgba(255,255,255,.05);
     }
+    .action-section-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .form-label { font-size: 12px; color: var(--sub); margin-bottom: 6px; display: block; }
+    .form-gap   { margin-bottom: 10px; }
+
+    .action-input, .action-textarea, .action-select {
+      width: 100%; background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+      color: var(--text); font-size: 14px; padding: 10px 14px;
+      outline: none; -webkit-appearance: none; transition: border-color .2s; font-family: inherit;
+    }
+    .action-input:focus, .action-textarea:focus, .action-select:focus { border-color: var(--accent); }
+    .action-textarea { resize: none; min-height: 80px; }
+    .action-select { cursor: pointer; }
+
+    .primary-btn {
+      width: 100%; padding: 13px; border-radius: 10px;
+      background: var(--accent); color: #fff;
+      font-size: 14px; font-weight: 700; border: none; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; transition: opacity .15s;
+    }
+    .primary-btn:active   { opacity: .8; }
+    .primary-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .time-display { font-size: 36px; font-weight: 900; text-align: center; color: var(--accent); margin-bottom: 12px; letter-spacing: 4px; }
+    .time-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+    .time-field { flex: 1; }
+    .time-colon { font-size: 24px; font-weight: 900; color: var(--sub); padding-top: 18px; }
+
+    .result-row { display: flex; gap: 8px; margin-top: 10px; }
+    .result-chip { flex: 1; text-align: center; background: rgba(255,255,255,.05); border-radius: 8px; padding: 8px 10px; }
+    .result-chip-val { font-size: 20px; font-weight: 900; }
+    .result-chip-val.ok   { color: var(--success); }
+    .result-chip-val.fail { color: var(--danger); }
+    .result-chip-label { font-size: 10px; color: var(--sub); margin-top: 2px; }
+
+    .inactive-card { background: rgba(255,255,255,.04); border-radius: 10px; padding: 10px 12px; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; }
+    .inactive-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+    .inactive-info { flex: 1; min-width: 0; }
+    .inactive-name { font-size: 13px; font-weight: 600; }
+    .inactive-meta { font-size: 11px; color: var(--sub); margin-top: 1px; }
 
     /* ─────────────────────── BOTTOM SHEET */
-    .sheet-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.55);
-      z-index: 200;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-    }
+    .sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
     .sheet-overlay.show { display: flex; align-items: flex-end; }
-
-    .sheet {
-      background: var(--bg2);
-      border-radius: 20px 20px 0 0;
-      width: 100%;
-      padding: 0 0 env(safe-area-inset-bottom, 16px);
-      animation: slideUp .25s cubic-bezier(.22,.68,0,1.2);
-      max-height: 90vh;
-      overflow-y: auto;
-    }
+    .sheet { background: var(--bg2); border-radius: 20px 20px 0 0; width: 100%; padding: 0 0 env(safe-area-inset-bottom, 16px); animation: slideUp .25s cubic-bezier(.22,.68,0,1.2); max-height: 90vh; overflow-y: auto; }
     .sheet::-webkit-scrollbar { display: none; }
-
-    @keyframes slideUp {
-      from { transform: translateY(100%); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-
-    .sheet-handle {
-      width: 36px; height: 4px;
-      background: rgba(255,255,255,.2);
-      border-radius: 2px;
-      margin: 12px auto 0;
-    }
-
-    .sheet-header {
-      display: flex; align-items: center; gap: 14px;
-      padding: 16px 20px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-    }
-    .sheet-avatar {
-      width: 52px; height: 52px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; font-weight: 800; color: #fff; flex-shrink: 0;
-    }
+    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .sheet-handle { width: 36px; height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; margin: 12px auto 0; }
+    .sheet-header { display: flex; align-items: center; gap: 14px; padding: 16px 20px 14px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .sheet-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; flex-shrink: 0; }
     .sheet-name  { font-size: 17px; font-weight: 800; }
     .sheet-group { font-size: 13px; color: var(--sub); margin-top: 2px; }
-
-    .sheet-att-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 3px 10px; border-radius: 20px;
-      font-size: 11px; font-weight: 700; margin-top: 6px;
-    }
-    .sab-yes { background: rgba(76,175,125,.2); color: var(--success); }
-    .sab-no  { background: rgba(224,92,92,.2);  color: var(--danger); }
-    .sab-null{ background: rgba(240,173,78,.2); color: var(--warn); }
-
+    .sheet-att-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-top: 6px; }
+    .sab-yes  { background: rgba(76,175,125,.2); color: var(--success); }
+    .sab-no   { background: rgba(224,92,92,.2);  color: var(--danger); }
+    .sab-null { background: rgba(240,173,78,.2); color: var(--warn); }
     .sheet-body { padding: 8px 20px 4px; }
-    .sheet-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 11px 0;
-      border-bottom: 1px solid rgba(255,255,255,.05);
-      font-size: 14px;
-    }
+    .sheet-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 14px; }
     .sheet-row:last-child { border-bottom: none; }
     .sr-icon  { font-size: 18px; width: 26px; text-align: center; flex-shrink: 0; }
     .sr-label { color: var(--sub); flex-shrink: 0; width: 100px; font-size: 13px; }
     .sr-value { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .sheet-actions {
-      padding: 12px 20px 16px;
-      display: flex; flex-direction: column; gap: 10px;
-    }
-    .action-btn {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 15px;
-      border-radius: var(--radius-sm);
-      font-size: 15px; font-weight: 700;
-      cursor: pointer; text-decoration: none;
-      border: none;
-      -webkit-tap-highlight-color: transparent;
-      transition: opacity .15s;
-      width: 100%;
-    }
+    .sheet-actions { padding: 12px 20px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .action-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 15px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; border: none; -webkit-tap-highlight-color: transparent; transition: opacity .15s; width: 100%; }
     .action-btn:active { opacity: .8; }
-    .btn-tg    { background: var(--accent);  color: #fff; }
+    .btn-tg    { background: var(--accent); color: #fff; }
     .btn-close { background: rgba(255,255,255,.07); color: var(--sub); }
 
     /* ─────────────────────── SPINNER / EMPTY */
-    .spinner {
-      display: flex; align-items: center; justify-content: center;
-      padding: 48px;
-    }
-    .spinner::after {
-      content: "";
-      width: 30px; height: 30px;
-      border: 3px solid rgba(255,255,255,.12);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
+    .spinner { display: flex; align-items: center; justify-content: center; padding: 48px; }
+    .spinner::after { content: ""; width: 30px; height: 30px; border: 3px solid rgba(255,255,255,.12); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    .empty {
-      text-align: center; padding: 48px 20px; color: var(--sub);
-    }
+    .empty { text-align: center; padding: 48px 20px; color: var(--sub); }
     .empty-icon { font-size: 52px; margin-bottom: 14px; }
     .empty-text { font-size: 14px; }
 
     /* ─────────────────────── TOAST */
     #toast {
-      position: fixed;
-      bottom: 80px; left: 50%;
+      position: fixed; bottom: 80px; left: 50%;
       transform: translateX(-50%) translateY(16px);
-      background: rgba(20,28,40,.96);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 20px;
+      background: rgba(20,28,40,.96); color: #fff;
+      padding: 10px 20px; border-radius: 20px;
       font-size: 13px; font-weight: 600;
       opacity: 0; pointer-events: none;
       transition: opacity .22s, transform .22s;
-      white-space: nowrap;
-      z-index: 999;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      white-space: nowrap; z-index: 999;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255,255,255,.1);
-      max-width: calc(100vw - 40px);
-      overflow: hidden; text-overflow: ellipsis;
+      max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
@@ -588,7 +450,7 @@
   <!-- Content area -->
   <div class="content" id="content">
 
-    <!-- ═══════════════════════ TAB 1: DASHBOARD ═══════════════════════ -->
+    <!-- ═══════════════ TAB 1: DASHBOARD ═══════════════ -->
     <div class="page active" id="page-dashboard">
 
       <div class="dash-toprow">
@@ -598,13 +460,11 @@
         </button>
       </div>
 
-      <!-- 2x2 stat grid -->
       <p class="section-title">Umumiy ko'rsatkichlar</p>
       <div class="stats-grid" id="statsGrid">
         <div class="spinner" style="grid-column:1/-1"></div>
       </div>
 
-      <!-- Pending wide card -->
       <div class="pending-card" id="pendingCard" style="display:none">
         <div class="pending-icon">⏳</div>
         <div class="pending-info">
@@ -613,10 +473,9 @@
         </div>
       </div>
 
-      <!-- Attendance progress -->
       <div class="progress-wrap" id="progressWrap" style="display:none">
         <div class="progress-label">
-          <span>Davomad jarayoni</span>
+          <span>Davomat jarayoni</span>
           <span id="progressPct">0%</span>
         </div>
         <div class="progress-bar">
@@ -624,7 +483,6 @@
         </div>
       </div>
 
-      <!-- Quick group stats -->
       <p class="section-title" id="groupSectionTitle" style="display:none">Guruhlar</p>
       <div class="quick-row" id="groupQuickRow" style="display:none">
         <div class="quick-chip">
@@ -639,7 +497,7 @@
 
     </div>
 
-    <!-- ═══════════════════════ TAB 2: STUDENTS ═══════════════════════ -->
+    <!-- ═══════════════ TAB 2: STUDENTS ═══════════════ -->
     <div class="page" id="page-students">
 
       <div class="search-wrap">
@@ -650,14 +508,12 @@
       </div>
 
       <div class="group-tabs" id="groupTabs"></div>
-
       <div class="students-meta" id="studentsMeta"></div>
-
       <div id="studentsList"><div class="spinner"></div></div>
 
     </div>
 
-    <!-- ═══════════════════════ TAB 3: ATTENDANCE ═══════════════════════ -->
+    <!-- ═══════════════ TAB 3: ATTENDANCE ═══════════════ -->
     <div class="page" id="page-attendance">
 
       <div class="att-date-badge" id="attDateBadge">
@@ -690,6 +546,84 @@
 
     </div>
 
+    <!-- ═══════════════ TAB 4: GROUPS ═══════════════ -->
+    <div class="page" id="page-groups">
+
+      <div class="day-type-tabs" id="dayTypeTabs">
+        <div class="day-type-tab active" onclick="setDayTypeFilter('all',this)">Hammasi</div>
+        <div class="day-type-tab"        onclick="setDayTypeFilter('ODD',this)">🔷 Toq (Du/Ch/J)</div>
+        <div class="day-type-tab"        onclick="setDayTypeFilter('EVEN',this)">🔶 Juft (Se/Pa/Sh)</div>
+      </div>
+
+      <div class="day-type-info" id="dayTypeInfo"></div>
+      <div id="groupsList"><div class="spinner"></div></div>
+
+    </div>
+
+    <!-- ═══════════════ TAB 5: ACTIONS ═══════════════ -->
+    <div class="page" id="page-actions">
+
+      <!-- Eslatma vaqti -->
+      <div class="action-section">
+        <div class="action-section-title">⏰ Eslatma vaqti</div>
+        <div class="time-display" id="reminderDisplay">–:–</div>
+        <div class="time-row">
+          <div class="time-field">
+            <label class="form-label">Soat (0–23)</label>
+            <input type="number" class="action-input" id="reminderHour"
+                   min="0" max="23" placeholder="20" style="text-align:center;font-size:18px;font-weight:700">
+          </div>
+          <div class="time-colon">:</div>
+          <div class="time-field">
+            <label class="form-label">Daqiqa (0–59)</label>
+            <input type="number" class="action-input" id="reminderMinute"
+                   min="0" max="59" placeholder="0" style="text-align:center;font-size:18px;font-weight:700">
+          </div>
+        </div>
+        <button class="primary-btn" onclick="saveReminderTime()">💾 Saqlash</button>
+      </div>
+
+      <!-- Broadcast -->
+      <div class="action-section">
+        <div class="action-section-title">📢 Xabar yuborish</div>
+        <div class="form-gap">
+          <label class="form-label">Maqsad:</label>
+          <select class="action-select" id="broadcastTarget">
+            <option value="all">👤 Barcha o'quvchilarga (shaxsiy)</option>
+            <option value="parents">👨‍👩‍👧 Ota-onalar guruhlariga</option>
+            <option value="students_group">📚 O'quvchilar guruhlariga</option>
+          </select>
+        </div>
+        <div class="form-gap">
+          <label class="form-label">Xabar matni:</label>
+          <textarea class="action-textarea" id="broadcastText"
+                    placeholder="Xabar matnini kiriting..."></textarea>
+        </div>
+        <button class="primary-btn" id="broadcastBtn" onclick="sendBroadcast()">📤 Yuborish</button>
+        <div id="broadcastResult" style="display:none"></div>
+      </div>
+
+      <!-- Nofaol o'quvchilar -->
+      <div class="action-section">
+        <div class="action-section-title">🔍 Nofaol o'quvchilar</div>
+        <p style="font-size:12px;color:var(--sub);margin-bottom:10px">
+          So'nggi 7 kunda botga kirmagan o'quvchilar ro'yxati
+        </p>
+        <button class="primary-btn" id="inactiveBtn" onclick="loadInactive()">🔍 Ko'rish</button>
+        <div id="inactiveList" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Test yuborish -->
+      <div class="action-section">
+        <div class="action-section-title">🧪 Test yuborish</div>
+        <p style="font-size:12px;color:var(--sub);margin-bottom:10px">
+          Bugungi dars eslatmasini hozir barcha guruhlarga yuborish (test rejimi)
+        </p>
+        <button class="primary-btn" id="testSendBtn" onclick="doTestSend()">🚀 Test yuborish</button>
+      </div>
+
+    </div>
+
   </div><!-- /content -->
 
   <!-- Tab bar -->
@@ -700,11 +634,19 @@
     </div>
     <div class="tab-item" id="tab-students" onclick="goTab('students')">
       <div class="tab-icon">👥</div>
-      <div class="tab-label">O'quvchilar</div>
+      <div class="tab-label">O'quv</div>
     </div>
     <div class="tab-item" id="tab-attendance" onclick="goTab('attendance')">
       <div class="tab-icon">📋</div>
       <div class="tab-label">Davomat</div>
+    </div>
+    <div class="tab-item" id="tab-groups" onclick="goTab('groups')">
+      <div class="tab-icon">🏫</div>
+      <div class="tab-label">Guruhlar</div>
+    </div>
+    <div class="tab-item" id="tab-actions" onclick="goTab('actions')">
+      <div class="tab-icon">⚙️</div>
+      <div class="tab-label">Amallar</div>
     </div>
   </div>
 
@@ -723,36 +665,12 @@
       </div>
     </div>
     <div class="sheet-body">
-      <div class="sheet-row">
-        <span class="sr-icon">📚</span>
-        <span class="sr-label">Guruh</span>
-        <span class="sr-value" id="srGroup"></span>
-      </div>
-      <div class="sheet-row">
-        <span class="sr-icon">🆔</span>
-        <span class="sr-label">Mars ID</span>
-        <span class="sr-value" id="srMarsId"></span>
-      </div>
-      <div class="sheet-row">
-        <span class="sr-icon">📱</span>
-        <span class="sr-label">Telefon</span>
-        <span class="sr-value" id="srPhone"></span>
-      </div>
-      <div class="sheet-row">
-        <span class="sr-icon">✈️</span>
-        <span class="sr-label">Telegram</span>
-        <span class="sr-value" id="srUsername"></span>
-      </div>
-      <div class="sheet-row">
-        <span class="sr-icon">🕐</span>
-        <span class="sr-label">Oxirgi aktiv</span>
-        <span class="sr-value" id="srLastActive"></span>
-      </div>
-      <div class="sheet-row">
-        <span class="sr-icon">✅</span>
-        <span class="sr-label">Bugungi davomat</span>
-        <span class="sr-value" id="srAttToday"></span>
-      </div>
+      <div class="sheet-row"><span class="sr-icon">📚</span><span class="sr-label">Guruh</span><span class="sr-value" id="srGroup"></span></div>
+      <div class="sheet-row"><span class="sr-icon">🆔</span><span class="sr-label">Mars ID</span><span class="sr-value" id="srMarsId"></span></div>
+      <div class="sheet-row"><span class="sr-icon">📱</span><span class="sr-label">Telefon</span><span class="sr-value" id="srPhone"></span></div>
+      <div class="sheet-row"><span class="sr-icon">✈️</span><span class="sr-label">Telegram</span><span class="sr-value" id="srUsername"></span></div>
+      <div class="sheet-row"><span class="sr-icon">🕐</span><span class="sr-label">Oxirgi aktiv</span><span class="sr-value" id="srLastActive"></span></div>
+      <div class="sheet-row"><span class="sr-icon">✅</span><span class="sr-label">Bugungi davomat</span><span class="sr-value" id="srAttToday"></span></div>
     </div>
     <div class="sheet-actions" id="shActions"></div>
   </div>
@@ -796,24 +714,27 @@ async function api(path, opts = {}) {
 /* ═══════════════════════════════════════════════════
    State
 ═══════════════════════════════════════════════════ */
-let allStudents   = [];   // from /api/admin/students
-let activeGroup   = 'all';
-let currentTab    = 'dashboard';
-let attData       = null;
-let attSubTab     = 'all';
-let statsData     = null;
+let allStudents    = [];
+let activeGroup    = 'all';
+let currentTab     = 'dashboard';
+let attData        = null;
+let attSubTab      = 'all';
+let statsData      = null;
 let selectedStudent = null;
+let groupsData     = [];
+let dayTypeFilter  = 'all';
+let actionsLoaded  = false;
 
-const TABS = ['dashboard', 'students', 'attendance'];
+const TABS = ['dashboard', 'students', 'attendance', 'groups', 'actions'];
 
 /* ═══════════════════════════════════════════════════
    Utilities
 ═══════════════════════════════════════════════════ */
 function esc(str) {
   return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;');
 }
 
 function toast(msg, dur = 2800) {
@@ -824,16 +745,11 @@ function toast(msg, dur = 2800) {
   el._t = setTimeout(() => el.classList.remove('show'), dur);
 }
 
-function fmtDate(isoOrSlash) {
-  if (!isoOrSlash) return '—';
-  return isoOrSlash;
-}
-
 function todayLabel() {
   const now = new Date();
-  const d = String(now.getDate()).padStart(2, '0');
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const y = now.getFullYear();
+  const d   = String(now.getDate()).padStart(2, '0');
+  const m   = String(now.getMonth() + 1).padStart(2, '0');
+  const y   = now.getFullYear();
   const days = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
   return `${days[now.getDay()]}, ${d}.${m}.${y}`;
 }
@@ -853,7 +769,9 @@ function goTab(name) {
   tg?.HapticFeedback?.selectionChanged();
 
   if (name === 'students'   && !allStudents.length) loadStudents();
-  if (name === 'attendance' && !attData)           loadAttendance();
+  if (name === 'attendance' && !attData)            loadAttendance();
+  if (name === 'groups'     && !groupsData.length)  loadGroups();
+  if (name === 'actions'    && !actionsLoaded)     { actionsLoaded = true; loadActions(); }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -862,18 +780,14 @@ function goTab(name) {
 async function init() {
   try {
     await api('/admin/me');
-    // Authorized
     document.getElementById('app').style.display = 'flex';
-    const now = new Date();
-    document.getElementById('hdrSub').textContent = todayLabel();
+    document.getElementById('hdrSub').textContent  = todayLabel();
     document.getElementById('dashDate').textContent = '📅 ' + todayLabel();
     loadDashboard();
   } catch (e) {
     document.getElementById('app').style.display = 'none';
     document.getElementById('unauthorizedScreen').classList.add('show');
-    if (e.status === 401) {
-      tg?.HapticFeedback?.notificationOccurred('error');
-    }
+    if (e.status === 401) tg?.HapticFeedback?.notificationOccurred('error');
   }
 }
 
@@ -883,27 +797,22 @@ async function init() {
 async function loadDashboard() {
   const grid = document.getElementById('statsGrid');
   grid.innerHTML = '<div class="spinner" style="grid-column:1/-1"></div>';
-  document.getElementById('pendingCard').style.display   = 'none';
-  document.getElementById('progressWrap').style.display  = 'none';
-  document.getElementById('groupSectionTitle').style.display = 'none';
-  document.getElementById('groupQuickRow').style.display = 'none';
-
+  document.getElementById('pendingCard').style.display        = 'none';
+  document.getElementById('progressWrap').style.display       = 'none';
+  document.getElementById('groupSectionTitle').style.display  = 'none';
+  document.getElementById('groupQuickRow').style.display      = 'none';
   try {
     statsData = await api('/admin/stats');
     renderDashboard(statsData);
   } catch (e) {
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
-      <div class="empty-icon">⚠️</div>
-      <div class="empty-text">${esc(e.message)}</div>
-    </div>`;
+      <div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
     toast('⚠️ Statistika yuklanmadi');
   }
 }
 
 function renderDashboard(s) {
-  const grid = document.getElementById('statsGrid');
-
-  grid.innerHTML = `
+  document.getElementById('statsGrid').innerHTML = `
     <div class="stat-card accent-card">
       <span class="stat-card-icon">👥</span>
       <div class="stat-card-val">${s.total_students}</div>
@@ -923,45 +832,38 @@ function renderDashboard(s) {
       <span class="stat-card-icon">❌</span>
       <div class="stat-card-val">${s.today_absent}</div>
       <div class="stat-card-label">Bugun kelmadi</div>
-    </div>
-  `;
+    </div>`;
 
-  // Pending
-  const pendEl = document.getElementById('pendingCard');
-  document.getElementById('pendingVal').textContent = s.today_pending;
-  pendEl.style.display = 'flex';
+  document.getElementById('pendingVal').textContent          = s.today_pending;
+  document.getElementById('pendingCard').style.display       = 'flex';
 
-  // Progress
   const total    = s.total_students || 1;
   const answered = s.today_present + s.today_absent;
   const pct      = Math.round((answered / total) * 100);
-  document.getElementById('progressPct').textContent   = pct + '%';
-  document.getElementById('progressFill').style.width  = pct + '%';
-  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressPct').textContent          = pct + '%';
+  document.getElementById('progressFill').style.width         = pct + '%';
+  document.getElementById('progressWrap').style.display       = 'block';
 
-  // Groups row
-  document.getElementById('qActiveGroups').textContent  = s.active_groups;
-  document.getElementById('qTotalGroups').textContent   = s.total_groups;
-  document.getElementById('groupSectionTitle').style.display = 'block';
-  document.getElementById('groupQuickRow').style.display = 'flex';
+  document.getElementById('qActiveGroups').textContent        = s.active_groups;
+  document.getElementById('qTotalGroups').textContent         = s.total_groups;
+  document.getElementById('groupSectionTitle').style.display  = 'block';
+  document.getElementById('groupQuickRow').style.display      = 'flex';
 }
 
 async function refreshDashboard() {
   const btn = document.getElementById('refreshBtn');
-  btn.classList.add('spinning');
-  btn.disabled = true;
+  btn.classList.add('spinning'); btn.disabled = true;
   try {
     await loadDashboard();
-    // If students or attendance tabs were already loaded, refresh them too
-    if (allStudents.length)  await loadStudents(true);
-    if (attData)             await loadAttendance(true);
+    if (allStudents.length) await loadStudents(true);
+    if (attData)            await loadAttendance(true);
+    if (groupsData.length)  await loadGroups(true);
     toast('✅ Ma\'lumotlar yangilandi');
     tg?.HapticFeedback?.notificationOccurred('success');
   } catch {
     toast('⚠️ Yangilashda xatolik');
   } finally {
-    btn.classList.remove('spinning');
-    btn.disabled = false;
+    btn.classList.remove('spinning'); btn.disabled = false;
   }
 }
 
@@ -989,10 +891,8 @@ function buildGroupTabs() {
   const groups    = [...new Set(allStudents.map(s => s.group_name))].sort();
   const container = document.getElementById('groupTabs');
   container.innerHTML = '';
-
   const allTab = _makeTab(`Hammasi (${allStudents.length})`, true, () => setGroup('all', allTab));
   container.appendChild(allTab);
-
   groups.forEach(g => {
     const cnt = allStudents.filter(s => s.group_name === g).length;
     const tab = _makeTab(`${g} (${cnt})`, false, () => setGroup(g, tab));
@@ -1002,9 +902,9 @@ function buildGroupTabs() {
 
 function _makeTab(label, active, onclick) {
   const el = document.createElement('div');
-  el.className = 'group-tab' + (active ? ' active' : '');
+  el.className  = 'group-tab' + (active ? ' active' : '');
   el.textContent = label;
-  el.onclick = onclick;
+  el.onclick    = onclick;
   return el;
 }
 
@@ -1016,11 +916,10 @@ function setGroup(g, el) {
 }
 
 function renderStudents() {
-  const q     = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-  let   list  = activeGroup === 'all' ? allStudents : allStudents.filter(s => s.group_name === activeGroup);
+  const q    = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  let   list = activeGroup === 'all' ? allStudents : allStudents.filter(s => s.group_name === activeGroup);
   if (q) list = list.filter(s => s.full_name.toLowerCase().includes(q));
 
-  // Meta
   const presentCnt = list.filter(s => s.att_today === 'yes').length;
   const absentCnt  = list.filter(s => s.att_today === 'no').length;
   const pendCnt    = list.filter(s => s.att_today == null).length;
@@ -1028,19 +927,19 @@ function renderStudents() {
     <div class="students-meta-chip">Jami: <b>${list.length}</b></div>
     <div class="students-meta-chip">✅ <b>${presentCnt}</b></div>
     <div class="students-meta-chip">❌ <b>${absentCnt}</b></div>
-    <div class="students-meta-chip">⏳ <b>${pendCnt}</b></div>
-  `;
+    <div class="students-meta-chip">⏳ <b>${pendCnt}</b></div>`;
 
   const container = document.getElementById('studentsList');
   if (!list.length) {
     container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">O\'quvchilar topilmadi</div></div>';
     return;
   }
-
   container.innerHTML = list.map(s => {
     const attClass = s.att_today === 'yes' ? 'att-yes' : s.att_today === 'no' ? 'att-no' : 'att-null';
     const attIcon  = s.att_today === 'yes' ? '✅' : s.att_today === 'no' ? '❌' : '⏳';
-    const uname    = s.username ? `<span style="color:var(--link)">@${esc(s.username)}</span>` : '<span style="color:var(--sub)">—</span>';
+    const uname    = s.username
+      ? `<span style="color:var(--link)">@${esc(s.username)}</span>`
+      : '<span style="color:var(--sub)">—</span>';
     return `
       <div class="student-card ${attClass}" onclick="openStudentSheet(${s.user_id})">
         <div class="student-avatar">${esc(s.full_name.charAt(0).toUpperCase())}</div>
@@ -1057,31 +956,22 @@ function renderStudents() {
    Attendance
 ═══════════════════════════════════════════════════ */
 async function loadAttendance(silent = false) {
-  if (!silent) {
-    document.getElementById('attList').innerHTML = '<div class="spinner"></div>';
-  }
+  if (!silent) document.getElementById('attList').innerHTML = '<div class="spinner"></div>';
   try {
     attData = await api('/admin/attendance');
-
-    // Date label
     const d = attData.date || '';
     if (d) {
       const [y, mo, day] = d.split('-');
       document.getElementById('attDateLabel').textContent = `${day}.${mo}.${y} — Bugungi davomat`;
     }
-
-    // Stats
     document.getElementById('attPresCount').textContent = attData.present.length;
     document.getElementById('attAbsCount').textContent  = attData.absent.length;
     document.getElementById('attPendCount').textContent = attData.pending.length;
-
-    // Update tab counts
     const total = attData.present.length + attData.absent.length + attData.pending.length;
     document.getElementById('astab-all').textContent     = `Hammasi (${total})`;
     document.getElementById('astab-present').textContent = `✅ Bor (${attData.present.length})`;
     document.getElementById('astab-absent').textContent  = `❌ Yo'q (${attData.absent.length})`;
     document.getElementById('astab-pending').textContent = `⏳ (${attData.pending.length})`;
-
     renderAttendance();
   } catch (e) {
     document.getElementById('attList').innerHTML =
@@ -1100,25 +990,22 @@ function setAttSubTab(tab) {
 function renderAttendance() {
   if (!attData) return;
   const el = document.getElementById('attList');
-
   let list;
   if (attSubTab === 'all') {
     list = [
       ...attData.present.map(s => ({ ...s, _st: 'present' })),
-      ...attData.absent.map(s  => ({ ...s, _st: 'absent'  })),
+      ...attData.absent.map(s  => ({ ...s, _st: 'absent' })),
       ...attData.pending.map(s => ({ ...s, _st: 'pending' })),
     ];
   } else {
     list = (attData[attSubTab] || []).map(s => ({ ...s, _st: attSubTab }));
   }
-
   if (!list.length) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Ma\'lumot yo\'q</div></div>';
     return;
   }
-
   el.innerHTML = list.map(s => {
-    const icon = s._st === 'present' ? '✅' : s._st === 'absent' ? '❌' : '⏳';
+    const icon       = s._st === 'present' ? '✅' : s._st === 'absent' ? '❌' : '⏳';
     const reasonHtml = (s._st === 'absent' && s.reason)
       ? `<div class="att-reason">💬 ${esc(s.reason)}</div>` : '';
     return `
@@ -1134,6 +1021,229 @@ function renderAttendance() {
 }
 
 /* ═══════════════════════════════════════════════════
+   Groups (Tab 4)
+═══════════════════════════════════════════════════ */
+async function loadGroups(silent = false) {
+  if (!silent) document.getElementById('groupsList').innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await api('/admin/groups-detail');
+    groupsData = data.groups || [];
+    renderGroups();
+  } catch (e) {
+    document.getElementById('groupsList').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
+  }
+}
+
+function setDayTypeFilter(type, el) {
+  dayTypeFilter = type;
+  document.querySelectorAll('#dayTypeTabs .day-type-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const info = document.getElementById('dayTypeInfo');
+  if (type === 'ODD')  info.textContent = '🔷 Dushanba, Chorshanba, Juma';
+  else if (type === 'EVEN') info.textContent = '🔶 Seshanba, Payshanba, Shanba';
+  else info.textContent = '';
+  renderGroups();
+}
+
+function renderGroups() {
+  const container = document.getElementById('groupsList');
+  let list = dayTypeFilter === 'all'
+    ? groupsData
+    : groupsData.filter(g => g.group_type === dayTypeFilter);
+
+  if (!list.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Guruhlar topilmadi</div></div>';
+    return;
+  }
+
+  container.innerHTML = list.map(g => {
+    const typeClass    = g.group_type === 'ODD' ? 'odd' : g.group_type === 'EVEN' ? 'even' : '';
+    const typeLabel    = g.group_type === 'ODD' ? '🔷 Toq' : g.group_type === 'EVEN' ? '🔶 Juft' : '—';
+    const audienceIcon = g.audience === 'PARENT' ? '👨‍👩‍👧' : '📚';
+    const inactClass   = g.is_active ? '' : ' inactive';
+    const hwBadge      = g.has_homework
+      ? `<span class="hw-badge has">📝 Vazifa: ${esc(g.hw_sent_at || '—')}</span>`
+      : `<span class="hw-badge none">📭 Vazifa yo'q</span>`;
+
+    return `
+      <div class="group-card ${typeClass}${inactClass}">
+        <div class="group-card-header">
+          <span class="group-name">${esc(g.name)}</span>
+          <div class="toggle-wrap">
+            <span style="font-size:11px">${g.is_active ? 'Faol' : 'Nofaol'}</span>
+            <label class="toggle">
+              <input type="checkbox" ${g.is_active ? 'checked' : ''}
+                     onchange="toggleGroup(${g.chat_id}, this.checked, this)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="group-card-info">
+          <span class="gc-chip"><span class="day-badge ${typeClass}">${typeLabel}</span></span>
+          ${g.class_time ? `<span class="gc-chip">🕐 <b>${esc(g.class_time)}</b></span>` : ''}
+          <span class="gc-chip">👥 <b>${g.student_count}</b></span>
+          <span class="gc-chip">${audienceIcon} ${g.audience === 'PARENT' ? 'Ota-ona' : 'O\'quv'}</span>
+        </div>
+        <div class="group-card-footer">
+          ${hwBadge}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function toggleGroup(chatId, newState, inputEl) {
+  try {
+    await api('/admin/toggle-group', {
+      method: 'POST',
+      body: JSON.stringify({ chat_id: chatId, is_active: newState }),
+    });
+    const g = groupsData.find(g => g.chat_id === chatId);
+    if (g) g.is_active = newState;
+    tg?.HapticFeedback?.impactOccurred('light');
+    toast(newState ? '✅ Guruh yoqildi' : '🔴 Guruh o\'chirildi');
+    renderGroups();
+  } catch (e) {
+    inputEl.checked = !newState;
+    toast('⚠️ ' + e.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   Actions (Tab 5)
+═══════════════════════════════════════════════════ */
+async function loadActions() {
+  // Load reminder time
+  try {
+    const data = await api('/admin/reminder-time');
+    const h = String(data.hour).padStart(2, '0');
+    const m = String(data.minute).padStart(2, '0');
+    document.getElementById('reminderDisplay').textContent = `${h}:${m}`;
+    document.getElementById('reminderHour').value   = data.hour;
+    document.getElementById('reminderMinute').value = data.minute;
+  } catch {}
+
+  // Add per-group options to broadcast target
+  try {
+    if (!allStudents.length) {
+      const data = await api('/admin/students');
+      allStudents = data.students || [];
+    }
+    const groups = [...new Set(allStudents.map(s => s.group_name))].sort();
+    const sel = document.getElementById('broadcastTarget');
+    // Remove previously added group options
+    while (sel.options.length > 3) sel.remove(3);
+    groups.forEach(g => {
+      const opt   = document.createElement('option');
+      opt.value   = g;
+      opt.textContent = `📚 ${g} guruhi (shaxsiy)`;
+      sel.appendChild(opt);
+    });
+  } catch {}
+}
+
+async function saveReminderTime() {
+  const h = parseInt(document.getElementById('reminderHour').value);
+  const m = parseInt(document.getElementById('reminderMinute').value);
+  if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+    toast('❌ Noto\'g\'ri vaqt (0-23 va 0-59 oralig\'ida)');
+    return;
+  }
+  try {
+    await api('/admin/reminder-time', {
+      method: 'POST',
+      body: JSON.stringify({ hour: h, minute: m }),
+    });
+    const hStr = String(h).padStart(2, '0');
+    const mStr = String(m).padStart(2, '0');
+    document.getElementById('reminderDisplay').textContent = `${hStr}:${mStr}`;
+    toast(`✅ Eslatma vaqti: ${hStr}:${mStr}`);
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } catch (e) {
+    toast('⚠️ ' + e.message);
+  }
+}
+
+async function sendBroadcast() {
+  const target = document.getElementById('broadcastTarget').value;
+  const text   = (document.getElementById('broadcastText').value || '').trim();
+  if (!text) { toast('❌ Xabar matni bo\'sh'); return; }
+
+  const btn = document.getElementById('broadcastBtn');
+  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
+  document.getElementById('broadcastResult').style.display = 'none';
+
+  try {
+    const data = await api('/admin/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({ target, text }),
+    });
+    const res = document.getElementById('broadcastResult');
+    res.style.display = 'block';
+    res.innerHTML = `<div class="result-row">
+      <div class="result-chip">
+        <div class="result-chip-val ok">${data.sent}</div>
+        <div class="result-chip-label">✅ Yetdi</div>
+      </div>
+      <div class="result-chip">
+        <div class="result-chip-val fail">${data.failed ?? 0}</div>
+        <div class="result-chip-label">❌ Yetmadi</div>
+      </div>
+    </div>`;
+    toast('✅ Yuborildi!');
+    tg?.HapticFeedback?.notificationOccurred('success');
+    document.getElementById('broadcastText').value = '';
+  } catch (e) {
+    toast('⚠️ ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '📤 Yuborish';
+  }
+}
+
+async function loadInactive() {
+  const btn = document.getElementById('inactiveBtn');
+  btn.disabled = true; btn.textContent = '⏳ Yuklanmoqda...';
+  try {
+    const data = await api('/admin/inactive?days=7');
+    const container = document.getElementById('inactiveList');
+    if (!data.students.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--success);font-weight:600;padding:16px">✅ Barcha o\'quvchilar faol!</div>';
+      toast('✅ Barcha faol!');
+    } else {
+      container.innerHTML =
+        `<p style="font-size:12px;color:var(--sub);margin-bottom:8px">Jami: <b>${data.students.length}</b> ta nofaol</p>` +
+        data.students.map(s => `
+          <div class="inactive-card">
+            <div class="inactive-avatar">${esc(s.full_name.charAt(0).toUpperCase())}</div>
+            <div class="inactive-info">
+              <div class="inactive-name">${esc(s.full_name)}</div>
+              <div class="inactive-meta">📚 ${esc(s.group_name)} · ${s.last_active ? '🕐 ' + esc(s.last_active) : '🕐 Hech qachon'}</div>
+            </div>
+          </div>`).join('');
+      toast(`🔍 ${data.students.length} ta nofaol o'quvchi`);
+    }
+  } catch (e) {
+    toast('⚠️ ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 Ko\'rish';
+  }
+}
+
+async function doTestSend() {
+  const btn = document.getElementById('testSendBtn');
+  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
+  try {
+    await api('/admin/test-send', { method: 'POST', body: '{}' });
+    toast('🚀 Test xabar yuborilmoqda...');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } catch (e) {
+    toast('⚠️ ' + e.message);
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = '🚀 Test yuborish'; }, 3000);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
    Student bottom sheet
 ═══════════════════════════════════════════════════ */
 function openStudentSheet(userId) {
@@ -1146,7 +1256,6 @@ function openStudentSheet(userId) {
   document.getElementById('shName').textContent   = s.full_name;
   document.getElementById('shGroup').textContent  = s.group_name;
 
-  // Att badge
   const attBadgeEl = document.getElementById('shAttBadge');
   if (s.att_today === 'yes') {
     attBadgeEl.innerHTML = '<span class="sheet-att-badge sab-yes">✅ Keldi</span>';
@@ -1161,21 +1270,14 @@ function openStudentSheet(userId) {
   document.getElementById('srPhone').textContent      = s.phone      || '—';
   document.getElementById('srUsername').textContent   = s.username   ? '@' + s.username : '—';
   document.getElementById('srLastActive').textContent = s.last_active || 'Noma\'lum';
+  document.getElementById('srAttToday').textContent   =
+    s.att_today === 'yes' ? '✅ Keldi' : s.att_today === 'no' ? '❌ Kelmadi' : '⏳ Javob bermagan';
 
-  const attTodayText = s.att_today === 'yes' ? '✅ Keldi' : s.att_today === 'no' ? '❌ Kelmadi' : '⏳ Javob bermagan';
-  document.getElementById('srAttToday').textContent = attTodayText;
-
-  // Actions
   const acts = document.getElementById('shActions');
   acts.innerHTML = '';
-
   if (s.username) {
-    const uname  = s.username.startsWith('@') ? s.username.slice(1) : s.username;
-    const tgUrl  = `https://t.me/${uname}`;
-    acts.innerHTML += `
-      <a class="action-btn btn-tg" href="${tgUrl}" target="_blank">
-        ✈️ Telegramda yozish
-      </a>`;
+    const uname = s.username.startsWith('@') ? s.username.slice(1) : s.username;
+    acts.innerHTML += `<a class="action-btn btn-tg" href="https://t.me/${uname}" target="_blank">✈️ Telegramda yozish</a>`;
   }
   acts.innerHTML += `<button class="action-btn btn-close" onclick="closeSheet()">Yopish</button>`;
 

@@ -46,7 +46,8 @@ def get_tomorrow_info(timezone_str: str) -> TomorrowInfo:
     tz       = pytz.timezone(timezone_str)
     tomorrow = datetime.now(tz) + timedelta(days=1)
     day      = tomorrow.day
-    is_odd   = (day % 2) != 0
+    # Weekday bo'yicha: 0,2,4 = Du,Ch,J = ODD; 1,3,5 = Se,Pa,Sh = EVEN
+    is_odd   = tomorrow.weekday() in (0, 2, 4)
     return TomorrowInfo(
         date       = tomorrow,
         date_str   = tomorrow.strftime("%d.%m.%Y"),
@@ -159,11 +160,18 @@ async def send_daily_reminders(
 
 # ─── Dars eslatmasi: har 10 daqiqada ────────────────────────────────────────
 
+# 1-eslatma va 2-eslatma yuborilgan foydalanuvchilarni kuzatish
+# Key: "user_id:date_str" — restart bo'lsa reset bo'ladi (normal holat)
+_sent_first_reminder:  set[str] = set()
+_sent_second_reminder: set[str] = set()
+
+
 async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
     """
     Har 10 daqiqada ishga tushadi (06:00–19:30 Tashkent oralig'ida).
-    Har guruh uchun dars vaqtidan 3 soat oldin eslatma yuboradi.
-    Javob bermaganlar uchun takror eslatma yuboriladi.
+    Har guruh uchun dars vaqtidan 3 soat oldin faqat 2 marta eslatma yuboradi:
+      1-eslatma: reminder_start dan 10 daqiqa ichida
+      2-eslatma: reminder_start + 30 daqiqadan keyin (10 daqiqa oyna)
     """
     from keyboards import kb_attendance
 
@@ -178,17 +186,28 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
     if weekday == 6:  # Yakshanba — dars yo'q
         return
 
-    day_type = "ODD" if weekday in (0, 2, 4) else "EVEN"
-    schedule = CLASS_SCHEDULE.get(day_type, {})
+    day_type  = "ODD" if weekday in (0, 2, 4) else "EVEN"
+    schedule  = CLASS_SCHEDULE.get(day_type, {})
     today_str = now.strftime("%Y-%m-%d")
 
     for group_name, class_time_str in schedule.items():
         class_hour, class_min = map(int, class_time_str.split(":"))
-        class_dt      = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+        class_dt       = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
         reminder_start = class_dt - timedelta(hours=3)
 
-        # Eslatma oynasidan tashqarida — o'tkazib yuboramiz
+        # Umumiy oynadan tashqarida — o'tkazib yuboramiz
         if now < reminder_start or now >= class_dt:
+            continue
+
+        # Qaysi eslatma oynasida ekanligini aniqlaymiz
+        in_first_window  = now < reminder_start + timedelta(minutes=10)
+        in_second_window = (
+            reminder_start + timedelta(minutes=30) <= now <
+            reminder_start + timedelta(minutes=40)
+        )
+
+        # Hech bir oynada emasmiz — o'tkazib yuboramiz
+        if not in_first_window and not in_second_window:
             continue
 
         # Guruh o'quvchilarini olamiz
@@ -196,21 +215,26 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
         if not students:
             continue
 
-        # Birinchi eslatma mi yoki takror?
-        is_first = now < reminder_start + timedelta(minutes=10)
-
         for student in students:
             # Allaqon javob bergan bo'lsa — yubormaymiz
             rec = await db.get_student_attendance(student.user_id, today_str)
             if rec:
                 continue
 
-            if is_first:
+            key = f"{student.user_id}:{today_str}"
+
+            if in_first_window:
+                if key in _sent_first_reminder:
+                    continue
+                _sent_first_reminder.add(key)
                 text = (
                     f"📚 Bugun soat <b>{class_time_str}</b> da dars bor!\n"
                     f"Kelasizmi?"
                 )
-            else:
+            else:  # in_second_window
+                if key in _sent_second_reminder:
+                    continue
+                _sent_second_reminder.add(key)
                 text = (
                     f"⏰ Hali javob bermagansiz!\n"
                     f"Dars <b>{class_time_str}</b> da boshlanadi."

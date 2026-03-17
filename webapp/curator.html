@@ -434,7 +434,7 @@
       margin-top: 3px; font-style: italic;
     }
     .att-contact {
-      display: flex; gap: 8px; align-items: center;
+      display: flex; gap: 6px; align-items: center; flex-direction: column;
     }
     .att-tg-btn {
       background: var(--accent);
@@ -445,6 +445,35 @@
       white-space: nowrap;
       -webkit-tap-highlight-color: transparent;
     }
+    .att-update-btn {
+      background: rgba(76,175,125,.2);
+      color: var(--success); border: 1px solid rgba(76,175,125,.4);
+      border-radius: 8px; padding: 5px 10px;
+      font-size: 11px; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Group filter for attendance */
+    .att-group-filter {
+      padding: 8px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      flex-shrink: 0;
+      overflow-x: auto;
+      display: flex; gap: 6px;
+    }
+    .att-group-filter::-webkit-scrollbar { display: none; }
+    .att-gf-btn {
+      background: rgba(255,255,255,.06);
+      color: var(--sub); border: none;
+      border-radius: 16px; padding: 5px 12px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s, color .15s;
+    }
+    .att-gf-btn.active { background: var(--accent); color: #fff; }
 
     /* Bottom tab bar for curator main */
     .cur-tabbar {
@@ -467,6 +496,133 @@
     .cur-tab.active { color: var(--accent); }
     .cur-tab .tab-icon  { font-size: 20px; }
     .cur-tab .tab-label { font-size: 10px; font-weight: 600; margin-top: 2px; }
+
+    /* ─────────────────────────────────────────────────────── */
+    /* YOQLAMA PAGE                                            */
+    /* ─────────────────────────────────────────────────────── */
+    #page-yoqlama { padding: 0; }
+
+    .yoq-header {
+      background: var(--bg2);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .yoq-back-btn {
+      background: rgba(255,255,255,.08);
+      border: none; border-radius: 8px;
+      color: var(--text);
+      width: 36px; height: 36px;
+      font-size: 22px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .yoq-back-btn:active { opacity: .7; }
+    .yoq-title { font-size: 16px; font-weight: 700; flex: 1; }
+
+    .yoq-view { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .yoq-view::-webkit-scrollbar { display: none; }
+    .yoq-view.hidden { display: none !important; }
+
+    /* Group cards */
+    .yoq-group-card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      padding: 15px 16px;
+      margin: 10px 16px 0;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .1s, opacity .1s;
+      border: 1px solid rgba(255,255,255,.04);
+    }
+    .yoq-group-card:active { transform: scale(.98); opacity: .8; }
+    .yoq-group-icon {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, #27ae60, #1e8449);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .yoq-group-info { flex: 1; }
+    .yoq-group-name { font-weight: 700; font-size: 15px; }
+    .yoq-group-cnt  { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+    /* Summary bar */
+    .yoq-summary-bar {
+      padding: 10px 16px 8px;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      display: flex; gap: 14px; flex-shrink: 0;
+      font-size: 13px;
+    }
+    .yoq-summary-bar .s-present { color: var(--success); font-weight: 700; }
+    .yoq-summary-bar .s-absent  { color: var(--danger);  font-weight: 700; }
+
+    /* Students marking */
+    .yoq-students-wrap {
+      display: flex; flex-direction: column; flex: 1; overflow: hidden;
+    }
+    .yoq-students-scroll {
+      flex: 1; overflow-y: auto;
+      padding: 8px 16px 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .yoq-students-scroll::-webkit-scrollbar { display: none; }
+
+    .yoq-student-row {
+      background: var(--bg2);
+      border-radius: var(--radius-sm);
+      padding: 13px 14px;
+      margin-bottom: 6px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .1s;
+      border: 1px solid rgba(255,255,255,.04);
+      user-select: none;
+    }
+    .yoq-student-row:active { transform: scale(.98); }
+    .yoq-s-num  { font-size: 12px; color: var(--sub); width: 20px; flex-shrink: 0; }
+    .yoq-s-name { flex: 1; font-size: 14px; font-weight: 600; }
+    .yoq-toggle { font-size: 22px; flex-shrink: 0; transition: transform .15s; }
+    .yoq-toggle.pop { transform: scale(1.45); }
+
+    .yoq-send-footer {
+      padding: 12px 16px;
+      background: var(--bg2);
+      border-top: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .yoq-send-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #27ae60, #1e8449);
+      color: #fff; border: none;
+      border-radius: var(--radius-sm);
+      padding: 15px; font-size: 15px; font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity .15s;
+    }
+    .yoq-send-btn:active { opacity: .8; }
+    .yoq-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Parent group cards */
+    .yoq-parent-card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin: 10px 16px 0;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .1s, opacity .1s;
+      border: 1px solid rgba(82,136,193,.2);
+    }
+    .yoq-parent-card:active { transform: scale(.98); opacity: .8; }
+    .yoq-parent-icon { font-size: 28px; flex-shrink: 0; }
+    .yoq-parent-name { flex: 1; font-weight: 700; font-size: 15px; }
 
     /* ── Spinner ── */
     .spinner {
@@ -574,6 +730,9 @@
       <div class="cur-tab" id="curtab-attendance" onclick="switchCurTab('attendance')">
         <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
       </div>
+      <div class="cur-tab" id="curtab-yoqlama" onclick="switchCurTab('yoqlama')">
+        <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
+      </div>
     </div>
   </div>
 
@@ -598,6 +757,9 @@
       <div class="att-tab"        id="atab-pending" onclick="setAttTab('pending')">⏳ Javob yo'q</div>
     </div>
 
+    <!-- Group filter chips -->
+    <div class="att-group-filter" id="attGroupFilter"></div>
+
     <!-- List -->
     <div class="att-list" id="attList"><div class="spinner"></div></div>
 
@@ -609,10 +771,57 @@
       <div class="cur-tab active" id="curtab2-attendance" onclick="switchCurTab('attendance')">
         <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
       </div>
+      <div class="cur-tab" id="curtab2-yoqlama" onclick="switchCurTab('yoqlama')">
+        <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
+      </div>
     </div>
   </div>
 
 </div>
+
+  <!-- ── YOQLAMA PAGE ──────────────────────────────────────── -->
+  <div class="page" id="page-yoqlama">
+
+    <!-- Dynamic header -->
+    <div class="yoq-header">
+      <button class="yoq-back-btn" id="yoqBackBtn" onclick="yoqBack()" hidden>‹</button>
+      <div class="yoq-title" id="yoqTitle">📋 Guruh tanlang</div>
+    </div>
+
+    <!-- View 1: Group selection -->
+    <div class="yoq-view" id="yoq-view-groups" style="padding-bottom:16px">
+      <div id="yoqGroupsList"></div>
+    </div>
+
+    <!-- View 2: Student marking -->
+    <div class="yoq-view yoq-students-wrap hidden" id="yoq-view-students">
+      <div class="yoq-summary-bar" id="yoqSummaryBar"></div>
+      <div class="yoq-students-scroll" id="yoqStudentsList"></div>
+      <div class="yoq-send-footer">
+        <button class="yoq-send-btn" id="yoqSendBtn" onclick="yoqProceedToParent()">
+          📩 Ota-ona guruhiga yuborish
+        </button>
+      </div>
+    </div>
+
+    <!-- View 3: Parent group selection -->
+    <div class="yoq-view hidden" id="yoq-view-parents" style="padding-bottom:16px">
+      <div id="yoqParentsList"></div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="cur-tabbar">
+      <div class="cur-tab" id="curtab3-students" onclick="switchCurTab('students')">
+        <div class="tab-icon">👥</div><div class="tab-label">O'quvchilar</div>
+      </div>
+      <div class="cur-tab" id="curtab3-attendance" onclick="switchCurTab('attendance')">
+        <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
+      </div>
+      <div class="cur-tab active" id="curtab3-yoqlama" onclick="switchCurTab('yoqlama')">
+        <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
+      </div>
+    </div>
+  </div>
 
 <!-- Student detail sheet -->
 <div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet(event)">
@@ -904,18 +1113,20 @@ let curActiveTab = 'students';
 function switchCurTab(tab) {
   curActiveTab = tab;
 
-  // Update both tabbars
-  ['students', 'attendance'].forEach(t => {
-    document.getElementById('curtab-' + t)?.classList.toggle('active', t === tab);
+  ['students', 'attendance', 'yoqlama'].forEach(t => {
+    document.getElementById('curtab-'  + t)?.classList.toggle('active', t === tab);
     document.getElementById('curtab2-' + t)?.classList.toggle('active', t === tab);
+    document.getElementById('curtab3-' + t)?.classList.toggle('active', t === tab);
   });
 
   if (tab === 'students') {
     showPage('main');
-  } else {
-    showAttendancePage();
+  } else if (tab === 'attendance') {
     showPage('attendance');
     loadAttendance();
+  } else {
+    showPage('yoqlama');
+    if (!yoqView || yoqView === 'groups') renderYoqGroups();
   }
 }
 
@@ -927,8 +1138,9 @@ function showAttendancePage() {
 }
 
 /* ── Attendance data ─────────────────────────────────────── */
-let attData    = null;
-let attTab     = 'all';
+let attData      = null;
+let attTab       = 'all';
+let attGroupFilter = 'all';
 
 function setAttTab(tab) {
   attTab = tab;
@@ -936,6 +1148,32 @@ function setAttTab(tab) {
     document.getElementById('atab-' + t)?.classList.toggle('active', t === tab);
   });
   renderAttendance();
+}
+
+function setAttGroupFilter(g) {
+  attGroupFilter = g;
+  document.querySelectorAll('.att-gf-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.group === g);
+  });
+  renderAttendance();
+}
+
+function renderAttGroupFilter() {
+  if (!attData) return;
+  const allStudents = [
+    ...attData.present,
+    ...attData.absent,
+    ...attData.pending,
+  ];
+  const groups = [...new Set(allStudents.map(s => s.group_name))].sort();
+  const container = document.getElementById('attGroupFilter');
+  if (groups.length <= 1) { container.innerHTML = ''; return; }
+
+  container.innerHTML =
+    `<button class="att-gf-btn${attGroupFilter === 'all' ? ' active' : ''}" data-group="all" onclick="setAttGroupFilter('all')">Hammasi</button>` +
+    groups.map(g =>
+      `<button class="att-gf-btn${attGroupFilter === g ? ' active' : ''}" data-group="${esc(g)}" onclick="setAttGroupFilter('${esc(g)}')">${esc(g)}</button>`
+    ).join('');
 }
 
 async function loadAttendance() {
@@ -949,6 +1187,7 @@ async function loadAttendance() {
       const [y, m, day] = d.split('-');
       document.getElementById('attDate').textContent = `${day}.${m}.${y}`;
     }
+    renderAttGroupFilter();
     renderAttendance();
   } catch (e) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
@@ -970,9 +1209,17 @@ function renderAttendance() {
     list = (attData[attTab] || []).map(s => ({ ...s, _status: attTab }));
   }
 
-  const pCnt = attData.present.length;
-  const aCnt = attData.absent.length;
-  const wCnt = attData.pending.length;
+  // Group filter
+  if (attGroupFilter !== 'all') {
+    list = list.filter(s => s.group_name === attGroupFilter);
+  }
+
+  const allFiltered = (attGroupFilter === 'all')
+    ? [...attData.present, ...attData.absent, ...attData.pending]
+    : [...attData.present, ...attData.absent, ...attData.pending].filter(s => s.group_name === attGroupFilter);
+  const pCnt = attData.present.filter(s => attGroupFilter === 'all' || s.group_name === attGroupFilter).length;
+  const aCnt = attData.absent.filter(s => attGroupFilter === 'all' || s.group_name === attGroupFilter).length;
+  const wCnt = attData.pending.filter(s => attGroupFilter === 'all' || s.group_name === attGroupFilter).length;
 
   // Update tab labels with counts
   document.getElementById('atab-all').textContent     = `Hammasi (${pCnt+aCnt+wCnt})`;
@@ -985,6 +1232,8 @@ function renderAttendance() {
     return;
   }
 
+  const today = attData.date || new Date().toISOString().split('T')[0];
+
   el.innerHTML = list.map(s => {
     const statusIcon = s._status === 'present' ? '✅' : s._status === 'absent' ? '❌' : '⏳';
     const reasonHtml = (s._status === 'absent' && s.reason)
@@ -992,14 +1241,17 @@ function renderAttendance() {
 
     let contactHtml = '';
     if (s._status === 'absent') {
+      let tgBtn = '';
       if (s.username) {
         const tgUrl = s.username.startsWith('@')
           ? `https://t.me/${s.username.slice(1)}`
           : `https://t.me/${s.username}`;
-        contactHtml = `<a class="att-tg-btn" href="${tgUrl}" target="_blank">📞 TG</a>`;
+        tgBtn = `<a class="att-tg-btn" href="${tgUrl}" target="_blank">📞 TG</a>`;
       } else {
-        contactHtml = `<button class="att-tg-btn" onclick="contactViaBot(${s.user_id})" style="background:rgba(82,136,193,.3);color:var(--accent)">💬</button>`;
+        tgBtn = `<button class="att-tg-btn" onclick="contactViaBot(${s.user_id})" style="background:rgba(82,136,193,.3);color:var(--accent)">💬</button>`;
       }
+      const updateBtn = `<button class="att-update-btn" onclick="updateAttendance(${s.user_id},'${today}','yes')">✏️ Keldi</button>`;
+      contactHtml = tgBtn + updateBtn;
     }
 
     return `
@@ -1015,10 +1267,210 @@ function renderAttendance() {
   }).join('');
 }
 
+/* Update a student's attendance (e.g. late arrival) */
+async function updateAttendance(userId, dateStr, newStatus) {
+  tg?.HapticFeedback?.impactOccurred('medium');
+  try {
+    await api('/curator/update-attendance', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, date_str: dateStr, status: newStatus }),
+    });
+    tg?.HapticFeedback?.notificationOccurred('success');
+    toast('✅ Davomat yangilandi!');
+    await loadAttendance();  // Reload to reflect change
+  } catch (e) {
+    tg?.HapticFeedback?.notificationOccurred('error');
+    toast('❌ ' + e.message);
+  }
+}
+
 function contactViaBot(userId) {
   closeSheet();
   tg?.close();
   toast('Botda "Bot orqali aloqa" tugmasini bosing');
+}
+
+/* ══════════════════════════════════════════════════════════
+   YOQLAMA
+   ══════════════════════════════════════════════════════════ */
+let yoqView         = 'groups';   // 'groups' | 'students' | 'parents'
+let yoqGroup        = null;
+let yoqMarks        = [];         // [{user_id, full_name, present}]
+let yoqParentGroups = [];
+
+/* Show yoqlama sub-view */
+function showYoqView(view) {
+  ['groups', 'students', 'parents'].forEach(v => {
+    document.getElementById('yoq-view-' + v).classList.toggle('hidden', v !== view);
+  });
+  yoqView = view;
+}
+
+/* Render group list */
+function renderYoqGroups() {
+  document.getElementById('yoqTitle').textContent = '📋 Guruh tanlang';
+  document.getElementById('yoqBackBtn').hidden = true;
+  showYoqView('groups');
+
+  // Make sure students are loaded
+  if (!allStudents.length) {
+    document.getElementById('yoqGroupsList').innerHTML =
+      '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">O\'quvchilar yuklanmoqda...</div></div>';
+    loadStudents().then(renderYoqGroups);
+    return;
+  }
+
+  // Build group counts
+  const groups = {};
+  allStudents.forEach(s => {
+    groups[s.group_name] = (groups[s.group_name] || 0) + 1;
+  });
+
+  const container = document.getElementById('yoqGroupsList');
+  if (!Object.keys(groups).length) {
+    container.innerHTML =
+      '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Guruhlar topilmadi</div></div>';
+    return;
+  }
+
+  container.innerHTML = Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([g, cnt]) => `
+      <div class="yoq-group-card" onclick="selectYoqGroup('${esc(g)}')">
+        <div class="yoq-group-icon">📚</div>
+        <div class="yoq-group-info">
+          <div class="yoq-group-name">${esc(g)}</div>
+          <div class="yoq-group-cnt">${cnt} o'quvchi</div>
+        </div>
+        <div class="yoq-group-arrow" style="color:var(--sub);font-size:18px">›</div>
+      </div>
+    `).join('');
+}
+
+/* Select a class group → show student marking view */
+async function selectYoqGroup(groupName) {
+  yoqGroup = groupName;
+  tg?.HapticFeedback?.impactOccurred('light');
+
+  // Build marks: pre-fill from today's attendance if loaded
+  const students = allStudents.filter(s => s.group_name === groupName);
+  yoqMarks = students.map(s => {
+    let present = true;
+    if (attData) {
+      if (attData.present.some(a => a.user_id === s.user_id))      present = true;
+      else if (attData.absent.some(a => a.user_id === s.user_id))  present = false;
+    }
+    return { user_id: s.user_id, full_name: s.full_name, present };
+  });
+
+  renderYoqStudents();
+}
+
+/* Render student marking view */
+function renderYoqStudents() {
+  document.getElementById('yoqTitle').textContent = `📚 ${yoqGroup}`;
+  document.getElementById('yoqBackBtn').hidden = false;
+  showYoqView('students');
+  updateYoqSummary();
+
+  const container = document.getElementById('yoqStudentsList');
+  container.innerHTML = yoqMarks.map((s, i) => `
+    <div class="yoq-student-row" onclick="toggleYoqMark(${i})">
+      <div class="yoq-s-num">${i + 1}</div>
+      <div class="yoq-s-name">${esc(s.full_name)}</div>
+      <div class="yoq-toggle" id="yoqTog${i}">${s.present ? '✅' : '❌'}</div>
+    </div>
+  `).join('');
+}
+
+/* Toggle a student's mark */
+function toggleYoqMark(i) {
+  yoqMarks[i].present = !yoqMarks[i].present;
+  const el = document.getElementById('yoqTog' + i);
+  if (el) {
+    el.textContent = yoqMarks[i].present ? '✅' : '❌';
+    el.classList.add('pop');
+    setTimeout(() => el.classList.remove('pop'), 200);
+  }
+  tg?.HapticFeedback?.impactOccurred('light');
+  updateYoqSummary();
+}
+
+/* Update summary bar */
+function updateYoqSummary() {
+  const present = yoqMarks.filter(s => s.present).length;
+  const absent  = yoqMarks.length - present;
+  document.getElementById('yoqSummaryBar').innerHTML =
+    `<span class="s-present">✅ Keldi: ${present}</span>
+     <span class="s-absent">❌ Kelmadi: ${absent}</span>`;
+}
+
+/* Proceed to parent group selection */
+async function yoqProceedToParent() {
+  const btn = document.getElementById('yoqSendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Yuklanmoqda...';
+  try {
+    const data    = await api('/curator/parent-groups');
+    yoqParentGroups = data.groups || [];
+  } catch (e) {
+    toast('❌ ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '📩 Ota-ona guruhiga yuborish';
+    return;
+  }
+
+  document.getElementById('yoqTitle').textContent = '👨‍👩‍👧 Guruh tanlang';
+  document.getElementById('yoqBackBtn').hidden = false;
+  showYoqView('parents');
+  btn.disabled = false;
+  btn.textContent = '📩 Ota-ona guruhiga yuborish';
+
+  const container = document.getElementById('yoqParentsList');
+  if (!yoqParentGroups.length) {
+    container.innerHTML =
+      '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ota-ona guruhlari topilmadi</div></div>';
+    return;
+  }
+  container.innerHTML = yoqParentGroups.map(g => `
+    <div class="yoq-parent-card" onclick="sendYoqlama(${g.chat_id})">
+      <div class="yoq-parent-icon">👨‍👩‍👧</div>
+      <div class="yoq-parent-name">${esc(g.name)}</div>
+      <div style="color:var(--sub);font-size:18px">›</div>
+    </div>
+  `).join('');
+}
+
+/* Send attendance report to selected parent group */
+async function sendYoqlama(parentChatId) {
+  tg?.HapticFeedback?.impactOccurred('medium');
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    await api('/curator/send-yoqlama', {
+      method: 'POST',
+      body: JSON.stringify({
+        group_name:     yoqGroup,
+        marks:          yoqMarks.map(s => ({ full_name: s.full_name, present: s.present })),
+        parent_chat_id: parentChatId,
+        date_str:       today,
+      }),
+    });
+    tg?.HapticFeedback?.notificationOccurred('success');
+    toast('✅ Yoqlama yuborildi!');
+    // Reset → back to groups
+    yoqGroup = null;
+    yoqMarks = [];
+    setTimeout(() => renderYoqGroups(), 1600);
+  } catch (e) {
+    tg?.HapticFeedback?.notificationOccurred('error');
+    toast('❌ ' + e.message);
+  }
+}
+
+/* Back button handler */
+function yoqBack() {
+  if (yoqView === 'students') renderYoqGroups();
+  else if (yoqView === 'parents') renderYoqStudents();
 }
 
 /* ── Enter key login ─────────────────────────────────────── */

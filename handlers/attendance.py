@@ -49,16 +49,33 @@ async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot
     await cb.answer("✅ Javobingiz qabul qilindi!")
 
     time_str = datetime.now().strftime("%H:%M")
+    notify_text = (
+        f"✅ <b>{student.full_name}</b> — Boraman\n"
+        f"📚 Guruh: <b>{student.group_name}</b>\n"
+        f"📅 Kun: {date_str} | 🕐 {time_str}"
+    )
+
     for admin_id in ADMIN_IDS:
         try:
-            await bot.send_message(
-                admin_id,
-                f"✅ <b>{student.full_name}</b> — Boraman\n"
-                f"📚 Guruh: <b>{student.group_name}</b>\n"
-                f"📅 Kun: {date_str} | 🕐 {time_str}",
-            )
+            await bot.send_message(admin_id, notify_text)
         except Exception:
             pass
+
+    # Faol kuratorlarga ham bildiramiz
+    try:
+        from sqlalchemy import select
+        from database import CuratorSession
+        async with db.session_factory() as db_sess:
+            result = await db_sess.execute(select(CuratorSession))
+            curator_sessions = list(result.scalars().all())
+        for cs in curator_sessions:
+            if cs.telegram_id not in ADMIN_IDS:
+                try:
+                    await bot.send_message(cs.telegram_id, notify_text)
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"Kuratorgа bildirishnoma yuborishda xato: {e}")
 
     logger.info(f"Davomat: {student.full_name} — Boraman | {date_str}")
 
@@ -87,8 +104,8 @@ async def handle_attendance_no(
     await state.update_data(date_str=date_str)
 
     await cb.message.answer(
-        "❌ Tushundik.\n\n"
-        "Iltimos, <b>kela olmasligingiz sababini</b> yozing:\n"
+        "⚠️ <b>Diqqat!</b> Bu habar <b>ota-onangizga, ustozingizga va kuratorigizga</b> yuboriladi!\n\n"
+        "Iltimos, kela olmasligingiz <b>sababini</b> yozing:\n"
         "<i>(Masalan: Kasal, Safarda, Oilaviy sabab...)</i>",
         parse_mode="HTML",
     )

@@ -122,6 +122,7 @@ async def curator_enter_password(
 
     await state.clear()
     await db.set_curator_session(message.from_user.id, login)
+    await db.update_curator_last_active(message.from_user.id)
     cname = cred.get("full_name", login)
     await message.answer(
         f"✅ <b>Xush kelibsiz, Kurator {cname}!</b>\n\nPanel:",
@@ -139,6 +140,7 @@ async def cur_panel(cb: CallbackQuery, state: FSMContext, db: DatabaseService) -
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
         await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+    await db.update_curator_last_active(cb.from_user.id)
     await state.clear()
     cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
     try:

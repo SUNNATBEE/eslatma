@@ -322,6 +322,41 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
         logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
 
 
+# ─── 7 kun nofaol o'quvchilarni o'chirish ────────────────────────────────────
+
+async def check_inactive_students(bot: Bot, db: DatabaseService) -> None:
+    """
+    Har kuni 21:00 da ishga tushadi.
+    Ro'yxatdan o'tganiga 7 kundan oshgan va 7 kun davomida faol bo'lmagan
+    o'quvchilarni o'chirib, ularga ogohlantirish xabari yuboradi.
+    """
+    from datetime import timedelta
+    cutoff = datetime.now() - timedelta(days=7)
+    students = await db.get_inactive_students(days=7)
+
+    deleted = 0
+    for student in students:
+        # Ro'yxatdan o'tganiga 7 kundan kam bo'lsa — o'tkazib yuboramiz
+        if student.registered_at and student.registered_at > cutoff:
+            continue
+        try:
+            await bot.send_message(
+                student.user_id,
+                "⚠️ <b>Akkountingiz o'chirildi!</b>\n\n"
+                "Botda <b>7 kun</b> davomida faollik kuzatilmadi.\n\n"
+                "Akkountingizni qayta faollashtirish uchun:\n"
+                "/start → ro'yxatdan qayta o'ting.",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+        await db.delete_student(student.user_id)
+        deleted += 1
+
+    if deleted:
+        logger.info(f"check_inactive_students: {deleted} ta o'quvchi o'chirildi")
+
+
 # ─── Reschedule helper ───────────────────────────────────────────────────────
 
 def reschedule_reminder(hour: int, minute: int) -> None:
@@ -374,6 +409,17 @@ def setup_scheduler(bot: Bot, db: DatabaseService, timezone_str: str) -> AsyncIO
         name="Kurator davomat eslatmasi",
         replace_existing=True,
         misfire_grace_time=60,
+    )
+
+    # 7 kun nofaol o'quvchilarni o'chirish (har kuni 21:00)
+    scheduler.add_job(
+        func=check_inactive_students,
+        trigger=CronTrigger(hour=21, minute=0, timezone=timezone_str),
+        args=[bot, db],
+        id="inactive_students_cleanup",
+        name="Nofaol o'quvchilarni tozalash",
+        replace_existing=True,
+        misfire_grace_time=300,
     )
 
     _scheduler_ref = scheduler

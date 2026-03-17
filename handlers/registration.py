@@ -123,6 +123,17 @@ async def reg_enter_password(
         await state.set_state(RegFSM.waiting_group)
         return
 
+    # ── Bu mars_id boshqa Telegram akkountga bog'liqmi? ──────────────────────
+    existing = await db.get_student_by_mars_id(mars_id)
+    if existing and existing.user_id != message.from_user.id:
+        await message.answer(
+            "⚠️ <b>Bu ID allaqachon ro'yxatdan o'tilgan!</b>\n\n"
+            "Ushbu Mars Space ID boshqa Telegram akkountga bog'liq.\n\n"
+            "Agar bu sizning ID ingiz bo'lsa, admin bilan bog'laning.",
+        )
+        await state.clear()
+        return
+
     # ── Ma'lumotlarni saqlab, telefon so'raymiz ─────────────────────────────
     await state.update_data(
         full_name=cred["name"],

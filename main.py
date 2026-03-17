@@ -43,7 +43,7 @@ from handlers import (
     school_router,
     student_router,
 )
-from middleware import CallbackAnswerMiddleware, DatabaseMiddleware, TypingMiddleware
+from middleware import ButtonTrackingMiddleware, CallbackAnswerMiddleware, DatabaseMiddleware, TypingMiddleware
 from scheduler import setup_scheduler
 
 
@@ -722,6 +722,54 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
+    async def api_admin_curator_stats(request: web.Request) -> web.Response:
+        """Admin: kuratorlar ro'yxati va aktivlik statistikasi."""
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        from curator_credentials import CURATORS
+        sessions = await db.get_all_curator_sessions()
+        sess_map = {cs.telegram_id: cs for cs in sessions}
+        result = []
+        for key, info in CURATORS.items():
+            # Faol sessionlarda bu kuratorning telegram_id sini qidirmaymiz (key orqali)
+            matched = [cs for cs in sessions if cs.curator_key == key]
+            if matched:
+                cs = matched[0]
+                result.append({
+                    "key":         key,
+                    "full_name":   info.get("full_name", key),
+                    "logged_in":   True,
+                    "telegram_id": cs.telegram_id,
+                    "logged_in_at": cs.logged_in_at.isoformat() if cs.logged_in_at else None,
+                    "last_active": cs.last_active.isoformat() if cs.last_active else None,
+                })
+            else:
+                result.append({
+                    "key":         key,
+                    "full_name":   info.get("full_name", key),
+                    "logged_in":   False,
+                    "telegram_id": None,
+                    "logged_in_at": None,
+                    "last_active":  None,
+                })
+        return web.json_response(result)
+
+    async def api_admin_button_stats(request: web.Request) -> web.Response:
+        """Admin: eng ko'p bosilgan tugmalar statistikasi."""
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        stats = await db.get_button_stats(limit=30)
+        return web.json_response([
+            {
+                "button_name": s.button_name,
+                "count":       s.count,
+                "last_used":   s.last_used.isoformat() if s.last_used else None,
+            }
+            for s in stats
+        ])
+
     # ── Curator Attendance API ────────────────────────────────────────────────
 
     async def api_curator_attendance(request: web.Request) -> web.Response:
@@ -943,6 +991,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/admin/reminder-time",    api_admin_reminder_set)
     app.router.add_get("/api/admin/inactive",          api_admin_inactive)
     app.router.add_post("/api/admin/test-send",        api_admin_test_send)
+    app.router.add_get("/api/admin/curator-stats",     api_admin_curator_stats)
+    app.router.add_get("/api/admin/button-stats",      api_admin_button_stats)
     app.router.add_get("/api/curator/me",         api_curator_me)
     app.router.add_post("/api/curator/login",     api_curator_login)
     app.router.add_post("/api/curator/logout",    api_curator_logout)
@@ -1006,8 +1056,9 @@ async def main() -> None:
 
     # 3. Middleware'larni ulash
     dp.update.middleware(DatabaseMiddleware(db))
-    dp.callback_query.middleware(CallbackAnswerMiddleware())  # Tugma → darhol javob
-    dp.message.middleware(TypingMiddleware())                 # Xabar → "yozmoqda..."
+    dp.callback_query.middleware(CallbackAnswerMiddleware())      # Tugma → darhol javob
+    dp.callback_query.middleware(ButtonTrackingMiddleware(db))    # Tugma statistikasi
+    dp.message.middleware(TypingMiddleware())                     # Xabar → "yozmoqda..."
 
     # 4. Handler router'larini ulash
     dp.include_router(commands_router)      # /start, /panel, ...

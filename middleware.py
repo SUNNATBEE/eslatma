@@ -78,6 +78,32 @@ class CallbackAnswerMiddleware(BaseMiddleware):
                 raise
 
 
+class ButtonTrackingMiddleware(BaseMiddleware):
+    """
+    Har bir callback_query bosilganda tugma nomini DB ga saqlaydi.
+    callback_data dan birinchi 2 qismni prefix sifatida ishlatadi:
+      "att:yes:2026-03-17" → "att:yes"
+      "student:hw"         → "student:hw"
+    """
+
+    def __init__(self, db: DatabaseService) -> None:
+        self.db = db
+        super().__init__()
+
+    async def __call__(
+        self,
+        handler: Callable[[CallbackQuery, dict[str, Any]], Awaitable[Any]],
+        event: CallbackQuery,
+        data: dict[str, Any],
+    ) -> Any:
+        if event.data:
+            parts  = event.data.split(":")
+            prefix = ":".join(parts[:2]) if len(parts) > 1 else event.data
+            import asyncio
+            asyncio.create_task(self.db.track_button(prefix))
+        return await handler(event, data)
+
+
 class TypingMiddleware(BaseMiddleware):
     """
     Xabar kelganda 'yozmoqda...' animatsiyasini ko'rsatadi.

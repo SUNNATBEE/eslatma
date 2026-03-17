@@ -199,9 +199,10 @@ class CuratorSession(Base):
     """Kurator Telegram ID si ↔ kurator_key ('diyora'/'zuhra') bog'liq."""
     __tablename__ = "curator_sessions"
 
-    telegram_id:  Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    curator_key:  Mapped[str] = mapped_column(String(50),  nullable=False)
-    logged_in_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    telegram_id:  Mapped[int]           = mapped_column(BigInteger, primary_key=True)
+    curator_key:  Mapped[str]           = mapped_column(String(50),  nullable=False)
+    logged_in_at: Mapped[datetime]      = mapped_column(DateTime, nullable=False)
+    last_active:  Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 # ─── Model: Faol kurator-o'quvchi chat ────────────────────────────────────────
@@ -215,6 +216,17 @@ class ActiveCuratorChat(Base):
     student_user_id:     Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     curator_key:         Mapped[str] = mapped_column(String(50),  nullable=False)
     started_at:          Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+# ─── Model: Tugma statistikasi ────────────────────────────────────────────────
+
+class ButtonStat(Base):
+    """Qaysi callback tugmalar ko'proq ishlatilganini hisoblaydi."""
+    __tablename__ = "button_stats"
+
+    button_name: Mapped[str]           = mapped_column(String(100), primary_key=True)
+    count:       Mapped[int]           = mapped_column(Integer, default=0, nullable=False)
+    last_used:   Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 # ─── Model: Qo'shimcha o'quvchi credentials ───────────────────────────────────
@@ -261,7 +273,16 @@ class DatabaseService:
                 )
                 logger.info("Migration: attendance.reason ustuni qo'shildi.")
             except Exception:
-                pass  # Ustun allaqon mavjud — xato e'tiborsiz qoldiriladi
+                pass
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "ALTER TABLE curator_sessions ADD COLUMN last_active DATETIME"
+                    )
+                )
+                logger.info("Migration: curator_sessions.last_active ustuni qo'shildi.")
+            except Exception:
+                pass
         logger.info("Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi.")
 
     # ── CREATE / UPDATE ────────────────────────────────────────────────────────
@@ -454,6 +475,14 @@ class DatabaseService:
                 select(Student).order_by(Student.group_name, Student.full_name)
             )
             return list(result.scalars().all())
+
+    async def get_student_by_mars_id(self, mars_id: str) -> Optional["Student"]:
+        """Mars ID bo'yicha o'quvchini qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student).where(Student.mars_id == mars_id)
+            )
+            return result.scalar_one_or_none()
 
     # ── HOMEWORK ───────────────────────────────────────────────────────────────
 
@@ -822,3 +851,50 @@ class DatabaseService:
             )
             await session.commit()
             return result.rowcount > 0
+
+    # ── BUTTON STATS ───────────────────────────────────────────────────────────
+
+    async def track_button(self, button_name: str) -> None:
+        """Tugma bosilganda hisoblagichni oshiradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(ButtonStat).where(ButtonStat.button_name == button_name)
+            )
+            stat = result.scalar_one_or_none()
+            if stat:
+                stat.count    += 1
+                stat.last_used = datetime.now()
+            else:
+                session.add(ButtonStat(button_name=button_name, count=1, last_used=datetime.now()))
+            await session.commit()
+
+    async def get_button_stats(self, limit: int = 30) -> list["ButtonStat"]:
+        """Eng ko'p ishlatilgan tugmalar ro'yxatini qaytaradi."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(ButtonStat).order_by(desc(ButtonStat.count)).limit(limit)
+            )
+            return list(result.scalars().all())
+
+    # ── CURATOR LAST ACTIVE ────────────────────────────────────────────────────
+
+    async def update_curator_last_active(self, telegram_id: int) -> None:
+        """Kurator oxirgi faolligi vaqtini yangilaydi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(CuratorSession).where(CuratorSession.telegram_id == telegram_id)
+            )
+            cs = result.scalar_one_or_none()
+            if cs:
+                cs.last_active = datetime.now()
+                await session.commit()
+
+    async def get_all_curator_sessions(self) -> list["CuratorSession"]:
+        """Barcha faol kurator sessiyalarini qaytaradi."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(CuratorSession).order_by(desc(CuratorSession.last_active))
+            )
+            return list(result.scalars().all())

@@ -629,6 +629,25 @@
         <button class="primary-btn" id="testSendBtn" onclick="doTestSend()">🚀 Test yuborish</button>
       </div>
 
+      <!-- Tugma statistikasi -->
+      <div class="action-section">
+        <div class="action-section-title">📊 Tugma statistikasi</div>
+        <p style="font-size:12px;color:var(--sub);margin-bottom:10px">
+          O'quvchilar va kuratorlar eng ko'p qaysi tugmalardan foydalanmoqda
+        </p>
+        <button class="primary-btn" id="btnStatsBtn" onclick="loadButtonStats()">📊 Ko'rish</button>
+        <div id="btnStatsList" style="margin-top:12px"></div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════ TAB 6: KURATORLAR ═══════════════ -->
+    <div class="page" id="page-curators">
+      <div class="section-header" style="padding:16px 16px 8px">
+        <div class="section-title">👨‍💼 Kuratorlar</div>
+        <button class="icon-btn" onclick="loadCurators(true)">🔄</button>
+      </div>
+      <div id="curatorsList"><div class="spinner" style="margin:32px auto"></div></div>
     </div>
 
   </div><!-- /content -->
@@ -654,6 +673,10 @@
     <div class="tab-item" id="tab-actions" onclick="goTab('actions')">
       <div class="tab-icon">⚙️</div>
       <div class="tab-label">Amallar</div>
+    </div>
+    <div class="tab-item" id="tab-curators" onclick="goTab('curators')">
+      <div class="tab-icon">👨‍💼</div>
+      <div class="tab-label">Kuratorlar</div>
     </div>
   </div>
 
@@ -733,7 +756,7 @@ let groupsData     = [];
 let dayTypeFilter  = 'all';
 let actionsLoaded  = false;
 
-const TABS = ['dashboard', 'students', 'attendance', 'groups', 'actions'];
+const TABS = ['dashboard', 'students', 'attendance', 'groups', 'actions', 'curators'];
 
 /* ═══════════════════════════════════════════════════
    Utilities
@@ -780,6 +803,7 @@ function goTab(name) {
   if (name === 'attendance' && !attData)            loadAttendance();
   if (name === 'groups'     && !groupsData.length)  loadGroups();
   if (name === 'actions'    && !actionsLoaded)     { actionsLoaded = true; loadActions(); }
+  if (name === 'curators')                           loadCurators();
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1321,6 +1345,102 @@ function closeSheet(e) {
   if (!e || e.target === document.getElementById('sheetOverlay')) {
     document.getElementById('sheetOverlay').classList.remove('show');
     selectedStudent = null;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   Kuratorlar
+═══════════════════════════════════════════════════ */
+async function loadCurators(force = false) {
+  const container = document.getElementById('curatorsList');
+  container.innerHTML = '<div class="spinner" style="margin:32px auto"></div>';
+  try {
+    const data = await api('/admin/curator-stats');
+    if (!data.length) {
+      container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--sub)">Kuratorlar mavjud emas</div>';
+      return;
+    }
+    const now = Date.now();
+    container.innerHTML = data.map(c => {
+      const loggedIn  = c.logged_in ? '🟢 Faol' : '🔴 Chiqib ketgan';
+      const lastA = c.last_active  ? fmtAgo(c.last_active)  : '—';
+      const loginT= c.logged_in_at ? fmtAgo(c.logged_in_at) : '—';
+      return `
+        <div class="group-card" style="cursor:default">
+          <div class="group-card-top">
+            <div class="group-name">${esc(c.full_name)}</div>
+            <span style="font-size:12px;font-weight:600;color:${c.logged_in ? 'var(--success)' : 'var(--sub)'}">${loggedIn}</span>
+          </div>
+          <div class="group-meta">
+            <span>🔑 ${esc(c.key)}</span>
+            ${c.telegram_id ? `<span>🆔 ${c.telegram_id}</span>` : ''}
+          </div>
+          <div class="group-meta" style="margin-top:4px">
+            <span>🕐 Kirdi: ${loginT}</span>
+            <span>📍 Faollik: ${lastA}</span>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = `<div style="text-align:center;padding:32px;color:var(--danger)">${esc(e.message)}</div>`;
+  }
+}
+
+function fmtAgo(isoStr) {
+  if (!isoStr) return '—';
+  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (diff < 60) return diff + ' soniya oldin';
+  if (diff < 3600) return Math.floor(diff/60) + ' daqiqa oldin';
+  if (diff < 86400) return Math.floor(diff/3600) + ' soat oldin';
+  return Math.floor(diff/86400) + ' kun oldin';
+}
+
+/* ═══════════════════════════════════════════════════
+   Button Stats
+═══════════════════════════════════════════════════ */
+async function loadButtonStats() {
+  const btn = document.getElementById('btnStatsBtn');
+  const container = document.getElementById('btnStatsList');
+  btn.disabled = true; btn.textContent = '⏳ Yuklanmoqda...';
+  try {
+    const data = await api('/admin/button-stats');
+    if (!data.length) {
+      container.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:12px">Hali ma\'lumot yo\'q</div>';
+      return;
+    }
+    const maxCount = data[0].count || 1;
+    // Button name labels
+    const labels = {
+      'att:yes': '✅ Boraman',
+      'att:no': '❌ Kela olmayman',
+      'student:hw': '📚 Uy vazifa',
+      'student:schedule': '📅 Jadval',
+      'student:att': '✔️ Davomat',
+      'reg:group': '📝 Guruh tanlash',
+      'cur:panel': '👨‍💼 Kurator panel',
+      'cur:davomat': '📋 Davomat yoqlama',
+      'cur:relay': '💬 O\'quvchi bilan chat',
+    };
+    container.innerHTML = data.map(s => {
+      const pct  = Math.round((s.count / maxCount) * 100);
+      const name = labels[s.button_name] || s.button_name;
+      return `
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:600">${esc(name)}</span>
+            <span style="font-size:12px;color:var(--accent);font-weight:700">${s.count}</span>
+          </div>
+          <div style="height:6px;border-radius:3px;background:var(--bg2)">
+            <div style="height:6px;border-radius:3px;background:var(--accent);width:${pct}%;transition:width .4s"></div>
+          </div>
+          <div style="font-size:10px;color:var(--sub);margin-top:2px">${s.last_used ? fmtAgo(s.last_used) : '—'}</div>
+        </div>`;
+    }).join('');
+    toast('📊 Statistika yangilandi');
+  } catch (e) {
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px">${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '📊 Ko\'rish';
   }
 }
 

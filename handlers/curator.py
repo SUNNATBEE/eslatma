@@ -605,17 +605,27 @@ async def start_davomat_marking(
     group_name = parts[2]
     date_str   = parts[3]
 
-    students = await db.get_students_by_group(group_name)
-    if not students:
+    # MARS_CREDENTIALS dan barcha o'quvchilarni olamiz (ro'yxatdan o'tmaganlar ham)
+    from credentials import MARS_CREDENTIALS
+    cred_list = [
+        (mid, c) for mid, c in MARS_CREDENTIALS.items() if c["group"] == group_name
+    ]
+    if not cred_list:
         await cb.answer(f"❌ {group_name} guruhida o'quvchilar topilmadi!", show_alert=True)
         return
 
+    # Ro'yxatdan o'tgan o'quvchilarni mars_id bo'yicha topamiz
+    registered = await db.get_students_by_group(group_name)
+    reg_map = {s.mars_id: s for s in registered if s.mars_id}
+
     # Bugungi davomatni pre-fill: "yes"→✅, "no"→❌, javob yo'q→✅
     students_data = []
-    for s in students:
-        rec     = await db.get_student_attendance(s.user_id, date_str)
+    for mars_id, cred in sorted(cred_list, key=lambda x: x[1]["name"]):
+        reg     = reg_map.get(mars_id)
+        user_id = reg.user_id if reg else None
+        rec     = await db.get_student_attendance(user_id, date_str) if user_id else None
         present = (rec.status == "yes") if rec else True
-        students_data.append({"user_id": s.user_id, "full_name": s.full_name, "present": present})
+        students_data.append({"user_id": user_id, "full_name": cred["name"], "present": present})
 
     await state.set_state(DavomatFSM.marking)
     await state.update_data(group_name=group_name, date_str=date_str, students=students_data)

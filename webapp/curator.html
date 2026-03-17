@@ -973,7 +973,7 @@ function setupMain(info) {
 async function loadStudents() {
   document.getElementById('studentsList').innerHTML = '<div class="spinner"></div>';
   try {
-    const data = await api('/curator/students');
+    const data = await api('/curator/all-students');
     allStudents = data.students || [];
     buildGroupTabs();
     renderStudents();
@@ -1020,10 +1020,11 @@ function renderStudents() {
     : allStudents.filter(s => s.group_name === activeGroup);
   if (q) list = list.filter(s => s.full_name.toLowerCase().includes(q));
 
-  const tgCount = list.filter(s => s.username).length;
+  const tgCount  = list.filter(s => s.username).length;
+  const regCount = list.filter(s => s.registered).length;
   document.getElementById('statTotal').textContent = allStudents.length;
   document.getElementById('statShown').textContent = list.length;
-  document.getElementById('statTg').textContent    = tgCount;
+  document.getElementById('statTg').textContent    = regCount + ' / ' + list.length;
 
   const container = document.getElementById('studentsList');
   if (!list.length) {
@@ -1031,24 +1032,27 @@ function renderStudents() {
     return;
   }
 
-  container.innerHTML = list.map(s => `
-    <div class="student-card ${s.username ? 'has-tg' : 'no-tg'}"
-         onclick="openSheet(${s.user_id})">
-      <div class="student-avatar">${s.full_name.charAt(0).toUpperCase()}</div>
+  container.innerHTML = list.map((s, idx) => {
+    const regBadge = s.registered
+      ? '<span style="color:var(--success);font-size:11px">✓ Bot</span>'
+      : '<span style="color:var(--sub);font-size:11px">Bot\'ga kirmagan</span>';
+    const cardClass = s.registered ? 'has-tg' : 'no-tg';
+    return `
+    <div class="student-card ${cardClass}"
+         onclick="openSheet('${esc(s.mars_id)}')">
+      <div class="student-avatar" style="${s.registered ? '' : 'opacity:.5'}">${s.full_name.charAt(0).toUpperCase()}</div>
       <div class="student-info">
         <div class="student-name">${esc(s.full_name)}</div>
-        <div class="student-meta">
-          📚 ${esc(s.group_name)}
-          ${s.username ? ' · <span style="color:var(--success)">✓ Telegram</span>' : ''}
-        </div>
+        <div class="student-meta">📚 ${esc(s.group_name)} · ${regBadge}</div>
       </div>
       <div class="student-arrow">›</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ── Sheet ───────────────────────────────────────────────── */
-function openSheet(userId) {
-  selectedSt = allStudents.find(s => s.user_id === userId);
+function openSheet(marsId) {
+  selectedSt = allStudents.find(s => s.mars_id === marsId);
   if (!selectedSt) return;
   const s = selectedSt;
 
@@ -1059,13 +1063,20 @@ function openSheet(userId) {
   document.getElementById('sheetGroup').textContent  = s.group_name;
   document.getElementById('siGroup').textContent     = s.group_name;
   document.getElementById('siTg').textContent        = s.username || '—';
-  document.getElementById('siActive').textContent    = s.last_active || 'Noma\'lum';
+  document.getElementById('siActive').textContent    = s.registered
+    ? (s.last_active || 'Hali kirmagan')
+    : '❌ Bot\'ga ro\'yxatdan o\'tmagan';
 
   // Action buttons
   const acts = document.getElementById('sheetActions');
   acts.innerHTML = '';
 
-  if (s.username) {
+  if (!s.registered) {
+    acts.innerHTML += `
+      <div style="text-align:center;padding:8px 0;color:var(--sub);font-size:13px">
+        ⚠️ Bu o'quvchi botga ro'yxatdan o'tmagan
+      </div>`;
+  } else if (s.username) {
     const tgUrl = s.username.startsWith('@')
       ? `https://t.me/${s.username.slice(1)}`
       : `https://t.me/${s.username}`;
@@ -1352,15 +1363,14 @@ async function selectYoqGroup(groupName) {
   yoqGroup = groupName;
   tg?.HapticFeedback?.impactOccurred('light');
 
-  // Build marks: pre-fill from today's attendance if loaded
+  // allStudents now has all credentials.py students (registered + not)
   const students = allStudents.filter(s => s.group_name === groupName);
   yoqMarks = students.map(s => {
     let present = true;
-    if (attData) {
-      if (attData.present.some(a => a.user_id === s.user_id))      present = true;
-      else if (attData.absent.some(a => a.user_id === s.user_id))  present = false;
+    if (attData && s.user_id) {
+      if (attData.absent.some(a => a.user_id === s.user_id))  present = false;
     }
-    return { user_id: s.user_id, full_name: s.full_name, present };
+    return { user_id: s.user_id || null, full_name: s.full_name, present };
   });
 
   renderYoqStudents();

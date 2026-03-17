@@ -507,6 +507,13 @@
                oninput="renderStudents()" />
       </div>
 
+      <!-- Ro'yxatdan o'tish filtri -->
+      <div class="att-sub-tabs" id="regFilterTabs" style="margin-bottom:10px">
+        <div class="att-sub-tab active" id="rftab-all"          onclick="setRegFilter('all',this)">Hammasi</div>
+        <div class="att-sub-tab"        id="rftab-registered"   onclick="setRegFilter('registered',this)">✅ Ro'yxatda</div>
+        <div class="att-sub-tab"        id="rftab-unregistered" onclick="setRegFilter('unregistered',this)">❌ Kirmagan</div>
+      </div>
+
       <div class="group-tabs" id="groupTabs"></div>
       <div class="students-meta" id="studentsMeta"></div>
       <div id="studentsList"><div class="spinner"></div></div>
@@ -716,6 +723,7 @@ async function api(path, opts = {}) {
 ═══════════════════════════════════════════════════ */
 let allStudents    = [];
 let activeGroup    = 'all';
+let regFilter      = 'all';   // 'all' | 'registered' | 'unregistered'
 let currentTab     = 'dashboard';
 let attData        = null;
 let attSubTab      = 'all';
@@ -877,7 +885,7 @@ async function loadStudents(silent = false) {
     document.getElementById('studentsMeta').innerHTML = '';
   }
   try {
-    const data  = await api('/admin/students');
+    const data  = await api('/admin/all-students');
     allStudents  = data.students || [];
     buildGroupTabs();
     renderStudents();
@@ -915,19 +923,32 @@ function setGroup(g, el) {
   renderStudents();
 }
 
+function setRegFilter(val, el) {
+  regFilter = val;
+  document.querySelectorAll('#regFilterTabs .att-sub-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderStudents();
+}
+
 function renderStudents() {
   const q    = (document.getElementById('searchInput').value || '').toLowerCase().trim();
   let   list = activeGroup === 'all' ? allStudents : allStudents.filter(s => s.group_name === activeGroup);
+
+  // Ro'yxat filtri
+  if (regFilter === 'registered')   list = list.filter(s => s.registered);
+  if (regFilter === 'unregistered') list = list.filter(s => !s.registered);
+
   if (q) list = list.filter(s => s.full_name.toLowerCase().includes(q));
 
+  const regCnt     = list.filter(s => s.registered).length;
+  const unregCnt   = list.filter(s => !s.registered).length;
   const presentCnt = list.filter(s => s.att_today === 'yes').length;
   const absentCnt  = list.filter(s => s.att_today === 'no').length;
-  const pendCnt    = list.filter(s => s.att_today == null).length;
+
   document.getElementById('studentsMeta').innerHTML = `
     <div class="students-meta-chip">Jami: <b>${list.length}</b></div>
-    <div class="students-meta-chip">✅ <b>${presentCnt}</b></div>
-    <div class="students-meta-chip">❌ <b>${absentCnt}</b></div>
-    <div class="students-meta-chip">⏳ <b>${pendCnt}</b></div>`;
+    <div class="students-meta-chip">✅ Bot: <b>${regCnt}</b></div>
+    <div class="students-meta-chip">❌ Kirmagan: <b>${unregCnt}</b></div>`;
 
   const container = document.getElementById('studentsList');
   if (!list.length) {
@@ -935,17 +956,21 @@ function renderStudents() {
     return;
   }
   container.innerHTML = list.map(s => {
-    const attClass = s.att_today === 'yes' ? 'att-yes' : s.att_today === 'no' ? 'att-no' : 'att-null';
-    const attIcon  = s.att_today === 'yes' ? '✅' : s.att_today === 'no' ? '❌' : '⏳';
-    const uname    = s.username
-      ? `<span style="color:var(--link)">@${esc(s.username)}</span>`
-      : '<span style="color:var(--sub)">—</span>';
+    const attClass = s.registered
+      ? (s.att_today === 'yes' ? 'att-yes' : s.att_today === 'no' ? 'att-no' : 'att-null')
+      : 'att-null';
+    const attIcon  = s.registered
+      ? (s.att_today === 'yes' ? '✅' : s.att_today === 'no' ? '❌' : '⏳')
+      : '👤';
+    const subInfo = s.registered
+      ? (s.username ? `<span style="color:var(--link)">@${esc(s.username)}</span>` : '<span style="color:var(--sub)">Bot\'da</span>')
+      : '<span style="color:var(--danger);font-size:11px">Ro\'yxatda yo\'q</span>';
     return `
-      <div class="student-card ${attClass}" onclick="openStudentSheet(${s.user_id})">
-        <div class="student-avatar">${esc(s.full_name.charAt(0).toUpperCase())}</div>
+      <div class="student-card ${attClass}" onclick="openStudentSheet('${esc(s.mars_id)}')">
+        <div class="student-avatar" style="${s.registered ? '' : 'opacity:.5;background:rgba(255,255,255,.12)'}">${esc(s.full_name.charAt(0).toUpperCase())}</div>
         <div class="student-info">
           <div class="student-name">${esc(s.full_name)}</div>
-          <div class="student-meta">📚 ${esc(s.group_name)} · ${uname}</div>
+          <div class="student-meta">📚 ${esc(s.group_name)} · ${subInfo}</div>
         </div>
         <div class="att-badge">${attIcon}</div>
       </div>`;
@@ -1126,7 +1151,7 @@ async function loadActions() {
   // Add per-group options to broadcast target
   try {
     if (!allStudents.length) {
-      const data = await api('/admin/students');
+      const data = await api('/admin/all-students');
       allStudents = data.students || [];
     }
     const groups = [...new Set(allStudents.map(s => s.group_name))].sort();
@@ -1246,8 +1271,8 @@ async function doTestSend() {
 /* ═══════════════════════════════════════════════════
    Student bottom sheet
 ═══════════════════════════════════════════════════ */
-function openStudentSheet(userId) {
-  const s = allStudents.find(st => st.user_id === userId);
+function openStudentSheet(marsId) {
+  const s = allStudents.find(st => st.mars_id === marsId);
   if (!s) return;
   selectedStudent = s;
   tg?.HapticFeedback?.impactOccurred('light');
@@ -1257,7 +1282,9 @@ function openStudentSheet(userId) {
   document.getElementById('shGroup').textContent  = s.group_name;
 
   const attBadgeEl = document.getElementById('shAttBadge');
-  if (s.att_today === 'yes') {
+  if (!s.registered) {
+    attBadgeEl.innerHTML = '<span class="sheet-att-badge sab-null">❌ Ro\'yxatda yo\'q</span>';
+  } else if (s.att_today === 'yes') {
     attBadgeEl.innerHTML = '<span class="sheet-att-badge sab-yes">✅ Keldi</span>';
   } else if (s.att_today === 'no') {
     attBadgeEl.innerHTML = '<span class="sheet-att-badge sab-no">❌ Kelmadi</span>';
@@ -1269,15 +1296,21 @@ function openStudentSheet(userId) {
   document.getElementById('srMarsId').textContent     = s.mars_id    || '—';
   document.getElementById('srPhone').textContent      = s.phone      || '—';
   document.getElementById('srUsername').textContent   = s.username   ? '@' + s.username : '—';
-  document.getElementById('srLastActive').textContent = s.last_active || 'Noma\'lum';
-  document.getElementById('srAttToday').textContent   =
-    s.att_today === 'yes' ? '✅ Keldi' : s.att_today === 'no' ? '❌ Kelmadi' : '⏳ Javob bermagan';
+  document.getElementById('srLastActive').textContent = s.registered
+    ? (s.last_active || 'Hali kirmagan')
+    : 'Bot\'ga ro\'yxatdan o\'tmagan';
+  document.getElementById('srAttToday').textContent   = !s.registered
+    ? '— (ro\'yxatda yo\'q)'
+    : s.att_today === 'yes' ? '✅ Keldi' : s.att_today === 'no' ? '❌ Kelmadi' : '⏳ Javob bermagan';
 
   const acts = document.getElementById('shActions');
   acts.innerHTML = '';
-  if (s.username) {
+  if (s.registered && s.username) {
     const uname = s.username.startsWith('@') ? s.username.slice(1) : s.username;
     acts.innerHTML += `<a class="action-btn btn-tg" href="https://t.me/${uname}" target="_blank">✈️ Telegramda yozish</a>`;
+  }
+  if (!s.registered) {
+    acts.innerHTML += `<div style="text-align:center;padding:6px 0;color:var(--sub);font-size:13px">⚠️ Bu o'quvchi botga hali kirmagan</div>`;
   }
   acts.innerHTML += `<button class="action-btn btn-close" onclick="closeSheet()">Yopish</button>`;
 

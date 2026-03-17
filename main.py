@@ -351,6 +351,35 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             ]
         })
 
+    async def api_curator_all_students(request: web.Request) -> web.Response:
+        """MARS_CREDENTIALS dagi barcha o'quvchilar (ro'yxatdan o'tgan + o'tmagan)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+
+        from credentials import MARS_CREDENTIALS
+        registered = await db.get_all_students()
+        reg_map    = {s.mars_id: s for s in registered if s.mars_id}
+
+        result = []
+        for mars_id, cred in MARS_CREDENTIALS.items():
+            reg = reg_map.get(mars_id)
+            result.append({
+                "mars_id":    mars_id,
+                "full_name":  cred["name"],
+                "group_name": cred["group"],
+                "registered": reg is not None,
+                "user_id":    reg.user_id if reg else None,
+                "username":   reg.telegram_username if reg else None,
+                "last_active": reg.last_active.strftime("%d.%m.%Y %H:%M") if reg and reg.last_active else None,
+            })
+
+        result.sort(key=lambda x: (x["group_name"], x["full_name"]))
+        return web.json_response({"students": result})
+
     # ── Admin API ─────────────────────────────────────────────────────────────
 
     def _admin_auth(request: web.Request) -> int | None:
@@ -442,6 +471,39 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         return web.json_response({
             "date": today, "present": present, "absent": absent, "pending": pending,
         })
+
+    async def api_admin_all_students(request: web.Request) -> web.Response:
+        """MARS_CREDENTIALS dagi barcha o'quvchilar (ro'yxatdan o'tgan + o'tmagan) — admin uchun."""
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        from credentials import MARS_CREDENTIALS
+
+        today      = datetime.now(tz).strftime("%Y-%m-%d")
+        registered = await db.get_all_students()
+        att_recs   = await db.get_attendance_by_date(today)
+
+        reg_map = {s.mars_id: s for s in registered if s.mars_id}
+        att_map = {r.user_id: r.status for r in att_recs}
+
+        result = []
+        for mars_id, cred in MARS_CREDENTIALS.items():
+            reg = reg_map.get(mars_id)
+            result.append({
+                "mars_id":    mars_id,
+                "full_name":  cred["name"],
+                "group_name": cred["group"],
+                "registered": reg is not None,
+                "user_id":    reg.user_id if reg else None,
+                "username":   reg.telegram_username if reg else None,
+                "phone":      reg.phone_number if reg else None,
+                "last_active": reg.last_active.strftime("%d.%m.%Y %H:%M") if reg and reg.last_active else None,
+                "att_today":  att_map.get(reg.user_id) if reg else None,
+            })
+
+        result.sort(key=lambda x: (x["group_name"], x["full_name"]))
+        return web.json_response({"students": result})
 
     async def api_admin_groups(request: web.Request) -> web.Response:
         user_id = _admin_auth(request)
@@ -869,7 +931,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/attendance",       api_attendance_today)
     app.router.add_get("/api/admin/me",           api_admin_me)
     app.router.add_get("/api/admin/stats",        api_admin_stats)
-    app.router.add_get("/api/admin/students",     api_admin_students)
+    app.router.add_get("/api/admin/students",         api_admin_students)
+    app.router.add_get("/api/admin/all-students",    api_admin_all_students)
     app.router.add_get("/api/admin/attendance",   api_admin_attendance)
     app.router.add_get("/api/admin/groups",            api_admin_groups)
     app.router.add_get("/api/admin/groups-detail",     api_admin_groups_detail)
@@ -883,7 +946,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/curator/me",         api_curator_me)
     app.router.add_post("/api/curator/login",     api_curator_login)
     app.router.add_post("/api/curator/logout",    api_curator_logout)
-    app.router.add_get("/api/curator/students",   api_curator_students)
+    app.router.add_get("/api/curator/students",       api_curator_students)
+    app.router.add_get("/api/curator/all-students",  api_curator_all_students)
     app.router.add_get("/api/curator/attendance",     api_curator_attendance)
     app.router.add_get("/api/curator/parent-groups",         api_curator_parent_groups)
     app.router.add_post("/api/curator/send-yoqlama",         api_curator_send_yoqlama)

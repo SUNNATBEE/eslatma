@@ -567,6 +567,90 @@
     .lb-tab.active { background: var(--accent); color: #fff; }
     .lb-pane { display: none; }
     .lb-pane.active { display: block; }
+
+    /* ── Level-up overlay ── */
+    .levelup-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9010;
+      background: rgba(0,0,0,.85); align-items: center; justify-content: center;
+    }
+    .levelup-overlay.show { display: flex; animation: luFade .3s; }
+    @keyframes luFade { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+    .levelup-card {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 60%, #b45309 100%);
+      border-radius: 24px; padding: 28px 22px 22px; text-align: center;
+      max-width: 290px; width: 88%; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .levelup-bignum { font-size: 72px; font-weight: 900; color: rgba(255,255,255,.2); line-height: 1; }
+    .levelup-icon  { font-size: 50px; margin: -16px 0 6px; }
+    .levelup-title { font-size: 21px; font-weight: 900; color: #fff; }
+    .levelup-name  { font-size: 13px; color: rgba(255,255,255,.85); margin: 3px 0 12px; }
+    .levelup-bonus { background: rgba(255,255,255,.3); border-radius: 8px; padding: 6px 14px; font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 10px; display: inline-block; }
+    .levelup-perk  { background: rgba(255,255,255,.18); border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #fff; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+    .levelup-close { width: 100%; padding: 13px; background: rgba(255,255,255,.25); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; margin-top: 10px; }
+
+    /* ── Level perks scroll ── */
+    .perks-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+    .perks-scroll::-webkit-scrollbar { display: none; }
+    .perk-card {
+      min-width: 112px; background: var(--bg2); border-radius: var(--radius-sm);
+      padding: 10px 9px; border: 2px solid rgba(255,255,255,.06); flex-shrink: 0;
+    }
+    .perk-card.current { border-color: var(--accent); background: rgba(82,136,193,.12); }
+    .perk-card.done    { border-color: rgba(76,175,125,.3); background: rgba(76,175,125,.05); }
+    .perk-card.locked  { opacity: .38; }
+    .perk-card-tag  { font-size: 8px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 5px; }
+    .perk-card.current .perk-card-tag { background: var(--accent); color: #fff; }
+    .perk-card.done    .perk-card-tag { background: var(--success); color: #fff; }
+    .perk-card.locked  .perk-card-tag { background: rgba(255,255,255,.1); color: var(--sub); }
+    .perk-card-icon { font-size: 22px; margin-bottom: 4px; }
+    .perk-card-name { font-size: 11px; font-weight: 800; margin-bottom: 5px; }
+    .perk-card-list { font-size: 9px; color: var(--sub); line-height: 1.65; }
+    .perk-card-bonus{ font-size: 10px; color: var(--success); font-weight: 800; margin-top: 4px; }
+
+    /* ── Podium ── */
+    .podium { display: flex; align-items: flex-end; justify-content: center; gap: 6px; margin-bottom: 12px; padding: 0 2px; }
+    .podium-col { flex: 1; display: flex; flex-direction: column; align-items: center; background: var(--bg2); border-radius: var(--radius-sm); padding: 10px 4px 12px; border: 1px solid rgba(255,255,255,.06); max-width: 115px; }
+    .podium-col.p1 { border-color: rgba(255,215,0,.4); background: rgba(255,215,0,.07); padding-top: 16px; }
+    .podium-col.p2 { border-color: rgba(192,192,192,.25); }
+    .podium-col.p3 { border-color: rgba(205,127,50,.25); }
+    .podium-crown { font-size: 18px; margin-bottom: 3px; }
+    .podium-av {
+      width: 42px; height: 42px; border-radius: 50%; margin-bottom: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0; color: #fff; font-weight: 800;
+    }
+    .podium-col.p1 .podium-av { width: 50px; height: 50px; font-size: 24px; background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .podium-col.p2 .podium-av { background: linear-gradient(135deg, #94a3b8, #64748b); }
+    .podium-col.p3 .podium-av { background: linear-gradient(135deg, #cd7f32, #a86527); }
+    .podium-name { font-size: 10px; font-weight: 700; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px; }
+    .podium-xp   { font-size: 10px; color: var(--warn); font-weight: 800; }
+    .podium-medal{ font-size: 20px; }
+    .podium-col.p1 .podium-medal { font-size: 26px; }
+
+    /* ── Profile sheet ── */
+    .profile-sheet-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9005;
+      background: rgba(0,0,0,.65); align-items: flex-end; justify-content: center;
+    }
+    .profile-sheet-overlay.show { display: flex; }
+    .profile-sheet { background: var(--bg2); border-radius: 20px 20px 0 0; padding: 14px 16px 32px; width: 100%; max-width: 480px; }
+    .ps-handle { width: 40px; height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; margin: 0 auto 14px; }
+    .ps-top { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.07); margin-bottom: 12px; }
+    .ps-av { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; cursor: pointer; }
+    .ps-name { font-size: 16px; font-weight: 800; }
+    .ps-sub  { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .ps-lvl-badge { margin-top: 5px; display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 3px 9px; border-radius: 10px; font-size: 12px; font-weight: 800; }
+    .ps-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px; }
+    .ps-row:last-of-type { border-bottom: none; }
+    .ps-row-icon { font-size: 18px; width: 24px; text-align: center; }
+    .ps-logout { width: 100%; margin-top: 14px; padding: 14px; background: rgba(224,92,92,.12); color: var(--danger); border: 1px solid rgba(224,92,92,.2); border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+    /* ── Level card big num ── */
+    .level-card-num {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      font-size: 90px; font-weight: 900; color: rgba(255,255,255,.13); line-height: 1;
+      pointer-events: none; user-select: none; letter-spacing: -4px;
+    }
   </style>
 </head>
 <body>
@@ -849,16 +933,43 @@
         </div>
 
         <div class="guide-section">
-          <div class="guide-section-title">🏅 Darajalar jadvali</div>
-          <div style="font-size:13px; line-height:2;">
-            🥉 Lv.1 — Yangi boshlovchi (0 XP)<br>
-            🥈 Lv.2 — O'quvchi (100 XP)<br>
-            🥇 Lv.3 — Faol o'quvchi (300 XP)<br>
-            💎 Lv.4 — Bilimdon (600 XP)<br>
-            🌟 Lv.5 — A'lochi (1000 XP)<br>
-            🏆 Lv.6 — Yulduz o'quvchi (1500 XP)<br>
-            👑 Lv.7 — Super qahramon (2500 XP)
+          <div class="guide-section-title">💬 Chat</div>
+          <div class="guide-step"><div class="guide-step-num">1</div>
+            <div class="guide-step-text"><b>"Chat"</b> tabiga o'ting — barcha Mars IT o'quvchilari bilan real-vaqt muloqoti.</div></div>
+          <div class="guide-step"><div class="guide-step-num">2</div>
+            <div class="guide-step-text">Xabar yozing va <b>➤</b> tugmasini bosing. <span>Enter tugmasi ham xabar yuboradi.</span></div></div>
+          <div class="guide-tip">💡 Xabarlaringiz guruh nomi bilan ko'rinadi. Madaniyatli muloqot qiling!</div>
+        </div>
+
+        <div class="guide-section">
+          <div class="guide-section-title">👤 Profil</div>
+          <div class="guide-step"><div class="guide-step-num">1</div>
+            <div class="guide-step-text"><b>Bosh menyudan "Profil"</b> ni bosing — barcha ma'lumotlaringizni ko'ring.</div></div>
+          <div class="guide-step"><div class="guide-step-num">2</div>
+            <div class="guide-step-text"><b>Yuqoridagi avatar</b> ni bosing — emoji avatar tanlang. Chatda va reytingda ko'rinadi!</div></div>
+          <div class="guide-step"><div class="guide-step-num">3</div>
+            <div class="guide-step-text"><b>🚪 Profildan chiqish</b> — profil sahifasida pastki tugma. Yangi hisob ochish uchun ishlatiladi.</div></div>
+        </div>
+
+        <div class="guide-section">
+          <div class="guide-section-title">🏅 Darajalar va sovg'alar</div>
+          <div style="font-size:13px; line-height:1.9; padding: 4px 0;">
+            <b>🎯 Lv.1</b> — Yangi boshlovchi <span style="color:var(--sub)">(0 XP)</span><br>
+            <span style="color:var(--sub); font-size:12px">• Davomat, uy vazifasi, chat, avatar</span><br>
+            <b>⭐ Lv.2</b> — O'quvchi <span style="color:var(--sub)">(100 XP)</span> <span style="color:var(--gold)">+50 XP bonus!</span><br>
+            <span style="color:var(--sub); font-size:12px">• Streak bonuslari oshdi, guruh reytingi</span><br>
+            <b>🌟 Lv.3</b> — Faol o'quvchi <span style="color:var(--sub)">(300 XP)</span> <span style="color:var(--gold)">+100 XP bonus!</span><br>
+            <span style="color:var(--sub); font-size:12px">• Global reyting, 7-kun streak 2x bonus</span><br>
+            <b>💎 Lv.4</b> — Bilimdon <span style="color:var(--sub)">(600 XP)</span> <span style="color:var(--gold)">+150 XP bonus!</span><br>
+            <span style="color:var(--sub); font-size:12px">• Chat VIP belgisi, batafsil statistika</span><br>
+            <b>🏆 Lv.5</b> — A'lochi <span style="color:var(--sub)">(1000 XP)</span> <span style="color:var(--gold)">+200 XP bonus!</span><br>
+            <span style="color:var(--sub); font-size:12px">• Reytingda sariq ism, 30-kun streak max bonus</span><br>
+            <b>⚡ Lv.6</b> — Yulduz o'quvchi <span style="color:var(--sub)">(1500 XP)</span> <span style="color:var(--gold)">+300 XP bonus!</span><br>
+            <span style="color:var(--success); font-size:12px">⚡ Barcha XP 2 barobarga oshadi!</span><br>
+            <b>👑 Lv.7</b> — Super qahramon <span style="color:var(--sub)">(2500 XP)</span><br>
+            <span style="color:var(--gold); font-size:12px">🎁 1 oylik Telegram Premium sovg'a!</span>
           </div>
+          <div class="guide-tip">🔥 Har bir daraja oshganda <b>XP bonusi</b> ham beriladi! Tez-tez kiring, vazifalarni bajaring, davomat qo'ying!</div>
         </div>
 
       </div>
@@ -917,20 +1028,80 @@
         </div>
 
         <div class="guide-section">
-          <div class="guide-section-title">🏅 Таблица уровней</div>
-          <div style="font-size:13px; line-height:2;">
-            🥉 Ур.1 — Новичок (0 XP)<br>
-            🥈 Ур.2 — Ученик (100 XP)<br>
-            🥇 Ур.3 — Активный ученик (300 XP)<br>
-            💎 Ур.4 — Знаток (600 XP)<br>
-            🌟 Ур.5 — Отличник (1000 XP)<br>
-            🏆 Ур.6 — Звёздный ученик (1500 XP)<br>
-            👑 Ур.7 — Суперчемпион (2500 XP)
+          <div class="guide-section-title">💬 Чат</div>
+          <div class="guide-step"><div class="guide-step-num">1</div>
+            <div class="guide-step-text">Перейдите на вкладку <b>"Chat"</b> — общайтесь со всеми учениками Mars IT в реальном времени.</div></div>
+          <div class="guide-step"><div class="guide-step-num">2</div>
+            <div class="guide-step-text">Напишите сообщение и нажмите <b>➤</b>. <span>Enter тоже отправляет сообщение.</span></div></div>
+          <div class="guide-tip">💡 Ваши сообщения отображаются с названием группы. Общайтесь культурно!</div>
+        </div>
+
+        <div class="guide-section">
+          <div class="guide-section-title">👤 Профиль</div>
+          <div class="guide-step"><div class="guide-step-num">1</div>
+            <div class="guide-step-text">Нажмите <b>"Profil"</b> в главном меню — просмотрите все свои данные.</div></div>
+          <div class="guide-step"><div class="guide-step-num">2</div>
+            <div class="guide-step-text">Нажмите на <b>аватар вверху</b> — выберите эмодзи-аватар. Он виден в чате и рейтинге!</div></div>
+          <div class="guide-step"><div class="guide-step-num">3</div>
+            <div class="guide-step-text"><b>🚪 Выйти из профиля</b> — кнопка внизу в профиле. Используется для смены аккаунта.</div></div>
+        </div>
+
+        <div class="guide-section">
+          <div class="guide-section-title">🏅 Уровни и награды</div>
+          <div style="font-size:13px; line-height:1.9; padding: 4px 0;">
+            <b>🎯 Ур.1</b> — Новичок <span style="color:var(--sub)">(0 XP)</span><br>
+            <span style="color:var(--sub); font-size:12px">• Посещаемость, домашние задания, чат, аватар</span><br>
+            <b>⭐ Ур.2</b> — Ученик <span style="color:var(--sub)">(100 XP)</span> <span style="color:var(--gold)">+50 XP бонус!</span><br>
+            <span style="color:var(--sub); font-size:12px">• Повышенные бонусы серии, рейтинг группы</span><br>
+            <b>🌟 Ур.3</b> — Активный ученик <span style="color:var(--sub)">(300 XP)</span> <span style="color:var(--gold)">+100 XP бонус!</span><br>
+            <span style="color:var(--sub); font-size:12px">• Глобальный рейтинг, серия 7 дней = 2x бонус</span><br>
+            <b>💎 Ур.4</b> — Знаток <span style="color:var(--sub)">(600 XP)</span> <span style="color:var(--gold)">+150 XP бонус!</span><br>
+            <span style="color:var(--sub); font-size:12px">• VIP значок в чате, подробная статистика</span><br>
+            <b>🏆 Ур.5</b> — Отличник <span style="color:var(--sub)">(1000 XP)</span> <span style="color:var(--gold)">+200 XP бонус!</span><br>
+            <span style="color:var(--sub); font-size:12px">• Жёлтое имя в рейтинге, серия 30 дней = макс бонус</span><br>
+            <b>⚡ Ур.6</b> — Звёздный ученик <span style="color:var(--sub)">(1500 XP)</span> <span style="color:var(--gold)">+300 XP бонус!</span><br>
+            <span style="color:var(--success); font-size:12px">⚡ Весь XP умножается на 2!</span><br>
+            <b>👑 Ур.7</b> — Суперчемпион <span style="color:var(--sub)">(2500 XP)</span><br>
+            <span style="color:var(--gold); font-size:12px">🎁 Подарок: 1 месяц Telegram Premium!</span>
           </div>
+          <div class="guide-tip">🔥 При каждом повышении уровня даётся <b>XP бонус</b>! Заходите каждый день, выполняйте задания, отмечайте посещаемость!</div>
         </div>
 
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ── Profile sheet ── -->
+<div class="profile-sheet-overlay" id="profileSheet" onclick="if(event.target===this)closeProfileSheet()">
+  <div class="profile-sheet">
+    <div class="ps-handle"></div>
+    <div class="ps-top">
+      <div class="ps-av" id="psAvatar" onclick="closeProfileSheet();openAvatarPicker()">🎓</div>
+      <div>
+        <div class="ps-name" id="psName">—</div>
+        <div class="ps-sub"  id="psSub">—</div>
+        <div class="ps-lvl-badge" id="psLvlBadge">Lv.1</div>
+      </div>
+    </div>
+    <div class="ps-row"><div class="ps-row-icon">📱</div><div id="psPhone">—</div></div>
+    <div class="ps-row"><div class="ps-row-icon">🆔</div><div id="psMarsId">—</div></div>
+    <div class="ps-row"><div class="ps-row-icon">⭐</div><div id="psXp">—</div></div>
+    <div class="ps-row"><div class="ps-row-icon">🔥</div><div id="psStreak">—</div></div>
+    <button class="ps-logout" onclick="doLogout()">🚪 Profildan chiqish</button>
+  </div>
+</div>
+
+<!-- ── Level-up overlay ── -->
+<div class="levelup-overlay" id="levelupOverlay" onclick="closeLevelUp()">
+  <div class="levelup-card" onclick="event.stopPropagation()">
+    <div class="levelup-bignum" id="luNum">7</div>
+    <div class="levelup-icon"  id="luIcon">👑</div>
+    <div class="levelup-title">Daraja oshdi!</div>
+    <div class="levelup-name"  id="luName">Super qahramon</div>
+    <div class="levelup-bonus" id="luBonus">+500 XP Bonus 🎁</div>
+    <div class="levelup-perk"  id="luPerk"></div>
+    <button class="levelup-close" onclick="closeLevelUp()">🎉 Davom etish</button>
   </div>
 </div>
 
@@ -977,6 +1148,28 @@ let _chatPollTimer = null;
 let _chatLastId    = 0;
 const PAGES = ['home', 'homework', 'progress', 'history', 'chat'];
 const AVATARS = ['🎓','😎','🚀','🌟','🔥','💎','🏆','👑','🦁','🐯','🦊','🐺','🎯','💡','⚡','🌈','🎨','🎵','🏄','🎭','😄','🤩','🥳','🦋'];
+
+/* ── Level perks definition ─────────────────────────────────────── */
+const LEVEL_PERKS = {
+  1: { emoji:'🎯', name:"Yangi boshlovchi", bonus: null,         perks:['✅ Davomat belgilash','📚 Uy vazifasini ko\'rish','💬 Chat + 🎨 Avatar'] },
+  2: { emoji:'⭐', name:"O\'quvchi",         bonus:'+50 XP',     perks:['⭐ Streak bonuslari oshdi','📊 Guruh reytingida ko\'rinish'] },
+  3: { emoji:'🌟', name:"Faol o\'quvchi",   bonus:'+100 XP',    perks:['🌍 Global reyting kirish','🔥 7-kun streak: 2x bonus'] },
+  4: { emoji:'💎', name:"Bilimdon",          bonus:'+150 XP',    perks:['🏅 Chat da VIP belgisi','📊 Batafsil statistika'] },
+  5: { emoji:'🏆', name:"A\'lochi",          bonus:'+200 XP',    perks:['🌟 Reyting da sariq ism','💫 30-kun streak: max bonus'] },
+  6: { emoji:'⚡', name:"Yulduz o\'quvchi", bonus:'+300 XP',    perks:['⚡ 2x XP MULTIPLIER!','Barcha XP ikki barobar oshadi'] },
+  7: { emoji:'👑', name:"Super qahramon",   bonus:'🎁 Telegram Premium!', perks:['👑 LEGEND unvoni','Barcha imkoniyatlar ochiq','1 oylik Telegram Premium 🎁'] },
+};
+
+const LEVEL_UP_BONUS = {2:50, 3:100, 4:150, 5:200, 6:300, 7:500};
+const LVL_ICONS = {1:'🎯',2:'⭐',3:'🌟',4:'💎',5:'🏆',6:'⚡',7:'👑'};
+const PERK_TEXT = {
+  2:"💬 Chat + 🎨 Emoji avatar ochildi!",
+  3:"⭐ Streak bonuslari oshdi!",
+  4:"💎 VIP belgisi + batafsil statistika!",
+  5:"🏆 Reyting da sariq ism!",
+  6:"⚡ 2x XP multiplikator faollashdi!",
+  7:"👑 LEGEND! Admin bilan bog'laning — Telegram Premium kutmoqda!",
+};
 
 /* ── Achievements definition ─────────────────────────────────────── */
 const ACHIEVEMENTS = [
@@ -1242,14 +1435,61 @@ function renderProgress(prog, lb, glb) {
     }).join('');
   }
 
+  // Perks scroll
+  const perksHtml = Object.entries(LEVEL_PERKS).map(([lvl, p]) => {
+    const n = parseInt(lvl);
+    const cls = n === curLvl ? 'current' : n < curLvl ? 'done' : 'locked';
+    const tag = n === curLvl ? 'Hozir' : n < curLvl ? '✓ Ochilgan' : `${n}-daraja`;
+    return `<div class="perk-card ${cls}">
+      <div class="perk-card-tag">${tag}</div>
+      <div class="perk-card-icon">${p.emoji}</div>
+      <div class="perk-card-name">${p.name}</div>
+      <div class="perk-card-list">${p.perks.join('<br>')}</div>
+      ${p.bonus ? `<div class="perk-card-bonus">${p.bonus}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Podium (top 3)
+  function podiumCol(s, pcls, crown) {
+    if (!s) return `<div class="podium-col ${pcls}"><div class="podium-av" style="background:rgba(255,255,255,.08)">—</div></div>`;
+    const av = s.avatar ? s.avatar : s.full_name.charAt(0).toUpperCase();
+    return `<div class="podium-col ${pcls}">
+      <div class="podium-crown">${crown}</div>
+      <div class="podium-av">${av}</div>
+      <div class="podium-name">${s.full_name}${s.is_me ? ' 👈' : ''}</div>
+      <div class="podium-xp">${s.xp} XP</div>
+    </div>`;
+  }
+
+  const podiumHtml = (leaders) => {
+    if (!leaders || leaders.length < 1) return '';
+    return `<div class="podium">
+      ${podiumCol(leaders[1], 'p2', '🥈')}
+      ${podiumCol(leaders[0], 'p1', '👑')}
+      ${podiumCol(leaders[2], 'p3', '🥉')}
+    </div>`;
+  };
+
+  const lbRestHtml = (leaders) => {
+    if (!leaders || !leaders.length) return '';
+    return leaders.slice(3).map(s => buildLbHtml([s])).join('');
+  };
+
   el.innerHTML = `
-    <!-- Level card -->
+    <!-- Level card (bigger) -->
     <div class="level-card">
-      <div class="level-card-label">${lvlIcon} Daraja</div>
-      <div class="level-card-name">${lvlName}</div>
-      <div class="level-card-lvl">${curLvl}-daraja</div>
-      ${xpBarHtml}
+      <div class="level-card-num">${curLvl}</div>
+      <div style="position:relative; z-index:1">
+        <div class="level-card-label">${lvlIcon} ${curLvl}-daraja</div>
+        <div class="level-card-name">${lvlName}</div>
+        ${curLvl === 7 ? '<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:3px">👑 MAX DARAJA — LEGEND!</div>' : ''}
+        ${xpBarHtml}
+      </div>
     </div>
+
+    <!-- Level perks scroll -->
+    <p class="section-title">Daraja imkoniyatlari</p>
+    <div class="perks-scroll">${perksHtml}</div>
 
     <!-- Streak -->
     <div class="streak-card">
@@ -1268,15 +1508,23 @@ function renderProgress(prog, lb, glb) {
     <p class="section-title">Yutuqlar</p>
     <div class="ach-grid">${achHtml}</div>
 
-    <!-- Leaderboard with tabs -->
+    <!-- Leaderboard with tabs + podium -->
     <p class="section-title">Reyting</p>
     <div class="card" style="padding:12px 14px">
       <div class="lb-tabs">
         <button class="lb-tab active" id="lbTabGroup"  onclick="switchLbTab('group')">👥 ${lb?.group_name || 'Guruh'}</button>
         <button class="lb-tab"        id="lbTabGlobal" onclick="switchLbTab('global')">🌍 Global</button>
       </div>
-      <div class="lb-pane active" id="lbPaneGroup">${buildLbHtml(lb?.leaders)}</div>
-      <div class="lb-pane"        id="lbPaneGlobal">${buildLbHtml(glb?.leaders)}</div>
+      <div class="lb-pane active" id="lbPaneGroup">
+        ${podiumHtml(lb?.leaders)}
+        ${lbRestHtml(lb?.leaders)}
+        ${(!lb?.leaders || lb.leaders.length === 0) ? '<div class="empty" style="padding:20px"><div class="empty-text">Hali reyting yo\'q</div></div>' : ''}
+      </div>
+      <div class="lb-pane" id="lbPaneGlobal">
+        ${podiumHtml(glb?.leaders)}
+        ${lbRestHtml(glb?.leaders)}
+        ${(!glb?.leaders || glb.leaders.length === 0) ? '<div class="empty" style="padding:20px"><div class="empty-text">Hali reyting yo\'q</div></div>' : ''}
+      </div>
     </div>
   `;
 }
@@ -1322,11 +1570,58 @@ function setGuideLang(lang) {
 }
 
 /* ── Info / Phone ────────────────────────────────────────────────── */
-function showInfo() {
-  if (!student) { toast("Ma'lumot yuklanmadi"); return; }
-  tg?.showAlert(`👤 ${student.full_name}\n📚 Guruh: ${student.group_name}\n🆔 Mars ID: ${student.mars_id}`);
-}
+function showInfo() { openProfileSheet(); }
 function changePhone() { tg?.showAlert("📱 Telefon raqamini o'zgartirish uchun botga /start yozing."); }
+
+/* ── Profile sheet ───────────────────────────────────────────────── */
+function openProfileSheet() {
+  if (!student) { toast("Ma'lumot yuklanmadi"); return; }
+  document.getElementById('psName').textContent   = student.full_name;
+  document.getElementById('psSub').textContent    = student.group_name;
+  document.getElementById('psAvatar').textContent = _curAvatar || student.full_name.charAt(0).toUpperCase();
+  const prog = progressData;
+  const lvl  = prog?.level || 1;
+  document.getElementById('psLvlBadge').textContent = `${LVL_ICONS[lvl] || '⭐'} Lv.${lvl} — ${prog?.level_name || ''}`;
+  document.getElementById('psPhone').textContent  = student.phone_number || '—';
+  document.getElementById('psMarsId').textContent = student.mars_id ? 'Mars ID: ' + student.mars_id : '—';
+  document.getElementById('psXp').textContent     = prog ? prog.xp + ' XP' : '—';
+  document.getElementById('psStreak').textContent = prog ? prog.streak_days + ' kun streak 🔥' : '—';
+  document.getElementById('profileSheet').classList.add('show');
+}
+function closeProfileSheet() {
+  document.getElementById('profileSheet').classList.remove('show');
+}
+async function doLogout() {
+  closeProfileSheet();
+  const confirmed = await new Promise(resolve => {
+    if (tg?.showConfirm) { tg.showConfirm("Profildan chiqmoqchimisiz?", resolve); }
+    else { resolve(window.confirm("Profildan chiqmoqchimisiz?")); }
+  });
+  if (!confirmed) return;
+  try { await api('/student/logout', { method: 'POST' }); } catch {}
+  student = null; progressData = null;
+  document.getElementById('hdrName').textContent   = '—';
+  document.getElementById('hdrGroup').textContent  = '—';
+  document.getElementById('hdrAvatar').textContent = '🎓';
+  document.getElementById('hdrLevel').textContent  = 'Lv.1';
+  showRegPage();
+}
+
+/* ── Level-up overlay ────────────────────────────────────────────── */
+function showLevelUp(newLevel) {
+  const p = LEVEL_PERKS[newLevel] || {};
+  document.getElementById('luNum').textContent   = newLevel;
+  document.getElementById('luIcon').textContent  = LVL_ICONS[newLevel] || '⭐';
+  document.getElementById('luName').textContent  = p.name || ('Daraja ' + newLevel);
+  document.getElementById('luBonus').textContent = LEVEL_UP_BONUS[newLevel]
+    ? `+${LEVEL_UP_BONUS[newLevel]} XP Bonus 🎁` : (p.bonus || '');
+  document.getElementById('luPerk').textContent  = PERK_TEXT[newLevel] || '';
+  document.getElementById('levelupOverlay').classList.add('show');
+  tg?.HapticFeedback?.notificationOccurred('success');
+}
+function closeLevelUp() {
+  document.getElementById('levelupOverlay').classList.remove('show');
+}
 function openChannel() {
   if (tg?.openTelegramLink) { tg.openTelegramLink(channelLink); }
   else { window.open(channelLink, '_blank'); }
@@ -1473,6 +1768,9 @@ async function init() {
       if (!res.already_done && res.xp_gained > 0) {
         const bonus = res.streak_bonus > 0 ? ` + ${res.streak_bonus} XP streak bonusi` : '';
         setTimeout(() => toast(`🎉 Kunlik kirish: +${res.xp_gained} XP${bonus}`), 1000);
+      }
+      if (res.leveled_up && res.new_level) {
+        setTimeout(() => showLevelUp(res.new_level), 1800);
       }
     }).catch(() => {});
 

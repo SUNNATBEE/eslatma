@@ -292,6 +292,15 @@ class ChatMessage(Base):
 
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
 
+# Level oshganda beriladigan bonus XP
+LEVEL_UP_BONUS: dict[int, int] = {2: 50, 3: 100, 4: 150, 5: 200, 6: 300, 7: 500}
+
+
+def _apply_xp_multiplier(level: int, amount: int) -> int:
+    """6+ darajada barcha XP 2 barobarga oshadi."""
+    return amount * 2 if level >= 6 else amount
+
+
 XP_LEVELS: list[tuple[int, int, str]] = [
     (0,    1, "Yangi boshlovchi"),
     (100,  2, "O'quvchi"),
@@ -1002,17 +1011,27 @@ class DatabaseService:
 
     # ── GAMIFICATION ───────────────────────────────────────────────────────────
 
-    async def add_xp(self, user_id: int, amount: int) -> tuple[int, int]:
-        """O'quvchiga XP qo'shadi, darajani yangilaydi. (new_xp, new_level) qaytaradi."""
+    async def add_xp(self, user_id: int, amount: int) -> tuple[int, int, bool, int]:
+        """O'quvchiga XP qo'shadi, darajani yangilaydi.
+        Returns: (new_xp, new_level, leveled_up, old_level)
+        Lv.6+ uchun 2x multiplikator; level oshsa bonus XP ham qo'shiladi.
+        """
         async with self.session_factory() as session:
             result = await session.execute(select(Student).where(Student.user_id == user_id))
             s = result.scalar_one_or_none()
             if not s:
-                return 0, 1
-            s.xp    = (s.xp    or 0) + amount
-            s.level = _calc_level(s.xp)
+                return 0, 1, False, 1
+            old_level      = s.level or 1
+            actual_amount  = _apply_xp_multiplier(old_level, amount)
+            s.xp           = (s.xp or 0) + actual_amount
+            s.level        = _calc_level(s.xp)
+            leveled_up     = s.level > old_level
+            # Level-up bonus XP
+            if leveled_up and s.level in LEVEL_UP_BONUS:
+                s.xp    += LEVEL_UP_BONUS[s.level]
+                s.level  = _calc_level(s.xp)
             await session.commit()
-            return s.xp, s.level
+            return s.xp, s.level, leveled_up, old_level
 
     async def daily_checkin(self, user_id: int) -> dict:
         """
@@ -1039,22 +1058,30 @@ class DatabaseService:
                 s.streak_days = 1
             s.last_streak_date = today_str
             s.last_active      = datetime.now()
-            xp_gained    = 5
+            old_level    = s.level or 1
+            xp_gained    = _apply_xp_multiplier(old_level, 5)
             streak_bonus = 0
             if s.streak_days == 7:
-                streak_bonus = 20
+                streak_bonus = _apply_xp_multiplier(old_level, 20)
             elif s.streak_days == 30:
-                streak_bonus = 50
+                streak_bonus = _apply_xp_multiplier(old_level, 50)
             elif s.streak_days > 7 and s.streak_days % 7 == 0:
-                streak_bonus = 15
+                streak_bonus = _apply_xp_multiplier(old_level, 15)
             s.xp    = (s.xp or 0) + xp_gained + streak_bonus
             s.level = _calc_level(s.xp)
+            leveled_up = s.level > old_level
+            if leveled_up and s.level in LEVEL_UP_BONUS:
+                s.xp    += LEVEL_UP_BONUS[s.level]
+                s.level  = _calc_level(s.xp)
             await session.commit()
             return {
                 "already_done": False,
                 "xp_gained":    xp_gained,
                 "streak_bonus": streak_bonus,
                 "streak_days":  s.streak_days,
+                "leveled_up":   leveled_up,
+                "new_level":    s.level,
+                "old_level":    old_level,
             }
 
     async def get_leaderboard(self, group_name: str, limit: int = 20) -> list["Student"]:

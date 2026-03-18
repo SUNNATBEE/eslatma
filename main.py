@@ -134,6 +134,47 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
         return response
 
+    # ── Level-up bildirishnoma ────────────────────────────────────────────────
+    async def _notify_level_up(user_id: int, new_level: int) -> None:
+        """O'quvchiga level oshganda xabar yuboradi; Lv.7 da adminni xabardor qiladi."""
+        from database import _level_name, LEVEL_UP_BONUS
+        PERK_TEXT = {
+            2: "💬 Chat + 🎨 Emoji avatar ochildi!",
+            3: "⭐ Streak bonuslari oshdi!",
+            4: "📊 Chat da VIP belgisi va batafsil statistika!",
+            5: "🌟 Reyting da sariq ism!",
+            6: "⚡ 2x XP multiplikator faollashdi — barcha XP ikki barobar!",
+            7: "👑 LEGEND! Admin bilan bog'laning — 1 oylik Telegram Premium kutmoqda!",
+        }
+        bonus  = LEVEL_UP_BONUS.get(new_level, 0)
+        lname  = _level_name(new_level)
+        perk   = PERK_TEXT.get(new_level, "")
+        icons  = {1:'🎯',2:'⭐',3:'🌟',4:'💎',5:'🏆',6:'⚡',7:'👑'}
+        icon   = icons.get(new_level, '🎉')
+        text   = (
+            f"{icon} <b>Tabriklaymiz! Daraja oshdi!</b>\n\n"
+            f"🏅 {new_level}-daraja — <b>{lname}</b>\n"
+            f"🎁 Bonus: <b>+{bonus} XP</b>\n"
+        )
+        if perk:
+            text += f"✨ {perk}\n"
+        try:
+            await bot.send_message(user_id, text, parse_mode="HTML")
+        except Exception:
+            pass
+        if new_level == 7:
+            student = await db.get_student(user_id)
+            notif   = (
+                f"🏆 <b>{student.full_name if student else user_id}</b> 7-darajaga yetdi!\n"
+                f"📚 Guruh: {student.group_name if student else '—'}\n"
+                f"🎁 1 oylik Telegram Premium berishni unutmang!"
+            )
+            for admin_id in ADMIN_IDS:
+                try:
+                    await bot.send_message(admin_id, notif, parse_mode="HTML")
+                except Exception:
+                    pass
+
     # ── Auth helper ───────────────────────────────────────────────────────────
     def _auth(request: web.Request) -> int | None:
         init_data = request.headers.get("X-Init-Data", "")
@@ -237,7 +278,12 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         await db.update_last_active(user_id)
         # Davomat "boraman" uchun +10 XP
         if status_val == "yes":
-            await db.add_xp(user_id, 10)
+            _, _, lvup, _ = await db.add_xp(user_id, 10)
+            if lvup:
+                student2 = await db.get_student(user_id)
+                if student2:
+                    import asyncio as _asyncio
+                    _asyncio.create_task(_notify_level_up(user_id, student2.level))
 
         # Admin + kuratorlarga bildirishnoma
         time_str = datetime.now(tz).strftime("%H:%M")
@@ -1160,6 +1206,9 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         if not student:
             return web.json_response({"error": "Not registered"}, status=404)
         result = await db.daily_checkin(user_id)
+        if result.get("leveled_up"):
+            import asyncio as _asyncio
+            _asyncio.create_task(_notify_level_up(user_id, result["new_level"]))
         return web.json_response(result)
 
     async def api_student_progress(request: web.Request) -> web.Response:
@@ -1259,10 +1308,14 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             return web.json_response({"error": "Missing date_str"}, status=400)
         is_new = await db.confirm_homework(user_id, date_str)
         if is_new:
-            new_xp, new_level = await db.add_xp(user_id, 15)
+            new_xp, new_level, lvup, _ = await db.add_xp(user_id, 15)
+            if lvup:
+                import asyncio as _asyncio
+                _asyncio.create_task(_notify_level_up(user_id, new_level))
             return web.json_response({
                 "ok": True, "xp_gained": 15,
                 "new_xp": new_xp, "new_level": new_level,
+                "leveled_up": lvup,
             })
         return web.json_response({"ok": True, "xp_gained": 0, "already_confirmed": True})
 
@@ -1276,6 +1329,17 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             return web.json_response({"confirmed": False})
         confirmed = await db.is_hw_confirmed(user_id, date_str)
         return web.json_response({"confirmed": confirmed})
+
+    async def api_student_logout(request: web.Request) -> web.Response:
+        """O'quvchi profilini o'chiradi (unregister)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        await db.delete_student(user_id)
+        return web.json_response({"ok": True})
 
     async def api_student_leaderboard_global(request: web.Request) -> web.Response:
         """Barcha guruhlar global reytingi (XP bo'yicha top 50)."""
@@ -1440,6 +1504,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/student/mood",            api_student_mood)
     app.router.add_post("/api/student/hw-confirm",         api_student_hw_confirm)
     app.router.add_get("/api/student/hw-confirm-status",   api_student_hw_confirm_status)
+    app.router.add_post("/api/student/logout",             api_student_logout)
     app.router.add_get("/api/student/leaderboard/global",  api_student_leaderboard_global)
     app.router.add_post("/api/student/avatar",             api_student_avatar)
     app.router.add_get("/api/chat",                        api_chat_get)

@@ -78,6 +78,7 @@ MARS_CREDENTIALS: dict[str, dict] = {
     "1143086": {"name": "Baxtiyorov Suhrobek",        "password": "60479", "group": "2996-Pro"},
     "935267":  {"name": "Xoliboyev Doniyor",          "password": "47612", "group": "2996-Pro"},
     "1027372": {"name": "Qudratov Qudratjon",         "password": "54092", "group": "2996-Pro"},
+    "1156370": {"name": "Sobirov Aziz",         "password": "47532", "group": "2996-Pro"},
 
     # ── 2997-Pro ─────────────────────────────────────────────────────────────
     "1146165": {"name": "Mominjonov Akbar",           "password": "03547", "group": "2997-Pro"},

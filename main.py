@@ -234,6 +234,9 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         today = datetime.now(tz).strftime("%Y-%m-%d")
         await db.save_attendance(user_id, today, status_val, reason=reason)
         await db.update_last_active(user_id)
+        # Davomat "boraman" uchun +10 XP
+        if status_val == "yes":
+            await db.add_xp(user_id, 10)
 
         # Admin + kuratorlarga bildirishnoma
         time_str = datetime.now(tz).strftime("%H:%M")
@@ -1066,6 +1069,134 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             "att_status": rec.status if rec else None,
         })
 
+    # ── Student Gamification API ──────────────────────────────────────────────
+
+    async def api_student_checkin(request: web.Request) -> web.Response:
+        """Kunlik kirish: streak va XP yangilanadi (bir kunida bir marta)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        result = await db.daily_checkin(user_id)
+        return web.json_response(result)
+
+    async def api_student_progress(request: web.Request) -> web.Response:
+        """O'quvchining XP, level, streak, rank va statistikasi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+
+        from database import _level_name, _next_level_xp, XP_LEVELS
+
+        attend_count  = await db.get_attend_yes_count(user_id)
+        hw_conf_count = await db.get_hw_confirm_count(user_id)
+        rank          = await db.get_student_rank(user_id, student.group_name)
+        today_str     = datetime.now(tz).strftime("%Y-%m-%d")
+        mood          = await db.get_mood(user_id, today_str)
+
+        cur_xp    = student.xp    or 0
+        cur_level = student.level or 1
+        nx_xp     = _next_level_xp(cur_level)
+
+        return web.json_response({
+            "xp":            cur_xp,
+            "level":         cur_level,
+            "level_name":    _level_name(cur_level),
+            "next_level_xp": nx_xp,
+            "streak_days":   student.streak_days or 0,
+            "attend_count":  attend_count,
+            "hw_conf_count": hw_conf_count,
+            "rank":          rank,
+            "mood_today":    mood,
+        })
+
+    async def api_student_leaderboard(request: web.Request) -> web.Response:
+        """Guruh reytingi (XP bo'yicha top 20)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+
+        from database import _level_name
+        leaders = await db.get_leaderboard(student.group_name, limit=20)
+        result = []
+        for i, s in enumerate(leaders):
+            result.append({
+                "rank":       i + 1,
+                "full_name":  s.full_name,
+                "xp":         s.xp or 0,
+                "level":      s.level or 1,
+                "level_name": _level_name(s.level or 1),
+                "streak":     s.streak_days or 0,
+                "is_me":      s.user_id == user_id,
+            })
+        return web.json_response({
+            "group_name": student.group_name,
+            "leaders":    result,
+        })
+
+    async def api_student_mood(request: web.Request) -> web.Response:
+        """Kunlik kayfiyat: GET — bugungi holat; POST — saqlash."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        today_str = datetime.now(tz).strftime("%Y-%m-%d")
+        if request.method == "POST":
+            try:
+                body = await request.json()
+            except Exception:
+                return web.json_response({"error": "Bad JSON"}, status=400)
+            mood = body.get("mood")
+            if mood not in ("happy", "ok", "sad"):
+                return web.json_response({"error": "Invalid mood"}, status=400)
+            await db.save_mood(user_id, today_str, mood)
+            return web.json_response({"ok": True, "mood": mood})
+        else:
+            mood = await db.get_mood(user_id, today_str)
+            return web.json_response({"mood": mood})
+
+    async def api_student_hw_confirm(request: web.Request) -> web.Response:
+        """Uy vazifasini ko'rganligini tasdiqlash (+15 XP, bir marta)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        date_str = body.get("date_str")
+        if not date_str:
+            return web.json_response({"error": "Missing date_str"}, status=400)
+        is_new = await db.confirm_homework(user_id, date_str)
+        if is_new:
+            new_xp, new_level = await db.add_xp(user_id, 15)
+            return web.json_response({
+                "ok": True, "xp_gained": 15,
+                "new_xp": new_xp, "new_level": new_level,
+            })
+        return web.json_response({"ok": True, "xp_gained": 0, "already_confirmed": True})
+
+    async def api_student_hw_confirm_status(request: web.Request) -> web.Response:
+        """Uy vazifasi tasdiqlanganligini tekshiradi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        date_str = request.rel_url.query.get("date_str", "")
+        if not date_str:
+            return web.json_response({"confirmed": False})
+        confirmed = await db.is_hw_confirmed(user_id, date_str)
+        return web.json_response({"confirmed": confirmed})
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -1113,6 +1244,14 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/curator/send-yoqlama",         api_curator_send_yoqlama)
     app.router.add_post("/api/curator/update-attendance",    api_curator_update_attendance)
     app.router.add_get("/api/class-schedule",                api_class_schedule)
+    # Gamification
+    app.router.add_post("/api/student/checkin",         api_student_checkin)
+    app.router.add_get("/api/student/progress",         api_student_progress)
+    app.router.add_get("/api/student/leaderboard",      api_student_leaderboard)
+    app.router.add_get("/api/student/mood",             api_student_mood)
+    app.router.add_post("/api/student/mood",            api_student_mood)
+    app.router.add_post("/api/student/hw-confirm",      api_student_hw_confirm)
+    app.router.add_get("/api/student/hw-confirm-status", api_student_hw_confirm_status)
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)

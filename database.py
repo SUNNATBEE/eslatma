@@ -103,6 +103,11 @@ class Student(Base):
     phone_number:       Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)
     registered_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
     last_active:        Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # ── Gamification ──────────────────────────────────────────────────────────
+    xp:               Mapped[int]           = mapped_column(Integer, default=0,  nullable=False, server_default="0")
+    level:            Mapped[int]           = mapped_column(Integer, default=1,  nullable=False, server_default="1")
+    streak_days:      Mapped[int]           = mapped_column(Integer, default=0,  nullable=False, server_default="0")
+    last_streak_date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     def __repr__(self) -> str:
         return f"<Student {self.full_name!r} | {self.group_name}>"
@@ -242,6 +247,69 @@ class StudentCredential(Base):
     added_at:   Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+# ─── Model: Kunlik kayfiyat ────────────────────────────────────────────────────
+
+class DailyMood(Base):
+    """O'quvchining kunlik kayfiyati (emoji tracker)."""
+    __tablename__ = "daily_moods"
+    __table_args__ = (UniqueConstraint("user_id", "date_str"),)
+
+    id:         Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id:    Mapped[int] = mapped_column(BigInteger, nullable=False)
+    date_str:   Mapped[str] = mapped_column(String(20), nullable=False)
+    mood:       Mapped[str] = mapped_column(String(20), nullable=False)  # "happy"/"ok"/"sad"
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+# ─── Model: Uy vazifasi tasdiqi ────────────────────────────────────────────────
+
+class HomeworkConfirmation(Base):
+    """O'quvchi uy vazifasini ko'rganligini tasdiqlagan yozuvlar."""
+    __tablename__ = "homework_confirmations"
+    __table_args__ = (UniqueConstraint("user_id", "date_str"),)
+
+    id:           Mapped[int]      = mapped_column(primary_key=True, autoincrement=True)
+    user_id:      Mapped[int]      = mapped_column(BigInteger, nullable=False)
+    date_str:     Mapped[str]      = mapped_column(String(20), nullable=False)  # hw.sent_at date
+    confirmed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+# ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
+
+XP_LEVELS: list[tuple[int, int, str]] = [
+    (0,    1, "Yangi boshlovchi"),
+    (100,  2, "O'quvchi"),
+    (300,  3, "Faol o'quvchi"),
+    (600,  4, "Bilimdon"),
+    (1000, 5, "A'lochi"),
+    (1500, 6, "Yulduz o'quvchi"),
+    (2500, 7, "Super qahramon"),
+]
+
+
+def _calc_level(xp: int) -> int:
+    """XP miqdori bo'yicha darajani hisoblaydi."""
+    level = 1
+    for min_xp, lvl, _ in XP_LEVELS:
+        if xp >= min_xp:
+            level = lvl
+    return level
+
+
+def _level_name(level: int) -> str:
+    """Daraja nomi."""
+    _names = {lvl: name for _, lvl, name in XP_LEVELS}
+    return _names.get(level, "O'quvchi")
+
+
+def _next_level_xp(current_level: int) -> Optional[int]:
+    """Keyingi daraja uchun kerakli minimal XP."""
+    for min_xp, lvl, _ in XP_LEVELS:
+        if lvl == current_level + 1:
+            return min_xp
+    return None  # Max daraja
+
+
 # ─── Servis ───────────────────────────────────────────────────────────────────
 
 class DatabaseService:
@@ -283,6 +351,22 @@ class DatabaseService:
                 logger.info("Migration: curator_sessions.last_active ustuni qo'shildi.")
             except Exception:
                 pass
+            # Gamification colonlari
+            for _col, _def in [
+                ("xp",               "INTEGER NOT NULL DEFAULT 0"),
+                ("level",            "INTEGER NOT NULL DEFAULT 1"),
+                ("streak_days",      "INTEGER NOT NULL DEFAULT 0"),
+                ("last_streak_date", "VARCHAR(20)"),
+            ]:
+                try:
+                    await conn.execute(
+                        __import__("sqlalchemy").text(
+                            f"ALTER TABLE students ADD COLUMN {_col} {_def}"
+                        )
+                    )
+                    logger.info(f"Migration: students.{_col} ustuni qo'shildi.")
+                except Exception:
+                    pass
         logger.info("Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi.")
 
     # ── CREATE / UPDATE ────────────────────────────────────────────────────────
@@ -898,3 +982,163 @@ class DatabaseService:
                 select(CuratorSession).order_by(desc(CuratorSession.last_active))
             )
             return list(result.scalars().all())
+
+    # ── GAMIFICATION ───────────────────────────────────────────────────────────
+
+    async def add_xp(self, user_id: int, amount: int) -> tuple[int, int]:
+        """O'quvchiga XP qo'shadi, darajani yangilaydi. (new_xp, new_level) qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if not s:
+                return 0, 1
+            s.xp    = (s.xp    or 0) + amount
+            s.level = _calc_level(s.xp)
+            await session.commit()
+            return s.xp, s.level
+
+    async def daily_checkin(self, user_id: int) -> dict:
+        """
+        Kunlik kirish tekshiruvi: ketma-ketlikni yangilaydi, XP beradi.
+        Returns: {already_done, xp_gained, streak_bonus, streak_days}
+        """
+        from datetime import date, timedelta
+        today_str     = date.today().isoformat()
+        yesterday_str = (date.today() - timedelta(days=1)).isoformat()
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if not s:
+                return {"already_done": True, "xp_gained": 0, "streak_days": 0, "streak_bonus": 0}
+            if s.last_streak_date == today_str:
+                return {
+                    "already_done": True, "xp_gained": 0,
+                    "streak_days": s.streak_days or 0, "streak_bonus": 0,
+                }
+            # Yangi kun
+            if s.last_streak_date == yesterday_str:
+                s.streak_days = (s.streak_days or 0) + 1
+            else:
+                s.streak_days = 1
+            s.last_streak_date = today_str
+            s.last_active      = datetime.now()
+            xp_gained    = 5
+            streak_bonus = 0
+            if s.streak_days == 7:
+                streak_bonus = 20
+            elif s.streak_days == 30:
+                streak_bonus = 50
+            elif s.streak_days > 7 and s.streak_days % 7 == 0:
+                streak_bonus = 15
+            s.xp    = (s.xp or 0) + xp_gained + streak_bonus
+            s.level = _calc_level(s.xp)
+            await session.commit()
+            return {
+                "already_done": False,
+                "xp_gained":    xp_gained,
+                "streak_bonus": streak_bonus,
+                "streak_days":  s.streak_days,
+            }
+
+    async def get_leaderboard(self, group_name: str, limit: int = 20) -> list["Student"]:
+        """Guruhda XP bo'yicha eng yaxshi o'quvchilar."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student).where(Student.group_name == group_name)
+                .order_by(desc(Student.xp)).limit(limit)
+            )
+            return list(result.scalars().all())
+
+    async def get_student_rank(self, user_id: int, group_name: str) -> int:
+        """O'quvchining guruhidagi o'rinini qaytaradi (1 dan boshlanadi). 0 — topilmadi."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student.user_id).where(Student.group_name == group_name)
+                .order_by(desc(Student.xp))
+            )
+            ids = [row[0] for row in result.all()]
+            try:
+                return ids.index(user_id) + 1
+            except ValueError:
+                return 0
+
+    async def save_mood(self, user_id: int, date_str: str, mood: str) -> None:
+        """Kunlik kayfiyatni saqlaydi yoki yangilaydi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(DailyMood).where(
+                    DailyMood.user_id == user_id, DailyMood.date_str == date_str
+                )
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                existing.mood = mood
+            else:
+                session.add(DailyMood(user_id=user_id, date_str=date_str, mood=mood))
+            await session.commit()
+
+    async def get_mood(self, user_id: int, date_str: str) -> Optional[str]:
+        """Berilgan kunning kayfiyatini qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(DailyMood.mood).where(
+                    DailyMood.user_id == user_id, DailyMood.date_str == date_str
+                )
+            )
+            return result.scalar_one_or_none()
+
+    async def confirm_homework(self, user_id: int, date_str: str) -> bool:
+        """
+        Uy vazifasini o'qilganligini belgilaydi.
+        True — yangi tasdiqlash; False — allaqachon tasdiqlangan.
+        """
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(HomeworkConfirmation).where(
+                    HomeworkConfirmation.user_id  == user_id,
+                    HomeworkConfirmation.date_str == date_str,
+                )
+            )
+            if result.scalar_one_or_none():
+                return False
+            session.add(HomeworkConfirmation(
+                user_id=user_id, date_str=date_str, confirmed_at=datetime.now()
+            ))
+            await session.commit()
+            return True
+
+    async def is_hw_confirmed(self, user_id: int, date_str: str) -> bool:
+        """Uy vazifasi tasdiqlangan bo'lsa True qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(HomeworkConfirmation).where(
+                    HomeworkConfirmation.user_id  == user_id,
+                    HomeworkConfirmation.date_str == date_str,
+                )
+            )
+            return result.scalar_one_or_none() is not None
+
+    async def get_hw_confirm_count(self, user_id: int) -> int:
+        """O'quvchi qancha marta uy vazifasini tasdiqlaganligini qaytaradi."""
+        from sqlalchemy import func as sa_func
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(sa_func.count()).select_from(HomeworkConfirmation)
+                .where(HomeworkConfirmation.user_id == user_id)
+            )
+            return result.scalar_one() or 0
+
+    async def get_attend_yes_count(self, user_id: int) -> int:
+        """O'quvchi necha marta darsga kelganligini qaytaradi."""
+        from sqlalchemy import func as sa_func
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(sa_func.count()).select_from(AttendanceRecord)
+                .where(
+                    AttendanceRecord.user_id == user_id,
+                    AttendanceRecord.status  == "yes",
+                )
+            )
+            return result.scalar_one() or 0

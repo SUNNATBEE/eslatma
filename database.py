@@ -108,6 +108,7 @@ class Student(Base):
     level:            Mapped[int]           = mapped_column(Integer, default=1,  nullable=False, server_default="1")
     streak_days:      Mapped[int]           = mapped_column(Integer, default=0,  nullable=False, server_default="0")
     last_streak_date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    avatar_emoji:     Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     def __repr__(self) -> str:
         return f"<Student {self.full_name!r} | {self.group_name}>"
@@ -274,6 +275,21 @@ class HomeworkConfirmation(Base):
     confirmed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
+# ─── Model: O'quvchilar umumiy chati ─────────────────────────────────────────
+
+class ChatMessage(Base):
+    """Barcha o'quvchilar uchun umumiy chat xabarlari."""
+    __tablename__ = "chat_messages"
+
+    id:         Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    user_id:    Mapped[int]           = mapped_column(BigInteger, nullable=False)
+    full_name:  Mapped[str]           = mapped_column(String(255), nullable=False)
+    group_name: Mapped[str]           = mapped_column(String(50),  nullable=False)
+    avatar:     Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)
+    text:       Mapped[str]           = mapped_column(String(1000), nullable=False)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
+
+
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
 
 XP_LEVELS: list[tuple[int, int, str]] = [
@@ -357,6 +373,7 @@ class DatabaseService:
                 ("level",            "INTEGER NOT NULL DEFAULT 1"),
                 ("streak_days",      "INTEGER NOT NULL DEFAULT 0"),
                 ("last_streak_date", "VARCHAR(20)"),
+                ("avatar_emoji",     "VARCHAR(20)"),
             ]:
                 try:
                     await conn.execute(
@@ -1142,3 +1159,75 @@ class DatabaseService:
                 )
             )
             return result.scalar_one() or 0
+
+    # ── GLOBAL LEADERBOARD ─────────────────────────────────────────────────────
+
+    async def get_global_leaderboard(self, limit: int = 50) -> list["Student"]:
+        """Barcha guruhlar bo'yicha XP reytingi."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student).order_by(desc(Student.xp)).limit(limit)
+            )
+            return list(result.scalars().all())
+
+    async def get_global_rank(self, user_id: int) -> int:
+        """O'quvchining barcha o'quvchilar orasidagi o'rinini qaytaradi."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student.user_id).order_by(desc(Student.xp))
+            )
+            ids = [row[0] for row in result.all()]
+            try:
+                return ids.index(user_id) + 1
+            except ValueError:
+                return 0
+
+    # ── AVATAR ─────────────────────────────────────────────────────────────────
+
+    async def set_avatar(self, user_id: int, avatar_emoji: str) -> None:
+        """O'quvchi emoji avatarini o'zgartiradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if s:
+                s.avatar_emoji = avatar_emoji
+                await session.commit()
+
+    # ── CHAT ───────────────────────────────────────────────────────────────────
+
+    async def get_chat_messages(
+        self, limit: int = 50, after_id: int = 0
+    ) -> list["ChatMessage"]:
+        """Chat xabarlarini qaytaradi."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            if after_id:
+                result = await session.execute(
+                    select(ChatMessage).where(ChatMessage.id > after_id)
+                    .order_by(ChatMessage.id).limit(limit)
+                )
+            else:
+                result = await session.execute(
+                    select(ChatMessage).order_by(desc(ChatMessage.id)).limit(limit)
+                )
+                msgs = list(result.scalars().all())
+                msgs.reverse()
+                return msgs
+            return list(result.scalars().all())
+
+    async def add_chat_message(
+        self, user_id: int, full_name: str, group_name: str,
+        avatar: Optional[str], text: str,
+    ) -> "ChatMessage":
+        """Yangi chat xabari qo'shadi."""
+        async with self.session_factory() as session:
+            msg = ChatMessage(
+                user_id=user_id, full_name=full_name,
+                group_name=group_name, avatar=avatar, text=text,
+            )
+            session.add(msg)
+            await session.commit()
+            await session.refresh(msg)
+            return msg

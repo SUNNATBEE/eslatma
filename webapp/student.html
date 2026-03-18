@@ -477,6 +477,96 @@
     }
     .guide-lang { display: none; }
     .guide-lang.active { display: block; }
+
+    /* ── Avatar picker ── */
+    .header-avatar { cursor: pointer; }
+    .avatar-picker-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9004;
+      background: rgba(0,0,0,.65); align-items: flex-end; justify-content: center;
+    }
+    .avatar-picker-overlay.show { display: flex; }
+    .avatar-picker {
+      background: var(--bg2); border-radius: 20px 20px 0 0;
+      padding: 16px 14px 30px; width: 100%; max-width: 480px;
+    }
+    .avatar-picker-handle { width: 40px; height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; margin: 0 auto 14px; }
+    .avatar-picker-title { font-size: 14px; font-weight: 800; text-align: center; margin-bottom: 14px; }
+    .avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .avatar-opt {
+      aspect-ratio: 1; font-size: 26px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); border-radius: 12px; border: 2px solid transparent;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: transform .12s, border-color .15s;
+    }
+    .avatar-opt:active { transform: scale(.88); }
+    .avatar-opt.current { border-color: var(--accent); background: rgba(82,136,193,.2); }
+    .avatar-picker-close {
+      width: 100%; margin-top: 12px; padding: 12px;
+      background: rgba(255,255,255,.08); color: var(--text);
+      border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Chat page ── */
+    #page-chat.active { display: flex; flex-direction: column; height: 100%; }
+    .chat-msgs-wrap { flex: 1; overflow-y: auto; padding: 8px 14px 4px; }
+    .chat-msgs-wrap::-webkit-scrollbar { display: none; }
+    .chat-msg { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+    .chat-msg.mine { flex-direction: row-reverse; }
+    .chat-av {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: #fff; font-weight: 700;
+    }
+    .chat-bubble {
+      max-width: 72%; background: var(--bg2); border-radius: 14px 14px 14px 4px;
+      padding: 7px 11px 6px; border: 1px solid rgba(255,255,255,.06);
+    }
+    .chat-msg.mine .chat-bubble {
+      background: rgba(82,136,193,.25); border-radius: 14px 14px 4px 14px;
+      border-color: rgba(82,136,193,.3);
+    }
+    .chat-bubble-name { font-size: 10px; color: var(--accent); font-weight: 700; margin-bottom: 2px; }
+    .chat-bubble-grp  { font-size: 9px;  color: var(--sub); }
+    .chat-msg.mine .chat-bubble-name { display: none; }
+    .chat-bubble-text { font-size: 13px; line-height: 1.45; word-break: break-word; }
+    .chat-bubble-time { font-size: 9px; color: var(--sub); margin-top: 3px; text-align: right; }
+    .chat-input-wrap {
+      display: flex; gap: 8px; align-items: flex-end;
+      padding: 8px 12px 10px; background: var(--bg2);
+      border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0;
+    }
+    .chat-input {
+      flex: 1; background: var(--bg); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 18px; padding: 9px 14px; color: var(--text);
+      font-size: 14px; outline: none; font-family: inherit;
+      -webkit-appearance: none; resize: none; overflow-y: hidden;
+      max-height: 80px; line-height: 1.4;
+    }
+    .chat-input:focus { border-color: var(--accent); }
+    .chat-send-btn {
+      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent); color: #fff; border: none;
+      font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent; transition: opacity .12s;
+    }
+    .chat-send-btn:active { opacity: .8; }
+
+    /* ── Leaderboard tabs ── */
+    .lb-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .lb-tab {
+      flex: 1; padding: 8px; border-radius: 8px; border: none;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      background: rgba(255,255,255,.07); color: var(--sub);
+      transition: background .15s, color .15s;
+    }
+    .lb-tab.active { background: var(--accent); color: #fff; }
+    .lb-pane { display: none; }
+    .lb-pane.active { display: block; }
   </style>
 </head>
 <body>
@@ -484,7 +574,7 @@
 
   <!-- Header -->
   <div class="header">
-    <div class="header-avatar" id="hdrAvatar">🎓</div>
+    <div class="header-avatar" id="hdrAvatar" onclick="openAvatarPicker()" title="Avatar o'zgartirish">🎓</div>
     <div class="header-info">
       <div class="header-name"  id="hdrName">Yuklanmoqda...</div>
       <div class="header-group" id="hdrGroup"></div>
@@ -561,10 +651,10 @@
           <div class="mc-label">Mening natijam</div>
           <div class="mc-sub">XP, daraja, yutuqlar</div>
         </div>
-        <div class="menu-card" onclick="openChannel()">
-          <div class="mc-icon">📺</div>
-          <div class="mc-label">Kanal</div>
-          <div class="mc-sub">Darslar kanali</div>
+        <div class="menu-card" onclick="goPage('chat')">
+          <div class="mc-icon">💬</div>
+          <div class="mc-label">Chat</div>
+          <div class="mc-sub">Barcha o'quvchilar</div>
         </div>
         <div class="menu-card" onclick="showInfo()">
           <div class="mc-icon">👤</div>
@@ -591,6 +681,16 @@
       <div class="card" id="histContent"><div class="spinner"></div></div>
     </div>
 
+    <!-- ═════════════════════════ CHAT PAGE ══════════════════════════ -->
+    <div class="page" id="page-chat">
+      <div class="chat-msgs-wrap" id="chatMsgs"><div class="spinner"></div></div>
+      <div class="chat-input-wrap">
+        <textarea class="chat-input" id="chatInput" placeholder="Xabar yozing..." rows="1"
+          onkeydown="chatKeydown(event)" oninput="chatAutoResize(this)"></textarea>
+        <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
+      </div>
+    </div>
+
   </div>
 
   <!-- Tab bar -->
@@ -603,6 +703,9 @@
     </div>
     <div class="tab-item"        id="tab-progress" onclick="goPage('progress')">
       <div class="tab-icon">🎮</div><div class="tab-label">Natija</div>
+    </div>
+    <div class="tab-item"        id="tab-chat"     onclick="goPage('chat')">
+      <div class="tab-icon">💬</div><div class="tab-label">Chat</div>
     </div>
     <div class="tab-item"        id="tab-history"  onclick="goPage('history')">
       <div class="tab-icon">📜</div><div class="tab-label">Tarix</div>
@@ -831,6 +934,16 @@
   </div>
 </div>
 
+<!-- ── Avatar picker ── -->
+<div class="avatar-picker-overlay" id="avatarPicker" onclick="if(event.target===this)closeAvatarPicker()">
+  <div class="avatar-picker">
+    <div class="avatar-picker-handle"></div>
+    <div class="avatar-picker-title">👤 Avatar tanlang</div>
+    <div class="avatar-grid" id="avatarGrid"></div>
+    <button class="avatar-picker-close" onclick="closeAvatarPicker()">Yopish</button>
+  </div>
+</div>
+
 <script>
 /* ── Telegram WebApp ─────────────────────────────────────────────── */
 const tg = window.Telegram?.WebApp;
@@ -854,13 +967,16 @@ async function api(path, opts = {}) {
 }
 
 /* ── State ───────────────────────────────────────────────────────── */
-let student     = null;
-let classInfo   = null;
+let student      = null;
+let classInfo    = null;
 let progressData = null;
-let channelLink = 'https://t.me/sunnatbee_lessons';
-let currentPage = 'home';
-let progressLoaded = false, historyLoaded = false;
-const PAGES = ['home', 'homework', 'progress', 'history'];
+let channelLink  = 'https://t.me/sunnatbee_lessons';
+let currentPage  = 'home';
+let progressLoaded = false, historyLoaded = false, chatLoaded = false;
+let _chatPollTimer = null;
+let _chatLastId    = 0;
+const PAGES = ['home', 'homework', 'progress', 'history', 'chat'];
+const AVATARS = ['🎓','😎','🚀','🌟','🔥','💎','🏆','👑','🦁','🐯','🦊','🐺','🎯','💡','⚡','🌈','🎨','🎵','🏄','🎭','😄','🤩','🥳','🦋'];
 
 /* ── Achievements definition ─────────────────────────────────────── */
 const ACHIEVEMENTS = [
@@ -884,10 +1000,21 @@ function goPage(name) {
   document.getElementById('page-' + name)?.classList.add('active');
   document.getElementById('tab-'  + name)?.classList.add('active');
   currentPage = name;
-  document.getElementById('content').scrollTop = 0;
+  const content = document.getElementById('content');
+  if (name === 'chat') {
+    content.style.overflow = 'hidden';
+    content.style.padding  = '0';
+  } else {
+    content.style.overflow = '';
+    content.style.padding  = '';
+    content.scrollTop = 0;
+    // Stop chat polling when leaving chat
+    if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
+  }
   if (name === 'homework')                 loadHomework();
   if (name === 'progress' && !progressLoaded) { progressLoaded = true; loadProgress(); }
   if (name === 'history'  && !historyLoaded)  { historyLoaded  = true; loadHistory(); }
+  if (name === 'chat')                        loadChat();
 }
 
 /* ── Toast ───────────────────────────────────────────────────────── */
@@ -1050,18 +1177,19 @@ async function loadProgress() {
   const el = document.getElementById('progressContent');
   el.innerHTML = '<div class="spinner"></div>';
   try {
-    const [prog, lb] = await Promise.all([
+    const [prog, lb, glb] = await Promise.all([
       api('/student/progress'),
       api('/student/leaderboard').catch(() => null),
+      api('/student/leaderboard/global').catch(() => null),
     ]);
     updateStatsStrip(prog);
-    renderProgress(prog, lb);
+    renderProgress(prog, lb, glb);
   } catch {
     el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik yuz berdi</div></div>';
   }
 }
 
-function renderProgress(prog, lb) {
+function renderProgress(prog, lb, glb) {
   const el = document.getElementById('progressContent');
 
   // XP bar
@@ -1095,23 +1223,23 @@ function renderProgress(prog, lb) {
     </div>`;
   }).join('');
 
-  // Leaderboard
-  let lbHtml = '';
-  if (lb && lb.leaders && lb.leaders.length) {
-    lbHtml = lb.leaders.map(s => {
-      const rankCls = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
+  // Leaderboard builder helper
+  function buildLbHtml(leaders) {
+    if (!leaders || !leaders.length)
+      return '<div class="empty" style="padding:20px"><div class="empty-text">Hali reyting ma\'lumoti yo\'q</div></div>';
+    return leaders.map(s => {
+      const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
       const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
+      const grpBadge = s.group_name ? ` · <span style="color:var(--sub)">${s.group_name}</span>` : '';
       return `<div class="lb-item ${s.is_me ? 'is-me' : ''}">
         <div class="lb-rank ${rankCls}">${rankIcon}</div>
         <div class="lb-info">
           <div class="lb-name">${s.full_name}${s.is_me ? ' 👈' : ''}</div>
-          <div class="lb-sub">Lv.${s.level} · ${s.level_name} · 🔥${s.streak}</div>
+          <div class="lb-sub">Lv.${s.level}${grpBadge} · 🔥${s.streak}</div>
         </div>
         <div class="lb-xp">${s.xp} XP</div>
       </div>`;
     }).join('');
-  } else {
-    lbHtml = '<div class="empty" style="padding:20px"><div class="empty-text">Hali reyting ma\'lumoti yo\'q</div></div>';
   }
 
   el.innerHTML = `
@@ -1140,10 +1268,24 @@ function renderProgress(prog, lb) {
     <p class="section-title">Yutuqlar</p>
     <div class="ach-grid">${achHtml}</div>
 
-    <!-- Leaderboard -->
-    <p class="section-title">Guruh reytingi — ${lb?.group_name || ''}</p>
-    <div class="card" style="padding:10px 14px">${lbHtml}</div>
+    <!-- Leaderboard with tabs -->
+    <p class="section-title">Reyting</p>
+    <div class="card" style="padding:12px 14px">
+      <div class="lb-tabs">
+        <button class="lb-tab active" id="lbTabGroup"  onclick="switchLbTab('group')">👥 ${lb?.group_name || 'Guruh'}</button>
+        <button class="lb-tab"        id="lbTabGlobal" onclick="switchLbTab('global')">🌍 Global</button>
+      </div>
+      <div class="lb-pane active" id="lbPaneGroup">${buildLbHtml(lb?.leaders)}</div>
+      <div class="lb-pane"        id="lbPaneGlobal">${buildLbHtml(glb?.leaders)}</div>
+    </div>
   `;
+}
+
+function switchLbTab(tab) {
+  document.getElementById('lbTabGroup').classList.toggle('active',  tab === 'group');
+  document.getElementById('lbTabGlobal').classList.toggle('active', tab === 'global');
+  document.getElementById('lbPaneGroup').classList.toggle('active',  tab === 'group');
+  document.getElementById('lbPaneGlobal').classList.toggle('active', tab === 'global');
 }
 
 /* ── History ─────────────────────────────────────────────────────── */
@@ -1194,6 +1336,115 @@ function openInBot() {
   setTimeout(() => tg?.close(), 1200);
 }
 
+/* ── Avatar picker ───────────────────────────────────────────────── */
+let _curAvatar = '';
+
+function openAvatarPicker() {
+  const grid = document.getElementById('avatarGrid');
+  grid.innerHTML = AVATARS.map(em =>
+    `<div class="avatar-opt${em === _curAvatar ? ' current' : ''}" onclick="setAvatar('${em}')">${em}</div>`
+  ).join('');
+  document.getElementById('avatarPicker').classList.add('show');
+}
+
+function closeAvatarPicker() {
+  document.getElementById('avatarPicker').classList.remove('show');
+}
+
+async function setAvatar(emoji) {
+  closeAvatarPicker();
+  _curAvatar = emoji;
+  document.getElementById('hdrAvatar').textContent = emoji;
+  try {
+    await api('/student/avatar', { method: 'POST', body: JSON.stringify({ avatar: emoji }) });
+    tg?.HapticFeedback?.impactOccurred('light');
+    toast('Avatar yangilandi ' + emoji);
+  } catch { toast('⚠️ Xatolik'); }
+}
+
+/* ── Chat ────────────────────────────────────────────────────────── */
+async function loadChat() {
+  const el = document.getElementById('chatMsgs');
+  if (!chatLoaded) {
+    el.innerHTML = '<div class="spinner"></div>';
+    chatLoaded = true;
+  }
+  try {
+    const data = await api('/chat?after_id=0');
+    _chatLastId = data.messages.length ? data.messages[data.messages.length - 1].id : 0;
+    el.innerHTML = data.messages.length
+      ? data.messages.map(renderChatMsg).join('')
+      : '<div class="empty" style="padding:30px"><div class="empty-icon">💬</div><div class="empty-text">Hali xabar yo\'q. Birinchi bo\'lib yozing!</div></div>';
+    el.scrollTop = el.scrollHeight;
+  } catch { el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik</div></div>'; }
+  // Start polling
+  if (_chatPollTimer) clearInterval(_chatPollTimer);
+  _chatPollTimer = setInterval(pollChat, 5000);
+}
+
+async function pollChat() {
+  if (currentPage !== 'chat') return;
+  try {
+    const data = await api('/chat?after_id=' + _chatLastId);
+    if (!data.messages.length) return;
+    _chatLastId = data.messages[data.messages.length - 1].id;
+    const el = document.getElementById('chatMsgs');
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    // Remove empty state if present
+    const empty = el.querySelector('.empty');
+    if (empty) el.innerHTML = '';
+    data.messages.forEach(m => { el.insertAdjacentHTML('beforeend', renderChatMsg(m)); });
+    if (atBottom) el.scrollTop = el.scrollHeight;
+  } catch {}
+}
+
+function renderChatMsg(m) {
+  const av = m.avatar
+    ? `<div class="chat-av">${m.avatar}</div>`
+    : `<div class="chat-av" style="font-size:13px;font-weight:800">${m.full_name.charAt(0).toUpperCase()}</div>`;
+  return `<div class="chat-msg${m.is_me ? ' mine' : ''}">
+    ${av}
+    <div class="chat-bubble">
+      <div class="chat-bubble-name">${m.full_name} <span class="chat-bubble-grp">${m.group_name}</span></div>
+      <div class="chat-bubble-text">${escHtml(m.text)}</div>
+      <div class="chat-bubble-time">${m.time}</div>
+    </div>
+  </div>`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function sendChatMessage() {
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = ''; chatAutoResize(inp);
+  try {
+    const res = await api('/chat', { method: 'POST', body: JSON.stringify({ text }) });
+    const el = document.getElementById('chatMsgs');
+    const empty = el.querySelector('.empty');
+    if (empty) el.innerHTML = '';
+    el.insertAdjacentHTML('beforeend', renderChatMsg(res.message));
+    _chatLastId = res.message.id;
+    el.scrollTop = el.scrollHeight;
+    tg?.HapticFeedback?.impactOccurred('light');
+  } catch(e) {
+    inp.value = text;
+    toast('⚠️ ' + (e.message || 'Xatolik'));
+  }
+}
+
+function chatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+}
+
+function chatAutoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+}
+
 /* ── Init ────────────────────────────────────────────────────────── */
 async function init() {
   try {
@@ -1206,7 +1457,8 @@ async function init() {
 
     document.getElementById('hdrName').textContent  = me.full_name;
     document.getElementById('hdrGroup').textContent = me.group_name;
-    document.getElementById('hdrAvatar').textContent = me.full_name.charAt(0).toUpperCase();
+    _curAvatar = me.avatar_emoji || '';
+    document.getElementById('hdrAvatar').textContent = _curAvatar || me.full_name.charAt(0).toUpperCase();
     document.getElementById('statAttend').textContent = '—';
 
     if (student.phone_number) {

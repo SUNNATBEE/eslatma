@@ -154,6 +154,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             "group_name":   student.group_name,
             "mars_id":      student.mars_id,
             "phone_number": student.phone_number or "",
+            "avatar_emoji": student.avatar_emoji or "",
             "registered":   student.registered_at.isoformat() if student.registered_at else None,
             "last_active":  student.last_active.isoformat() if student.last_active else None,
             "channel_link": CHANNEL_LINK,
@@ -1276,6 +1277,112 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         confirmed = await db.is_hw_confirmed(user_id, date_str)
         return web.json_response({"confirmed": confirmed})
 
+    async def api_student_leaderboard_global(request: web.Request) -> web.Response:
+        """Barcha guruhlar global reytingi (XP bo'yicha top 50)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        from database import _level_name
+        leaders = await db.get_global_leaderboard(limit=50)
+        result = []
+        for i, s in enumerate(leaders):
+            result.append({
+                "rank":       i + 1,
+                "full_name":  s.full_name,
+                "group_name": s.group_name,
+                "xp":         s.xp or 0,
+                "level":      s.level or 1,
+                "level_name": _level_name(s.level or 1),
+                "streak":     s.streak_days or 0,
+                "is_me":      s.user_id == user_id,
+                "avatar":     s.avatar_emoji or "",
+            })
+        return web.json_response({"leaders": result, "total": len(result)})
+
+    async def api_student_avatar(request: web.Request) -> web.Response:
+        """O'quvchi emoji avatarini o'zgartiradi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        avatar = (body.get("avatar") or "").strip()
+        if not avatar:
+            return web.json_response({"error": "Avatar bo'sh bo'lmasin"}, status=400)
+        await db.set_avatar(user_id, avatar)
+        return web.json_response({"ok": True, "avatar": avatar})
+
+    async def api_chat_get(request: web.Request) -> web.Response:
+        """Chat xabarlarini qaytaradi. after_id=0 → oxirgi 50 ta."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        after_id = int(request.rel_url.query.get("after_id", "0"))
+        msgs = await db.get_chat_messages(limit=50, after_id=after_id)
+        return web.json_response({
+            "messages": [
+                {
+                    "id":         m.id,
+                    "user_id":    m.user_id,
+                    "full_name":  m.full_name,
+                    "group_name": m.group_name,
+                    "avatar":     m.avatar or "",
+                    "text":       m.text,
+                    "time":       m.created_at.strftime("%H:%M") if m.created_at else "",
+                    "is_me":      m.user_id == user_id,
+                }
+                for m in msgs
+            ]
+        })
+
+    async def api_chat_post(request: web.Request) -> web.Response:
+        """Yangi chat xabari yuboradi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        text = (body.get("text") or "").strip()
+        if not text:
+            return web.json_response({"error": "Xabar bo'sh bo'lmasin"}, status=400)
+        if len(text) > 500:
+            return web.json_response({"error": "Xabar 500 belgidan oshmasin"}, status=400)
+        msg = await db.add_chat_message(
+            user_id=user_id, full_name=student.full_name,
+            group_name=student.group_name, avatar=student.avatar_emoji,
+            text=text,
+        )
+        await db.update_last_active(user_id)
+        return web.json_response({
+            "ok": True,
+            "message": {
+                "id":         msg.id,
+                "user_id":    msg.user_id,
+                "full_name":  msg.full_name,
+                "group_name": msg.group_name,
+                "avatar":     msg.avatar or "",
+                "text":       msg.text,
+                "time":       msg.created_at.strftime("%H:%M") if msg.created_at else "",
+                "is_me":      True,
+            }
+        })
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -1331,8 +1438,12 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/student/leaderboard",      api_student_leaderboard)
     app.router.add_get("/api/student/mood",             api_student_mood)
     app.router.add_post("/api/student/mood",            api_student_mood)
-    app.router.add_post("/api/student/hw-confirm",      api_student_hw_confirm)
-    app.router.add_get("/api/student/hw-confirm-status", api_student_hw_confirm_status)
+    app.router.add_post("/api/student/hw-confirm",         api_student_hw_confirm)
+    app.router.add_get("/api/student/hw-confirm-status",   api_student_hw_confirm_status)
+    app.router.add_get("/api/student/leaderboard/global",  api_student_leaderboard_global)
+    app.router.add_post("/api/student/avatar",             api_student_avatar)
+    app.router.add_get("/api/chat",                        api_chat_get)
+    app.router.add_post("/api/chat",                       api_chat_post)
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)

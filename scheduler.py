@@ -183,6 +183,8 @@ async def send_daily_reminders(
 # Key: "user_id:date_str" — restart bo'lsa reset bo'ladi (normal holat)
 _sent_first_reminder:  set[str] = set()
 _sent_second_reminder: set[str] = set()
+# 1-eslatma message_id lari — 2-eslatma yuborishda o'chirish uchun
+_first_reminder_msg_ids: dict[str, int] = {}
 
 
 async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
@@ -263,24 +265,39 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
                     f"📚 Bugun soat <b>{class_time_str}</b> da dars bor!\n"
                     f"Kelasizmi?"
                 )
+                try:
+                    sent = await bot.send_message(
+                        student.user_id, text,
+                        reply_markup=kb_attendance(today_str),
+                        parse_mode="HTML",
+                    )
+                    _first_reminder_msg_ids[key] = sent.message_id
+                except Exception:
+                    pass
             else:  # in_second_window
                 if key in _sent_second_reminder:
                     continue
                 _sent_second_reminder.add(key)
+                # Birinchi eslatmani o'chiramiz
+                if key in _first_reminder_msg_ids:
+                    try:
+                        await bot.delete_message(
+                            student.user_id, _first_reminder_msg_ids.pop(key)
+                        )
+                    except Exception:
+                        _first_reminder_msg_ids.pop(key, None)
                 text = (
                     f"⏰ Hali javob bermagansiz!\n"
                     f"Dars <b>{class_time_str}</b> da boshlanadi."
                 )
-
-            try:
-                await bot.send_message(
-                    student.user_id,
-                    text,
-                    reply_markup=kb_attendance(today_str),
-                    parse_mode="HTML",
-                )
-            except Exception:
-                pass
+                try:
+                    await bot.send_message(
+                        student.user_id, text,
+                        reply_markup=kb_attendance(today_str),
+                        parse_mode="HTML",
+                    )
+                except Exception:
+                    pass
 
     logger.debug(f"check_class_reminders: {today_str} {now.strftime('%H:%M')} ({day_type})")
 

@@ -177,6 +177,59 @@ async def send_daily_reminders(
     logger.info("=" * 55)
 
 
+# ─── Test: bitta guruhga dars eslatmasi ──────────────────────────────────────
+
+async def send_daily_reminder_to_group(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+    group_name: str,
+) -> None:
+    """Admin mini app orqali bitta guruhga test yuborish."""
+    from sqlalchemy import select
+    from database import Group
+
+    try:
+        info = get_tomorrow_info(timezone_str)
+
+        # Guruhni nomiga qarab topamiz
+        async with db.session_factory() as session:
+            result = await session.execute(
+                select(Group).where(Group.name == group_name)
+            )
+            group = result.scalar_one_or_none()
+
+        if not group:
+            logger.warning(f"TEST SEND: Guruh topilmadi: '{group_name}'")
+            return
+
+        text = build_reminder_message(info, group.audience)
+        sent = await bot.send_message(
+            chat_id=group.chat_id,
+            text=f"🧪 <b>TEST</b>\n\n{text}",
+            parse_mode="HTML",
+        )
+        logger.info(
+            f"TEST SEND: '{group_name}' ({group.chat_id}) → msg_id={sent.message_id}"
+        )
+
+        # Uy vazifasi mavjud bo'lsa ham yuboramiz
+        hw = await db.get_homework(group.name)
+        if hw:
+            try:
+                await bot.copy_message(
+                    chat_id=group.chat_id,
+                    from_chat_id=hw.from_chat_id,
+                    message_id=hw.message_id,
+                )
+                logger.info(f"TEST SEND: Uy vazifasi yuborildi → '{group_name}'")
+            except Exception as hw_err:
+                logger.warning(f"TEST SEND: Uy vazifasi yuborib bo'lmadi: {hw_err}")
+
+    except Exception as e:
+        logger.exception(f"TEST SEND: Xato: {e}")
+
+
 # ─── Dars eslatmasi: har 10 daqiqada ────────────────────────────────────────
 
 # 1-eslatma va 2-eslatma yuborilgan foydalanuvchilarni kuzatish

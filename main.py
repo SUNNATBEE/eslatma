@@ -873,9 +873,23 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         try:
-            from scheduler import send_daily_reminders
-            asyncio.create_task(send_daily_reminders(bot=bot, db=db, timezone_str=TIMEZONE))
-            return web.json_response({"ok": True})
+            body = {}
+            if request.content_length:
+                body = await request.json()
+        except Exception:
+            body = {}
+        group_name = body.get("group_name")  # None yoki "all" = barcha guruhlarga
+        try:
+            from scheduler import send_daily_reminders, send_daily_reminder_to_group
+            if group_name and group_name != "all":
+                asyncio.create_task(
+                    send_daily_reminder_to_group(
+                        bot=bot, db=db, timezone_str=TIMEZONE, group_name=group_name
+                    )
+                )
+            else:
+                asyncio.create_task(send_daily_reminders(bot=bot, db=db, timezone_str=TIMEZONE))
+            return web.json_response({"ok": True, "target": group_name or "all"})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 

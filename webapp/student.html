@@ -848,7 +848,7 @@
 
       <!-- Mood row -->
       <div class="mood-row" id="moodRow" style="display:none">
-        <div class="mood-label">Bugun kayfiyating?</div>
+        <div class="mood-label" data-i18n="mood.label">Bugun kayfiyating?</div>
         <div class="mood-btns">
           <button class="mood-btn" id="mood-happy" onclick="setMood('happy')" title="Yaxshi">😊</button>
           <button class="mood-btn" id="mood-ok"    onclick="setMood('ok')"    title="Normal">😐</button>
@@ -861,22 +861,22 @@
         <div class="stat-chip">
           <div class="sc-icon">⭐</div>
           <div class="sc-val" id="statXP">—</div>
-          <div class="sc-label">XP</div>
+          <div class="sc-label" data-i18n="stat.xp">XP</div>
         </div>
         <div class="stat-chip">
           <div class="sc-icon">🔥</div>
           <div class="sc-val" id="statStreak">—</div>
-          <div class="sc-label">Streak</div>
+          <div class="sc-label" data-i18n="stat.streak">Streak</div>
         </div>
         <div class="stat-chip">
           <div class="sc-icon">🏅</div>
           <div class="sc-val" id="statRank">—</div>
-          <div class="sc-label">O'rin</div>
+          <div class="sc-label" data-i18n="stat.rank">O'rin</div>
         </div>
         <div class="stat-chip">
           <div class="sc-icon">✅</div>
           <div class="sc-val" id="statAttend">—</div>
-          <div class="sc-label">Davomad</div>
+          <div class="sc-label" data-i18n="stat.attend">Davomad</div>
         </div>
       </div>
 
@@ -886,34 +886,34 @@
           <div style="font-size:18px">📱</div>
           <div>
             <div class="phone-val" id="phoneVal">—</div>
-            <div class="phone-sub">Telefon raqam</div>
+            <div class="phone-sub" data-i18n="phone.label">Telefon raqam</div>
           </div>
         </div>
-        <button class="phone-change" onclick="changePhone()">O'zgartirish</button>
+        <button class="phone-change" data-i18n="phone.change" onclick="changePhone()">O'zgartirish</button>
       </div>
 
       <!-- Menu -->
-      <p class="section-title">Asosiy menyu</p>
+      <p class="section-title" data-i18n="section.menu">Asosiy menyu</p>
       <div class="menu-grid">
         <div class="menu-card" onclick="goPage('homework')">
           <div class="mc-icon">📚</div>
-          <div class="mc-label">Uy vazifasi</div>
-          <div class="mc-sub">Joriy vazifa</div>
+          <div class="mc-label" data-i18n="menu.homework">Uy vazifasi</div>
+          <div class="mc-sub" data-i18n="menu.homework.sub">Joriy vazifa</div>
         </div>
         <div class="menu-card" onclick="goPage('progress')">
           <div class="mc-icon">🎮</div>
-          <div class="mc-label">Mening natijam</div>
-          <div class="mc-sub">XP, daraja, yutuqlar</div>
+          <div class="mc-label" data-i18n="menu.progress">Mening natijam</div>
+          <div class="mc-sub" data-i18n="menu.progress.sub">XP, daraja, yutuqlar</div>
         </div>
         <div class="menu-card" onclick="goPage('chat')">
           <div class="mc-icon">💬</div>
-          <div class="mc-label">Chat</div>
-          <div class="mc-sub">Barcha o'quvchilar</div>
+          <div class="mc-label" data-i18n="menu.chat">Chat</div>
+          <div class="mc-sub" data-i18n="menu.chat.sub">Barcha o'quvchilar</div>
         </div>
         <div class="menu-card" onclick="showInfo()">
           <div class="mc-icon">👤</div>
-          <div class="mc-label">Profil</div>
-          <div class="mc-sub">Ma'lumotlarim</div>
+          <div class="mc-label" data-i18n="menu.profile">Profil</div>
+          <div class="mc-sub" data-i18n="menu.profile.sub">Ma'lumotlarim</div>
         </div>
         <div class="menu-card" onclick="goPage('games')">
           <div class="mc-icon">🕹</div>
@@ -925,7 +925,7 @@
 
     <!-- ═════════════════════════ HOMEWORK PAGE ═════════════════════ -->
     <div class="page" id="page-homework">
-      <p class="section-title">Joriy uy vazifasi</p>
+      <p class="section-title" data-i18n="hw.title">Joriy uy vazifasi</p>
       <div id="hwContent"><div class="spinner"></div></div>
     </div>
 
@@ -955,37 +955,37 @@
 
       <!-- Games Hub -->
       <div id="gHub">
-        <p class="section-title">🕹 O'yinlar — XP yig'ish</p>
+        <p class="section-title" data-i18n="games.title">🕹 O'yinlar — XP yig'ish</p>
         <div class="menu-grid">
           <div class="menu-card" onclick="showGame('gTyping')">
             <div class="mc-icon">⌨️</div>
-            <div class="mc-label">Terilish tezligi</div>
-            <div class="mc-sub">+5–25 XP</div>
+            <div class="mc-label" data-i18n="game.typing">Terilish tezligi</div>
+            <div class="mc-sub" data-i18n="game.typing.sub">+5–25 XP</div>
           </div>
           <div class="menu-card" onclick="showGame('gQuiz')">
             <div class="mc-icon">🧠</div>
-            <div class="mc-label">Quiz</div>
-            <div class="mc-sub">+5 XP / savol</div>
+            <div class="mc-label" data-i18n="game.quiz">Quiz</div>
+            <div class="mc-sub" data-i18n="game.quiz.sub">+5 XP / savol</div>
           </div>
           <div class="menu-card" onclick="showGame('gG2048')">
             <div class="mc-icon">🎮</div>
-            <div class="mc-label">2048</div>
-            <div class="mc-sub">+10–30 XP</div>
+            <div class="mc-label" data-i18n="game.2048">2048</div>
+            <div class="mc-sub" data-i18n="game.2048.sub">+10–30 XP</div>
           </div>
           <div class="menu-card" onclick="showGame('gMemory')">
             <div class="mc-icon">🃏</div>
-            <div class="mc-label">Memory Match</div>
-            <div class="mc-sub">+15 XP</div>
+            <div class="mc-label" data-i18n="game.memory">Memory Match</div>
+            <div class="mc-sub" data-i18n="game.memory.sub">+15 XP</div>
           </div>
           <div class="menu-card" onclick="showGame('gChess')">
             <div class="mc-icon">♟️</div>
-            <div class="mc-label">Shaxmat (AI)</div>
-            <div class="mc-sub">+5–20 XP</div>
+            <div class="mc-label" data-i18n="game.chess">Shaxmat (AI)</div>
+            <div class="mc-sub" data-i18n="game.chess.sub">+5–20 XP</div>
           </div>
           <div class="menu-card" onclick="showGame('gMulti')">
             <div class="mc-icon">🏁</div>
-            <div class="mc-label">Multiplayer Yozish</div>
-            <div class="mc-sub">+20 XP g'alaba</div>
+            <div class="mc-label" data-i18n="game.multi">Multiplayer Yozish</div>
+            <div class="mc-sub" data-i18n="game.multi.sub">+20 XP g'alaba</div>
           </div>
         </div>
       </div>
@@ -1107,22 +1107,22 @@
   <!-- Tab bar -->
   <div class="tabbar">
     <div class="tab-item active" id="tab-home"     onclick="goPage('home')">
-      <div class="tab-icon">🏠</div><div class="tab-label">Bosh</div>
+      <div class="tab-icon">🏠</div><div class="tab-label" data-i18n="tab.home">Bosh</div>
     </div>
     <div class="tab-item"        id="tab-homework" onclick="goPage('homework')">
-      <div class="tab-icon">📚</div><div class="tab-label">Vazifa</div>
+      <div class="tab-icon">📚</div><div class="tab-label" data-i18n="tab.homework">Vazifa</div>
     </div>
     <div class="tab-item"        id="tab-progress" onclick="goPage('progress')">
-      <div class="tab-icon">🎮</div><div class="tab-label">Natija</div>
+      <div class="tab-icon">🎮</div><div class="tab-label" data-i18n="tab.progress">Natija</div>
     </div>
     <div class="tab-item"        id="tab-chat"     onclick="goPage('chat')">
-      <div class="tab-icon">💬</div><div class="tab-label">Chat</div>
+      <div class="tab-icon">💬</div><div class="tab-label" data-i18n="tab.chat">Chat</div>
     </div>
     <div class="tab-item"        id="tab-history"  onclick="goPage('history')">
-      <div class="tab-icon">📜</div><div class="tab-label">Tarix</div>
+      <div class="tab-icon">📜</div><div class="tab-label" data-i18n="tab.history">Tarix</div>
     </div>
     <div class="tab-item"        id="tab-games"    onclick="goPage('games')">
-      <div class="tab-icon">🕹</div><div class="tab-label">O'yinlar</div>
+      <div class="tab-icon">🕹</div><div class="tab-label" data-i18n="tab.games">O'yinlar</div>
     </div>
   </div>
 </div>
@@ -2024,22 +2024,58 @@ function openDm() {
 ══════════════════════════════════════════════════════════════════ */
 const T = {
   uz: {
-    'menu.homework':'Uy vazifasi', 'menu.homework.sub':'Joriy vazifa',
-    'menu.progress':'Natijalar', 'menu.progress.sub':'XP va darajalar',
-    'menu.chat':'Chat', 'menu.chat.sub':'Savol yuboring',
-    'menu.games':'O\'yinlar', 'menu.games.sub':'XP + reyting',
-    'menu.channel':'Kanal', 'menu.channel.sub':'Yangiliklar',
-    'tab.home':'Bosh', 'tab.homework':'Vazifa', 'tab.progress':'Natija',
-    'tab.chat':'Chat', 'tab.history':'Tarix', 'tab.games':'O\'yinlar',
+    /* Menu */
+    'menu.homework':"Uy vazifasi", 'menu.homework.sub':"Joriy vazifa",
+    'menu.progress':"Mening natijam", 'menu.progress.sub':"XP, daraja, yutuqlar",
+    'menu.chat':"Chat", 'menu.chat.sub':"Barcha o'quvchilar",
+    'menu.profile':"Profil", 'menu.profile.sub':"Ma'lumotlarim",
+    'menu.games':"O'yinlar", 'menu.games.sub':"XP + reyting",
+    /* Tabs */
+    'tab.home':"Bosh", 'tab.homework':"Vazifa", 'tab.progress':"Natija",
+    'tab.chat':"Chat", 'tab.history':"Tarix", 'tab.games':"O'yinlar",
+    /* Section titles */
+    'section.menu':"Asosiy menyu",
+    'hw.title':"Joriy uy vazifasi",
+    'games.title':"O'yinlar — XP yig'ish",
+    /* Stats */
+    'stat.xp':"XP", 'stat.streak':"Streak", 'stat.rank':"O'rin", 'stat.attend':"Davomad",
+    /* Home */
+    'mood.label':"Bugun kayfiyating?",
+    'phone.label':"Telefon raqam", 'phone.change':"O'zgartirish",
+    /* Games */
+    'game.typing':"Terilish tezligi", 'game.typing.sub':"+5–25 XP",
+    'game.quiz':"Quiz", 'game.quiz.sub':"+5 XP / savol",
+    'game.2048':"2048", 'game.2048.sub':"+10–30 XP",
+    'game.memory':"Memory Match", 'game.memory.sub':"+15 XP",
+    'game.chess':"Shaxmat (AI)", 'game.chess.sub':"+5–20 XP",
+    'game.multi':"Multiplayer Yozish", 'game.multi.sub':"+20 XP g'alaba",
   },
   ru: {
-    'menu.homework':'Домашнее задание', 'menu.homework.sub':'Текущее задание',
-    'menu.progress':'Результаты', 'menu.progress.sub':'XP и уровни',
-    'menu.chat':'Чат', 'menu.chat.sub':'Задать вопрос',
-    'menu.games':'Игры', 'menu.games.sub':'XP + рейтинг',
-    'menu.channel':'Канал', 'menu.channel.sub':'Новости',
-    'tab.home':'Главная', 'tab.homework':'Задание', 'tab.progress':'Итог',
-    'tab.chat':'Чат', 'tab.history':'История', 'tab.games':'Игры',
+    /* Menu */
+    'menu.homework':"Домашнее задание", 'menu.homework.sub':"Текущее задание",
+    'menu.progress':"Мои результаты", 'menu.progress.sub':"XP, уровень, достижения",
+    'menu.chat':"Чат", 'menu.chat.sub':"Все студенты",
+    'menu.profile':"Профиль", 'menu.profile.sub':"Мои данные",
+    'menu.games':"Игры", 'menu.games.sub':"XP + рейтинг",
+    /* Tabs */
+    'tab.home':"Главная", 'tab.homework':"Задание", 'tab.progress':"Итог",
+    'tab.chat':"Чат", 'tab.history':"История", 'tab.games':"Игры",
+    /* Section titles */
+    'section.menu':"Главное меню",
+    'hw.title':"Текущее домашнее задание",
+    'games.title':"Игры — Собери XP",
+    /* Stats */
+    'stat.xp':"XP", 'stat.streak':"Серия", 'stat.rank':"Место", 'stat.attend':"Посещ.",
+    /* Home */
+    'mood.label':"Как твоё настроение?",
+    'phone.label':"Номер телефона", 'phone.change':"Изменить",
+    /* Games */
+    'game.typing':"Скорость печати", 'game.typing.sub':"+5–25 XP",
+    'game.quiz':"Квиз", 'game.quiz.sub':"+5 XP / вопрос",
+    'game.2048':"2048", 'game.2048.sub':"+10–30 XP",
+    'game.memory':"Пары карточек", 'game.memory.sub':"+15 XP",
+    'game.chess':"Шахматы (AI)", 'game.chess.sub':"+5–20 XP",
+    'game.multi':"Мультиплеер Печать", 'game.multi.sub':"+20 XP победа",
   },
 };
 let _lang = localStorage.getItem('app_lang') || 'uz';

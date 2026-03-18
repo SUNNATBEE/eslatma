@@ -184,8 +184,9 @@ async def send_daily_reminder_to_group(
     db: DatabaseService,
     timezone_str: str,
     group_name: str,
-) -> None:
-    """Admin mini app orqali bitta guruhga test yuborish."""
+) -> tuple[int, int] | None:
+    """Admin mini app orqali bitta guruhga test yuborish.
+    Returns (message_id, chat_id) on success, None on failure."""
     from sqlalchemy import select
     from database import Group
 
@@ -201,7 +202,7 @@ async def send_daily_reminder_to_group(
 
         if not group:
             logger.warning(f"TEST SEND: Guruh topilmadi: '{group_name}'")
-            return
+            return None
 
         text = build_reminder_message(info, group.audience)
         sent = await bot.send_message(
@@ -226,8 +227,11 @@ async def send_daily_reminder_to_group(
             except Exception as hw_err:
                 logger.warning(f"TEST SEND: Uy vazifasi yuborib bo'lmadi: {hw_err}")
 
+        return (sent.message_id, group.chat_id)
+
     except Exception as e:
         logger.exception(f"TEST SEND: Xato: {e}")
+        return None
 
 
 # ─── Dars eslatmasi: har 10 daqiqada ────────────────────────────────────────

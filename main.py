@@ -873,23 +873,48 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         try:
-            body = {}
-            if request.content_length:
-                body = await request.json()
+            body = await request.json()
         except Exception:
             body = {}
         group_name = body.get("group_name")  # None yoki "all" = barcha guruhlarga
         try:
             from scheduler import send_daily_reminders, send_daily_reminder_to_group
             if group_name and group_name != "all":
-                asyncio.create_task(
-                    send_daily_reminder_to_group(
-                        bot=bot, db=db, timezone_str=TIMEZONE, group_name=group_name
-                    )
+                result = await send_daily_reminder_to_group(
+                    bot=bot, db=db, timezone_str=TIMEZONE, group_name=group_name
                 )
+                if result:
+                    message_id, chat_id = result
+                    return web.json_response({
+                        "ok": True, "target": group_name,
+                        "message_id": message_id, "chat_id": chat_id,
+                    })
+                else:
+                    return web.json_response(
+                        {"error": f"Guruh topilmadi yoki xabar yuborib bo'lmadi: '{group_name}'"},
+                        status=400,
+                    )
             else:
                 asyncio.create_task(send_daily_reminders(bot=bot, db=db, timezone_str=TIMEZONE))
-            return web.json_response({"ok": True, "target": group_name or "all"})
+                return web.json_response({"ok": True, "target": "all"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def api_admin_delete_message(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        chat_id    = body.get("chat_id")
+        message_id = body.get("message_id")
+        if not chat_id or not message_id:
+            return web.json_response({"error": "chat_id va message_id kerak"}, status=400)
+        try:
+            await bot.delete_message(chat_id=int(chat_id), message_id=int(message_id))
+            return web.json_response({"ok": True})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
@@ -1669,6 +1694,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/admin/inactive",          api_admin_inactive)
     app.router.add_post("/api/admin/test-send",        api_admin_test_send)
     app.router.add_post("/api/admin/test-leaderboard", api_admin_test_leaderboard)
+    app.router.add_post("/api/admin/delete-message",   api_admin_delete_message)
     app.router.add_get("/api/admin/curator-stats",     api_admin_curator_stats)
     app.router.add_get("/api/admin/button-stats",      api_admin_button_stats)
     app.router.add_get("/api/curator/me",         api_curator_me)

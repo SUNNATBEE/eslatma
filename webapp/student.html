@@ -936,7 +936,7 @@
 
     <!-- ═════════════════════════ HISTORY PAGE ═════════════════════ -->
     <div class="page" id="page-history">
-      <p class="section-title">Vazifalar tarixi</p>
+      <p class="section-title" data-i18n="history.title">Vazifalar tarixi</p>
       <div class="card" id="histContent"><div class="spinner"></div></div>
     </div>
 
@@ -945,6 +945,7 @@
       <div class="chat-msgs-wrap" id="chatMsgs"><div class="spinner"></div></div>
       <div class="chat-input-wrap">
         <textarea class="chat-input" id="chatInput" placeholder="Xabar yozing..." rows="1"
+          data-i18n-placeholder="chat.placeholder"
           onkeydown="chatKeydown(event)" oninput="chatAutoResize(this)"></textarea>
         <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
       </div>
@@ -1133,15 +1134,16 @@
 <div class="no-modal-overlay" id="noModal" onclick="if(event.target===this)hideNoModal()">
   <div class="no-modal">
     <div class="no-modal-handle"></div>
-    <div class="no-modal-warn">
+    <div class="no-modal-warn" data-i18n="modal.warn">
       ⚠️ <b>Diqqat!</b> Bu habar <b>ota-onangizga, ustozingizga va kuratorigizga</b> yuboriladi!
     </div>
-    <div class="no-modal-label">Kela olmasligingiz sababini yozing:</div>
+    <div class="no-modal-label" data-i18n="modal.label">Kela olmasligingiz sababini yozing:</div>
     <textarea class="no-modal-textarea" id="noReason" rows="3"
+      data-i18n-placeholder="modal.placeholder"
       placeholder="Masalan: Kasal, Safarda, Oilaviy sabab..."></textarea>
     <div class="no-modal-btns">
-      <button class="no-modal-cancel" onclick="hideNoModal()">Bekor</button>
-      <button class="no-modal-submit" onclick="submitNoAttend()">❌ Yuborish</button>
+      <button class="no-modal-cancel" data-i18n="modal.cancel" onclick="hideNoModal()">Bekor</button>
+      <button class="no-modal-submit" data-i18n="modal.submit" onclick="submitNoAttend()">❌ Yuborish</button>
     </div>
   </div>
 </div>
@@ -1492,7 +1494,7 @@ async function api(path, opts = {}) {
 
 /* ── State ───────────────────────────────────────────────────────── */
 let student      = null;
-let classInfo    = null;
+let classInfo    = undefined;
 let progressData = null;
 let channelLink  = 'https://t.me/sunnatbee_lessons';
 let currentPage  = 'home';
@@ -1579,16 +1581,16 @@ function renderClassCard(info) {
   if (!info || !info.has_class) {
     el.innerHTML = `
       <div class="class-card class-card-no">
-        <div class="class-card-label">Bugungi dars</div>
-        <div class="class-card-time">Dars yo'q 🎉</div>
-        <div class="class-card-group">Dam oling!</div>
+        <div class="class-card-label">${t('class.today')}</div>
+        <div class="class-card-time">${t('class.noclass')}</div>
+        <div class="class-card-group">${t('class.rest')}</div>
       </div>`;
     return;
   }
   const statusHtml = buildAttStatusHtml(info.att_status);
   el.innerHTML = `
     <div class="class-card">
-      <div class="class-card-label">Bugungi dars</div>
+      <div class="class-card-label">${t('class.today')}</div>
       <div class="class-card-time">${info.class_time}</div>
       <div class="class-card-group">📚 ${info.group_name}</div>
       ${statusHtml}
@@ -1596,12 +1598,12 @@ function renderClassCard(info) {
 }
 
 function buildAttStatusHtml(status) {
-  if (status === 'yes') return `<div class="att-status-badge att-status-yes">✅ Boraman deb belgiladingiz</div>`;
-  if (status === 'no')  return `<div class="att-status-badge att-status-no">❌ Kela olmasligingiz saqlandi</div>`;
+  if (status === 'yes') return `<div class="att-status-badge att-status-yes">${t('att.yes.saved')}</div>`;
+  if (status === 'no')  return `<div class="att-status-badge att-status-no">${t('att.no.saved')}</div>`;
   return `
     <div class="att-btns">
-      <button class="att-btn att-yes" onclick="sendAttend('yes')">✅ Ha, boraman</button>
-      <button class="att-btn att-no"  onclick="showNoModal()">❌ Kela olmayman</button>
+      <button class="att-btn att-yes" onclick="sendAttend('yes')">${t('att.btn.yes')}</button>
+      <button class="att-btn att-no"  onclick="showNoModal()">${t('att.btn.no')}</button>
     </div>`;
 }
 
@@ -2036,12 +2038,30 @@ const T = {
     /* Section titles */
     'section.menu':"Asosiy menyu",
     'hw.title':"Joriy uy vazifasi",
+    'history.title':"Vazifalar tarixi",
     'games.title':"O'yinlar — XP yig'ish",
     /* Stats */
     'stat.xp':"XP", 'stat.streak':"Streak", 'stat.rank':"O'rin", 'stat.attend':"Davomad",
     /* Home */
     'mood.label':"Bugun kayfiyating?",
     'phone.label':"Telefon raqam", 'phone.change':"O'zgartirish",
+    /* Class card */
+    'class.today':"Bugungi dars",
+    'class.noclass':"Dars yo'q 🎉",
+    'class.rest':"Dam oling!",
+    /* Attendance */
+    'att.yes.saved':"✅ Boraman deb belgiladingiz",
+    'att.no.saved':"❌ Kela olmasligingiz saqlandi",
+    'att.btn.yes':"✅ Ha, boraman",
+    'att.btn.no':"❌ Kela olmayman",
+    /* No-modal */
+    'modal.warn':"⚠️ Diqqat! Bu habar ota-onangizga, ustozingizga va kuratorigizga yuboriladi!",
+    'modal.label':"Kela olmasligingiz sababini yozing:",
+    'modal.placeholder':"Masalan: Kasal, Safarda, Oilaviy sabab...",
+    'modal.cancel':"Bekor",
+    'modal.submit':"❌ Yuborish",
+    /* Chat */
+    'chat.placeholder':"Xabar yozing...",
     /* Games */
     'game.typing':"Terilish tezligi", 'game.typing.sub':"+5–25 XP",
     'game.quiz':"Quiz", 'game.quiz.sub':"+5 XP / savol",
@@ -2063,12 +2083,30 @@ const T = {
     /* Section titles */
     'section.menu':"Главное меню",
     'hw.title':"Текущее домашнее задание",
+    'history.title':"История заданий",
     'games.title':"Игры — Собери XP",
     /* Stats */
     'stat.xp':"XP", 'stat.streak':"Серия", 'stat.rank':"Место", 'stat.attend':"Посещ.",
     /* Home */
     'mood.label':"Как твоё настроение?",
     'phone.label':"Номер телефона", 'phone.change':"Изменить",
+    /* Class card */
+    'class.today':"Сегодняшний урок",
+    'class.noclass':"Уроков нет 🎉",
+    'class.rest':"Отдыхайте!",
+    /* Attendance */
+    'att.yes.saved':"✅ Вы отметили — Приду",
+    'att.no.saved':"❌ Ваше отсутствие сохранено",
+    'att.btn.yes':"✅ Да, приду",
+    'att.btn.no':"❌ Не смогу прийти",
+    /* No-modal */
+    'modal.warn':"⚠️ Внимание! Это сообщение будет отправлено вашим родителям, учителю и куратору!",
+    'modal.label':"Напишите причину отсутствия:",
+    'modal.placeholder':"Например: Болен, В поездке, Семейная причина...",
+    'modal.cancel':"Отмена",
+    'modal.submit':"❌ Отправить",
+    /* Chat */
+    'chat.placeholder':"Напишите сообщение...",
     /* Games */
     'game.typing':"Скорость печати", 'game.typing.sub':"+5–25 XP",
     'game.quiz':"Квиз", 'game.quiz.sub':"+5 XP / вопрос",
@@ -2088,11 +2126,20 @@ function toggleLang() {
 function applyLang() {
   const btn = document.getElementById('langBtn');
   if (btn) btn.textContent = _lang === 'uz' ? '🇷🇺' : '🇺🇿';
+  // Matn elementlari
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     const val = t(key);
     if (val && val !== key) el.textContent = val;
   });
+  // Placeholder atributlari
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    const val = t(key);
+    if (val && val !== key) el.placeholder = val;
+  });
+  // Dinamik JS bilan render qilingan kard
+  if (classInfo !== undefined) renderClassCard(classInfo);
 }
 
 /* ══════════════════════════════════════════════════════════════════

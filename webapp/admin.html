@@ -769,9 +769,9 @@
       <!-- Test yuborish -->
       <div class="amsg-card">
         <div class="amsg-card-hdr">🧪 Test yuborish</div>
-        <div style="padding:12px 16px 8px">
+        <div style="padding:10px 16px 6px">
           <label class="form-label">Guruh tanlash:</label>
-          <select class="action-select" id="testGroupSelect">
+          <select class="action-select" id="testGroupSelect" style="font-size:12px;padding:8px 10px;">
             <option value="all">🌐 Barcha faol guruhlarga</option>
           </select>
         </div>
@@ -783,7 +783,10 @@
             🏆 Reyting xabari — Test yuborish
           </button>
         </div>
-        <div id="testSendResult" style="display:none;padding:0 16px 12px;font-size:13px;font-weight:700;text-align:center;color:var(--success)"></div>
+        <div id="testSendResult" style="display:none;padding:0 16px 6px;font-size:13px;font-weight:700;text-align:center;color:var(--success)"></div>
+        <div id="testDeleteRow" style="display:none;padding:0 16px 12px;">
+          <button id="testDeleteBtn" class="test-btn" style="background:rgba(220,53,69,.15);color:#f87171;border:1px solid rgba(220,53,69,.3);" onclick="doDeleteTestMsg()">🗑 Yuborilgan test xabarni o'chirish</button>
+        </div>
       </div>
 
       <!-- Guruhlar alohida -->
@@ -1359,6 +1362,13 @@ async function loadAutoMsg(force) {
       const cs = await api('/admin/curator-stats');
       data._curators = cs.curators || [];
     } catch {}
+    // O'quvchilar yuklanmagan bo'lsa yuklash (test guruh selecti uchun)
+    if (!allStudents.length) {
+      try {
+        const sd = await api('/admin/all-students');
+        allStudents = sd.students || [];
+      } catch {}
+    }
     _amsgData = data;
     _syncAmsgToggles();
     _renderAmsgGroups();
@@ -1385,14 +1395,31 @@ function _populateTestGroupSelect() {
   const sel = document.getElementById('testGroupSelect');
   if (!sel) return;
   while (sel.options.length > 1) sel.remove(1);
-  const groups = _amsgData._groups || [];
-  groups.forEach(g => {
+
+  // DB guruhlari (Telegram guruhlar)
+  const dbGroups = _amsgData._groups || [];
+  const dbNames = new Set();
+  dbGroups.forEach(g => {
     const opt = document.createElement('option');
     opt.value = g.name;
-    const aud = g.audience === 'PARENT' ? '👨‍👩‍👧 Ota-onalar' : "🎓 O'quvchilar";
-    opt.textContent = `📚 ${g.name} (${aud})`;
+    const aud = g.audience === 'PARENT' ? 'Ota-onalar' : "O'quvchilar";
+    opt.textContent = `${g.name} · ${aud}`;
     sel.appendChild(opt);
+    dbNames.add(g.name);
   });
+
+  // O'quvchi guruh nomlari (credentials dan, DB da yo'q bo'lsa)
+  if (allStudents.length) {
+    const studentGroups = [...new Set(allStudents.map(s => s.group_name))].sort();
+    studentGroups.forEach(name => {
+      if (!dbNames.has(name)) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = `${name} · faqat SMS`;
+        sel.appendChild(opt);
+      }
+    });
+  }
 }
 
 function setAmsgGrpFilter(filter, btn) {
@@ -1857,27 +1884,59 @@ async function loadButtonStats() {
 /* ═══════════════════════════════════════════════════
    Automsg — Test yuborish
 ═══════════════════════════════════════════════════ */
+let _lastTestMsg = null; // { message_id, chat_id }
+
 async function doTestDars() {
   const groupName = document.getElementById('testGroupSelect')?.value || 'all';
   const btn = document.getElementById('testDarsBtn');
   const res = document.getElementById('testSendResult');
+  const delRow = document.getElementById('testDeleteRow');
   btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
   res.style.display = 'none';
+  if (delRow) delRow.style.display = 'none';
+  _lastTestMsg = null;
   try {
     const body = groupName === 'all' ? {} : { group_name: groupName };
-    await api('/admin/test-send', { method:'POST', body: JSON.stringify(body) });
+    const data = await api('/admin/test-send', { method:'POST', body: JSON.stringify(body) });
     res.style.display = ''; res.style.color = 'var(--success)';
-    res.textContent = groupName === 'all'
-      ? '✅ Dars eslatmasi barcha guruhlarga yuborilmoqda!'
-      : `✅ Dars eslatmasi "${groupName}" guruhiga yuborilmoqda!`;
-    toast('🚀 Test xabar yuborilmoqda...');
+    if (groupName === 'all') {
+      res.textContent = '✅ Dars eslatmasi barcha guruhlarga yuborilmoqda!';
+    } else {
+      res.textContent = `✅ "${groupName}" guruhiga test xabar yuborildi!`;
+      if (data.message_id && data.chat_id) {
+        _lastTestMsg = { message_id: data.message_id, chat_id: data.chat_id };
+        if (delRow) delRow.style.display = '';
+      }
+    }
+    toast('🚀 Test xabar yuborildi!');
     tg?.HapticFeedback?.notificationOccurred('success');
   } catch(e) {
     res.style.display = ''; res.style.color = 'var(--danger)';
     res.textContent = '⚠️ ' + e.message;
     toast('⚠️ ' + e.message);
   } finally {
-    setTimeout(() => { btn.disabled = false; btn.textContent = '📢 Dars eslatmasi — Test yuborish'; }, 4000);
+    btn.disabled = false; btn.textContent = '📢 Dars eslatmasi — Test yuborish';
+  }
+}
+
+async function doDeleteTestMsg() {
+  if (!_lastTestMsg) return;
+  const btn = document.getElementById('testDeleteBtn');
+  const delRow = document.getElementById('testDeleteRow');
+  btn.disabled = true; btn.textContent = '⏳ O\'chirilmoqda...';
+  try {
+    await api('/admin/delete-message', {
+      method: 'POST',
+      body: JSON.stringify(_lastTestMsg),
+    });
+    _lastTestMsg = null;
+    delRow.style.display = 'none';
+    document.getElementById('testSendResult').textContent = '🗑 Test xabar o\'chirildi!';
+    toast('🗑 Test xabar o\'chirildi');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '🗑 Yuborilgan test xabarni o\'chirish';
+    toast('⚠️ O\'chirib bo\'lmadi: ' + e.message);
   }
 }
 

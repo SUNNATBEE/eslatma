@@ -109,6 +109,7 @@ class Student(Base):
     streak_days:      Mapped[int]           = mapped_column(Integer, default=0,  nullable=False, server_default="0")
     last_streak_date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     avatar_emoji:     Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    game_wins:        Mapped[int]           = mapped_column(Integer, default=0, nullable=False, server_default="0")
 
     def __repr__(self) -> str:
         return f"<Student {self.full_name!r} | {self.group_name}>"
@@ -290,6 +291,40 @@ class ChatMessage(Base):
     created_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
 
+# ─── Model: O'yin natijalari ──────────────────────────────────────────────────
+
+class GameScore(Base):
+    """Solo o'yin natijalari (typing, quiz, chess, memory, 2048)."""
+    __tablename__ = "game_scores"
+
+    id:         Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id:    Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    game_type:  Mapped[str] = mapped_column(String(30), nullable=False)  # typing/quiz/chess/memory/2048
+    score:      Mapped[int] = mapped_column(Integer, default=0)          # WPM, points va hokazo
+    xp_earned:  Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class GameRoom(Base):
+    """Multiplayer o'yin xonasi (typing race)."""
+    __tablename__ = "game_rooms"
+
+    id:           Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    game_type:    Mapped[str]           = mapped_column(String(30), nullable=False)  # typing_race
+    player1_id:   Mapped[int]           = mapped_column(BigInteger, nullable=False)
+    player1_name: Mapped[str]           = mapped_column(String(255), nullable=False)
+    player2_id:   Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    player2_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    status:       Mapped[str]           = mapped_column(String(20), default="waiting")  # waiting/active/finished
+    text_passage: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    p1_progress:  Mapped[int]           = mapped_column(Integer, default=0)
+    p2_progress:  Mapped[int]           = mapped_column(Integer, default=0)
+    p1_finished:  Mapped[bool]          = mapped_column(Boolean, default=False)
+    p2_finished:  Mapped[bool]          = mapped_column(Boolean, default=False)
+    winner_id:    Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    created_at:   Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
+
+
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
 
 # Level oshganda beriladigan bonus XP
@@ -383,6 +418,7 @@ class DatabaseService:
                 ("streak_days",      "INTEGER NOT NULL DEFAULT 0"),
                 ("last_streak_date", "VARCHAR(20)"),
                 ("avatar_emoji",     "VARCHAR(20)"),
+                ("game_wins",        "INTEGER NOT NULL DEFAULT 0"),
             ]:
                 try:
                     await conn.execute(
@@ -1265,3 +1301,164 @@ class DatabaseService:
             await session.commit()
             await session.refresh(msg)
             return msg
+
+    # ── GAMES ──────────────────────────────────────────────────────────────────
+
+    async def save_game_score(
+        self, user_id: int, game_type: str, score: int, xp_earned: int
+    ) -> None:
+        """O'yin natijasini saqlaydi va o'quvchiga XP beradi."""
+        async with self.session_factory() as session:
+            gs = GameScore(user_id=user_id, game_type=game_type, score=score, xp_earned=xp_earned)
+            session.add(gs)
+            await session.commit()
+        if xp_earned > 0:
+            await self.add_xp(user_id, xp_earned)
+
+    async def record_game_win(self, user_id: int) -> None:
+        """Multiplayer g'alaba — game_wins oshiradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if s:
+                s.game_wins = (s.game_wins or 0) + 1
+                await session.commit()
+
+    async def get_game_best_scores(self, user_id: int) -> dict:
+        """O'quvchining har bir o'yindagi eng yaxshi natijasi."""
+        from sqlalchemy import func as sqlfunc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GameScore.game_type, sqlfunc.max(GameScore.score))
+                .where(GameScore.user_id == user_id)
+                .group_by(GameScore.game_type)
+            )
+            return {row[0]: row[1] for row in result.all()}
+
+    async def get_game_global_scores(self, game_type: str, limit: int = 10) -> list:
+        """Global top score list for a game."""
+        from sqlalchemy import func as sqlfunc, desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GameScore.user_id, sqlfunc.max(GameScore.score).label("best"))
+                .where(GameScore.game_type == game_type)
+                .group_by(GameScore.user_id)
+                .order_by(desc("best"))
+                .limit(limit)
+            )
+            rows = result.all()
+            out = []
+            for uid, best in rows:
+                s = await session.get(Student, uid)  # type: ignore
+                if s:
+                    out.append({"user_id": uid, "full_name": s.full_name,
+                                "group_name": s.group_name, "score": best,
+                                "avatar": s.avatar_emoji or ""})
+            return out
+
+    # ── GAME ROOMS (Multiplayer) ───────────────────────────────────────────────
+
+    _TYPING_TEXTS = [
+        "Python dasturlash tili oddiy va o'qishga qulay sintaksisga ega.",
+        "Algoritm — muammoni hal qilishning ketma-ket qadamlari to'plami.",
+        "Dasturchi yaxshi kod yozish uchun har kuni mashq qilishi kerak.",
+        "Loop — kodni bir necha marta takrorlaydigan dasturlash konstruktsiyasi.",
+        "Function — qayta ishlatish mumkin bo'lgan kod bloki.",
+    ]
+
+    async def create_game_room(self, player1_id: int, player1_name: str, game_type: str) -> "GameRoom":
+        """Yangi multiplayer xona yaratadi."""
+        import random
+        text = random.choice(self._TYPING_TEXTS)
+        async with self.session_factory() as session:
+            room = GameRoom(
+                game_type=game_type, player1_id=player1_id,
+                player1_name=player1_name, status="waiting",
+                text_passage=text,
+            )
+            session.add(room)
+            await session.commit()
+            await session.refresh(room)
+            return room
+
+    async def get_open_game_rooms(self, game_type: str) -> list["GameRoom"]:
+        """Kutayotgan (waiting) xonalarni qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GameRoom)
+                .where(GameRoom.game_type == game_type, GameRoom.status == "waiting")
+                .order_by(GameRoom.created_at.desc())
+                .limit(10)
+            )
+            return list(result.scalars().all())
+
+    async def get_game_room(self, room_id: int) -> Optional["GameRoom"]:
+        async with self.session_factory() as session:
+            return await session.get(GameRoom, room_id)
+
+    async def join_game_room(self, room_id: int, player2_id: int, player2_name: str) -> Optional["GameRoom"]:
+        """2-o'yinchi xonaga qo'shiladi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(GameRoom).where(GameRoom.id == room_id))
+            room = result.scalar_one_or_none()
+            if room and room.status == "waiting" and room.player1_id != player2_id:
+                room.player2_id   = player2_id
+                room.player2_name = player2_name
+                room.status       = "active"
+                await session.commit()
+                await session.refresh(room)
+                return room
+            return None
+
+    async def update_game_progress(
+        self, room_id: int, player_id: int, progress: int, finished: bool
+    ) -> Optional["GameRoom"]:
+        """O'yinchi typing progress'ini yangilaydi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(GameRoom).where(GameRoom.id == room_id))
+            room = result.scalar_one_or_none()
+            if not room or room.status == "finished":
+                return room
+            if room.player1_id == player_id:
+                room.p1_progress = progress
+                room.p1_finished = finished
+            elif room.player2_id == player_id:
+                room.p2_progress = progress
+                room.p2_finished = finished
+            # G'olib aniqlash
+            if finished and not room.winner_id:
+                room.winner_id = player_id
+                room.status    = "finished"
+            elif room.p1_finished and room.p2_finished and not room.winner_id:
+                room.status = "finished"
+            await session.commit()
+            await session.refresh(room)
+            return room
+
+    # ── DUPLICATE CLEANUP ─────────────────────────────────────────────────────
+
+    async def find_duplicate_students(self) -> list[tuple]:
+        """Bir xil (group_name, mars_id) ga ega o'quvchilarni topadi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student).order_by(Student.group_name, Student.mars_id, Student.xp.desc())
+            )
+            all_students = list(result.scalars().all())
+        seen: dict[tuple, Student] = {}
+        dupes: list[tuple] = []  # (keep, delete) pairs
+        for s in all_students:
+            key = (s.group_name, s.mars_id)
+            if key in seen:
+                dupes.append((seen[key], s))
+            else:
+                seen[key] = s
+        return dupes
+
+    async def delete_student_by_id(self, student_id: int) -> None:
+        """student.id bo'yicha o'quvchini o'chiradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.id == student_id))
+            s = result.scalar_one_or_none()
+            if s:
+                await session.delete(s)
+                await session.commit()

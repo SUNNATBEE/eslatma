@@ -18,7 +18,11 @@ from keyboards import (
     kb_choose_audience, kb_choose_type, kb_confirm_delete,
     kb_group_actions, kb_group_list, kb_group_selector,
 )
-from scheduler import build_reminder_message, get_tomorrow_info, send_daily_reminders
+from scheduler import (
+    build_reminder_message, get_tomorrow_info,
+    send_daily_reminders, send_leaderboard_broadcast,
+)
+from config import WEBAPP_URL
 from utils import safe_edit, safe_edit_markup
 
 logger = logging.getLogger(__name__)
@@ -176,6 +180,59 @@ async def cb_admin_test_send(callback: CallbackQuery, bot: Bot, db: DatabaseServ
             f"❌ <b>Xatolik:</b>\n<code>{e}</code>",
             reply_markup=kb_back_to_panel(),
         )
+
+
+# ─── Test: Reyting broadcast ──────────────────────────────────────────────────
+
+@router.callback_query(F.data == "admin:test_leaderboard")
+async def cb_admin_test_leaderboard(callback: CallbackQuery, bot: Bot, db: DatabaseService) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("❌", show_alert=True); return
+    await callback.answer()
+    await safe_edit(callback.message, "⏳ <b>Reyting broadcast test qilinmoqda...</b>")
+    try:
+        await send_leaderboard_broadcast(bot=bot, db=db, webapp_url=WEBAPP_URL, timezone_str=TIMEZONE)
+        await safe_edit(callback.message,
+            "✅ <b>Reyting broadcast muvaffaqiyatli yuborildi!</b>\n"
+            "Barcha aktiv guruhlarga top-5 reyting xabari ketdi.",
+            reply_markup=kb_back_to_panel(),
+        )
+    except Exception as e:
+        await safe_edit(callback.message,
+            f"❌ <b>Xatolik:</b>\n<code>{e}</code>",
+            reply_markup=kb_back_to_panel(),
+        )
+
+
+# ─── Dublikat o'quvchilarni tozalash ─────────────────────────────────────────
+
+@router.callback_query(F.data == "admin:cleanup_duplicates")
+async def cb_admin_cleanup_dupes(callback: CallbackQuery, db: DatabaseService) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("❌", show_alert=True); return
+    await callback.answer()
+    await safe_edit(callback.message, "⏳ Dublikat o'quvchilar qidirilmoqda...")
+    dupes = await db.find_duplicate_students()
+    if not dupes:
+        await safe_edit(callback.message,
+            "✅ <b>Dublikat topilmadi!</b>\nBarcha o'quvchilar yagona.",
+            reply_markup=kb_back_to_panel(),
+        )
+        return
+    deleted = 0
+    details = []
+    for keep, remove in dupes:
+        details.append(
+            f"🗑 <b>{remove.full_name}</b> ({remove.group_name}) "
+            f"— Lv.{remove.level} {remove.xp} XP o'chirildi"
+        )
+        await db.delete_student_by_id(remove.id)
+        deleted += 1
+    detail_text = "\n".join(details[:10])
+    await safe_edit(callback.message,
+        f"🧹 <b>{deleted} ta dublikat o'chirildi!</b>\n\n{detail_text}",
+        reply_markup=kb_back_to_panel(),
+    )
 
 
 # ─── Barcha xabarlarni o'chirish ──────────────────────────────────────────────

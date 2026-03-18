@@ -1331,14 +1331,26 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         return web.json_response({"confirmed": confirmed})
 
     async def api_student_logout(request: web.Request) -> web.Response:
-        """O'quvchi profilini o'chiradi (unregister)."""
+        """O'quvchi profilini o'chiradi (unregister). Admin ga xabar yuboradi."""
         user_id = _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         student = await db.get_student(user_id)
         if not student:
             return web.json_response({"error": "Not registered"}, status=404)
+        name  = student.full_name
+        group = student.group_name
         await db.delete_student(user_id)
+        # Admin ga xabar
+        notif = (
+            f"🚪 <b>O'quvchi akkountdan chiqdi</b>\n\n"
+            f"👤 {name}\n📚 Guruh: {group}\n🆔 TG: <code>{user_id}</code>"
+        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, notif, parse_mode="HTML")
+            except Exception:
+                pass
         return web.json_response({"ok": True})
 
     async def api_student_leaderboard_global(request: web.Request) -> web.Response:
@@ -1447,6 +1459,151 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             }
         })
 
+    # ── GAMES API ──────────────────────────────────────────────────────────────
+
+    async def api_game_score(request: web.Request) -> web.Response:
+        """Solo o'yin natijasini saqlaydi (+XP)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        game_type = body.get("game_type", "")
+        score     = int(body.get("score", 0))
+        xp_earned = int(body.get("xp_earned", 0))
+        if not game_type:
+            return web.json_response({"error": "game_type kerak"}, status=400)
+        xp_earned = min(xp_earned, 50)  # max 50 XP per game session
+        await db.save_game_score(user_id, game_type, score, xp_earned)
+        # save_game_score ichida add_xp chaqiriladi — so'ng progress ni olamiz
+        prog = await db.get_student_progress(user_id)
+        lvup = False
+        if prog and prog.get("level", 1) > (student.level or 1):
+            lvup = True
+            asyncio.create_task(_notify_level_up(user_id, prog["level"]))
+        best = await db.get_game_best_scores(user_id)
+        return web.json_response({
+            "ok": True, "xp_earned": xp_earned,
+            "new_xp": prog.get("xp", 0) if prog else 0,
+            "new_level": prog.get("level", 1) if prog else 1,
+            "leveled_up": lvup,
+            "best_score": best.get(game_type, score),
+        })
+
+    async def api_game_rooms_get(request: web.Request) -> web.Response:
+        """Ochiq multiplayer xonalar ro'yxati."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        game_type = request.rel_url.query.get("type", "typing_race")
+        rooms = await db.get_open_game_rooms(game_type)
+        return web.json_response({
+            "rooms": [
+                {"id": r.id, "player1_name": r.player1_name,
+                 "game_type": r.game_type, "created_at": r.created_at.isoformat() if r.created_at else ""}
+                for r in rooms
+                if r.player1_id != user_id
+            ]
+        })
+
+    async def api_game_rooms_post(request: web.Request) -> web.Response:
+        """Yangi multiplayer xona yaratadi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        game_type = body.get("game_type", "typing_race")
+        room = await db.create_game_room(user_id, student.full_name, game_type)
+        return web.json_response({
+            "ok": True,
+            "room": {"id": room.id, "text": room.text_passage, "status": room.status}
+        })
+
+    async def api_game_room_get(request: web.Request) -> web.Response:
+        """Xona holati — polling uchun."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        room_id = int(request.match_info["room_id"])
+        room = await db.get_game_room(room_id)
+        if not room:
+            return web.json_response({"error": "Xona topilmadi"}, status=404)
+        return web.json_response({
+            "id": room.id, "status": room.status,
+            "text": room.text_passage,
+            "player1_name": room.player1_name, "player1_id": room.player1_id,
+            "player2_name": room.player2_name, "player2_id": room.player2_id,
+            "p1_progress": room.p1_progress, "p2_progress": room.p2_progress,
+            "p1_finished": room.p1_finished, "p2_finished": room.p2_finished,
+            "winner_id": room.winner_id,
+        })
+
+    async def api_game_room_join(request: web.Request) -> web.Response:
+        """Xonaga qo'shilish."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        room_id = int(request.match_info["room_id"])
+        room = await db.join_game_room(room_id, user_id, student.full_name)
+        if not room:
+            return web.json_response({"error": "Xona band yoki topilmadi"}, status=400)
+        return web.json_response({
+            "ok": True,
+            "room": {"id": room.id, "text": room.text_passage, "status": room.status,
+                     "player1_name": room.player1_name, "player2_name": room.player2_name}
+        })
+
+    async def api_game_room_progress(request: web.Request) -> web.Response:
+        """Typing progress yangilash."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        room_id = int(request.match_info["room_id"])
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        progress = int(body.get("progress", 0))
+        finished = bool(body.get("finished", False))
+        room = await db.update_game_progress(room_id, user_id, progress, finished)
+        if not room:
+            return web.json_response({"error": "Xona topilmadi"}, status=404)
+        # G'alaba — XP berish
+        if finished and room.winner_id == user_id:
+            await db.add_xp(user_id, 20)
+            await db.record_game_win(user_id)
+        elif room.status == "finished" and room.winner_id and room.winner_id != user_id:
+            # Yutqazgan o'quvchi ham 5 XP oladi
+            await db.add_xp(user_id, 5)
+        return web.json_response({
+            "ok": True,
+            "winner_id": room.winner_id, "status": room.status,
+            "p1_progress": room.p1_progress, "p2_progress": room.p2_progress,
+        })
+
+    async def api_game_leaderboard(request: web.Request) -> web.Response:
+        """O'yin bo'yicha global top-10."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        game_type = request.rel_url.query.get("type", "typing")
+        rows = await db.get_game_global_scores(game_type, limit=10)
+        return web.json_response({"leaders": rows})
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -1509,6 +1666,14 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/student/avatar",             api_student_avatar)
     app.router.add_get("/api/chat",                        api_chat_get)
     app.router.add_post("/api/chat",                       api_chat_post)
+    # Games API
+    app.router.add_post("/api/game/score",                 api_game_score)
+    app.router.add_get("/api/game/rooms",                  api_game_rooms_get)
+    app.router.add_post("/api/game/rooms",                 api_game_rooms_post)
+    app.router.add_get("/api/game/rooms/{room_id}",        api_game_room_get)
+    app.router.add_post("/api/game/rooms/{room_id}/join",  api_game_room_join)
+    app.router.add_post("/api/game/rooms/{room_id}/progress", api_game_room_progress)
+    app.router.add_get("/api/game/leaderboard",            api_game_leaderboard)
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)

@@ -645,6 +645,40 @@
     .ps-row-icon { font-size: 18px; width: 24px; text-align: center; }
     .ps-logout { width: 100%; margin-top: 14px; padding: 14px; background: rgba(224,92,92,.12); color: var(--danger); border: 1px solid rgba(224,92,92,.2); border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
+    /* ── Student profile modal (leaderboard click) ── */
+    .spm-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9015;
+      background: rgba(0,0,0,.7); align-items: flex-end; justify-content: center;
+    }
+    .spm-overlay.show { display: flex; }
+    .spm { background: var(--bg2); border-radius: 20px 20px 0 0; padding: 14px 16px 32px; width: 100%; max-width: 480px; }
+    .spm-handle { width: 40px; height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; margin: 0 auto 14px; }
+    .spm-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .spm-av { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #4f46e5); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+    .spm-name { font-size: 16px; font-weight: 800; }
+    .spm-group { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .spm-lvl { margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 3px 9px; border-radius: 10px; font-size: 12px; font-weight: 800; }
+    .spm-stats { display: flex; gap: 8px; margin-bottom: 14px; }
+    .spm-stat { flex: 1; background: rgba(255,255,255,.05); border-radius: 10px; padding: 10px 8px; text-align: center; }
+    .spm-stat-val { font-size: 18px; font-weight: 900; }
+    .spm-stat-lbl { font-size: 10px; color: var(--sub); margin-top: 2px; }
+    .spm-dm-btn {
+      width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none;
+      border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; margin-bottom: 8px;
+    }
+    .spm-dm-btn:disabled { opacity: .45; }
+    .spm-close-btn {
+      width: 100%; padding: 11px; background: rgba(255,255,255,.07); color: var(--sub);
+      border: none; border-radius: 12px; font-size: 13px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .spm-locked { font-size: 11px; color: var(--sub); text-align: center; margin-bottom: 8px; }
+
+    /* ── Games menu card ── */
+    .lb-row-clickable { cursor: pointer; transition: background .12s; }
+    .lb-row-clickable:active { background: rgba(255,255,255,.05); }
+
     /* ── Level card big num ── */
     .level-card-num {
       position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
@@ -744,6 +778,11 @@
           <div class="mc-icon">👤</div>
           <div class="mc-label">Profil</div>
           <div class="mc-sub">Ma'lumotlarim</div>
+        </div>
+        <div class="menu-card" onclick="openGames()">
+          <div class="mc-icon">🕹</div>
+          <div class="mc-label">O'yinlar</div>
+          <div class="mc-sub">XP + reyting</div>
         </div>
       </div>
     </div>
@@ -1105,6 +1144,29 @@
   </div>
 </div>
 
+<!-- ── Student profile modal (leaderboard) ── -->
+<div class="spm-overlay" id="spmOverlay" onclick="if(event.target===this)closeSpm()">
+  <div class="spm">
+    <div class="spm-handle"></div>
+    <div class="spm-top">
+      <div class="spm-av" id="spmAv">🎓</div>
+      <div>
+        <div class="spm-name"  id="spmName">—</div>
+        <div class="spm-group" id="spmGroup">—</div>
+        <div class="spm-lvl"   id="spmLvl">Lv.1</div>
+      </div>
+    </div>
+    <div class="spm-stats">
+      <div class="spm-stat"><div class="spm-stat-val" id="spmXp">0</div><div class="spm-stat-lbl">XP</div></div>
+      <div class="spm-stat"><div class="spm-stat-val" id="spmStreak">0</div><div class="spm-stat-lbl">🔥 Streak</div></div>
+      <div class="spm-stat"><div class="spm-stat-val" id="spmWins">0</div><div class="spm-stat-lbl">🏆 G'alaba</div></div>
+    </div>
+    <div id="spmDmLocked" class="spm-locked">🔒 Xabar yuborish uchun 3-darajaga yeting</div>
+    <button class="spm-dm-btn" id="spmDmBtn" onclick="openDm()" style="display:none">💬 Shaxsiy xabar yuborish</button>
+    <button class="spm-close-btn" onclick="closeSpm()">Yopish</button>
+  </div>
+</div>
+
 <!-- ── Avatar picker ── -->
 <div class="avatar-picker-overlay" id="avatarPicker" onclick="if(event.target===this)closeAvatarPicker()">
   <div class="avatar-picker">
@@ -1424,7 +1486,8 @@ function renderProgress(prog, lb, glb) {
       const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
       const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
       const grpBadge = s.group_name ? ` · <span style="color:var(--sub)">${s.group_name}</span>` : '';
-      return `<div class="lb-item ${s.is_me ? 'is-me' : ''}">
+      const clickable = !s.is_me ? `onclick="openStudentProfile(${JSON.stringify(s)})"` : '';
+      return `<div class="lb-item ${s.is_me ? 'is-me' : 'lb-row-clickable'}" ${clickable}>
         <div class="lb-rank ${rankCls}">${rankIcon}</div>
         <div class="lb-info">
           <div class="lb-name">${s.full_name}${s.is_me ? ' 👈' : ''}</div>
@@ -1621,6 +1684,54 @@ function showLevelUp(newLevel) {
 }
 function closeLevelUp() {
   document.getElementById('levelupOverlay').classList.remove('show');
+}
+
+/* ── Student profile modal (leaderboard) ────────────────────────────── */
+let _spmUserId = null;
+
+function openStudentProfile(s) {
+  _spmUserId = s.user_id;
+  const av = s.avatar || s.full_name.charAt(0).toUpperCase();
+  document.getElementById('spmAv').textContent     = av;
+  document.getElementById('spmName').textContent   = s.full_name;
+  document.getElementById('spmGroup').textContent  = s.group_name || '';
+  document.getElementById('spmLvl').textContent    = `${LVL_ICONS[s.level] || '⭐'} Lv.${s.level}`;
+  document.getElementById('spmXp').textContent     = s.xp;
+  document.getElementById('spmStreak').textContent = s.streak || 0;
+  document.getElementById('spmWins').textContent   = s.game_wins || 0;
+  // DM faqat 3+ darajada
+  const myLevel = progressData?.level || student?.level || 1;
+  const dmBtn   = document.getElementById('spmDmBtn');
+  const dmLock  = document.getElementById('spmDmLocked');
+  if (myLevel >= 3) {
+    dmBtn.style.display  = '';
+    dmLock.style.display = 'none';
+  } else {
+    dmBtn.style.display  = 'none';
+    dmLock.style.display = '';
+  }
+  document.getElementById('spmOverlay').classList.add('show');
+}
+
+function closeSpm() {
+  document.getElementById('spmOverlay').classList.remove('show');
+  _spmUserId = null;
+}
+
+function openDm() {
+  if (!_spmUserId) return;
+  closeSpm();
+  // Telegram-da shaxsiy xabar — tg://user?id=... yoki t.me link
+  const url = `tg://user?id=${_spmUserId}`;
+  if (tg?.openTelegramLink) { tg.openTelegramLink(`https://t.me/id${_spmUserId}`); }
+  else { window.open(url); }
+}
+
+/* ── Games: Mini App ochish ──────────────────────────────────────────── */
+function openGames() {
+  const gamesUrl = window.location.origin + '/webapp/games.html';
+  if (tg?.openLink) { tg.openLink(gamesUrl); }
+  else { window.open(gamesUrl, '_blank'); }
 }
 function openChannel() {
   if (tg?.openTelegramLink) { tg.openTelegramLink(channelLink); }

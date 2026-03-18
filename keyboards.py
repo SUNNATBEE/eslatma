@@ -55,6 +55,10 @@ def kb_admin_panel() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="🔔 Avto xabarlar",  callback_data="admin:auto_msg"),
     )
+    builder.row(
+        InlineKeyboardButton(text="🏆 Test Reyting",   callback_data="admin:test_leaderboard"),
+        InlineKeyboardButton(text="🧹 Dublikatlar",    callback_data="admin:cleanup_duplicates"),
+    )
     return builder.as_markup()
 
 

@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <title>Mars IT — O'yinlar</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Chess.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:var(--tg-theme-bg-color,#17212b);
+      --bg2:var(--tg-theme-secondary-bg-color,#232e3c);
+      --accent:var(--tg-theme-button-color,#5288c1);
+      --accent2:#3a7cbf;
+      --text:var(--tg-theme-text-color,#f5f5f5);
+      --sub:var(--tg-theme-hint-color,#708499);
+      --gold:#ffd700;--success:#4caf7d;--danger:#e05c5c;--warn:#f0ad4e;
+      --radius:14px;--radius-sm:10px;--shadow:0 4px 24px rgba(0,0,0,.35);
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+    /* Header */
+    .header{background:var(--bg2);padding:10px 12px 8px;display:flex;align-items:center;gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+    .header-title{font-size:16px;font-weight:800;flex:1}
+    .xp-badge{font-size:11px;font-weight:700;background:linear-gradient(135deg,#f59e0b,#d97706);
+      color:#fff;padding:3px 8px;border-radius:20px;}
+
+    /* Tabbar */
+    .tabbar{display:flex;background:var(--bg2);border-top:1px solid rgba(255,255,255,.06);
+      flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);}
+    .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:7px 2px 5px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+      color:var(--sub);transition:color .15s;}
+    .tab-item.active{color:var(--accent);}
+    .tab-icon{font-size:18px;line-height:1;}
+    .tab-label{font-size:9px;margin-top:2px;font-weight:600;}
+
+    /* Content */
+    .content{flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch;}
+    .content::-webkit-scrollbar{display:none;}
+    .page{display:none;} .page.active{display:block;}
+
+    .card{background:var(--bg2);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+      color:var(--sub);margin:0 0 8px 4px;}
+    .btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:14px;font-weight:700;
+      cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .12s;}
+    .btn:active{opacity:.8;}
+    .btn-primary{background:var(--accent);color:#fff;}
+    .btn-success{background:var(--success);color:#fff;}
+    .btn-danger{background:var(--danger);color:#fff;}
+    .btn-ghost{background:rgba(255,255,255,.08);color:var(--text);}
+    .btn + .btn{margin-top:8px;}
+
+    /* Toast */
+    #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:rgba(30,40,55,.96);color:#fff;padding:10px 18px;border-radius:20px;
+      font-size:13px;font-weight:600;opacity:0;transition:all .25s;white-space:nowrap;
+      pointer-events:none;z-index:9999;}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.1);
+      border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:30px auto;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ═══════════════ HOME PAGE ═════════════════════════════════════════ */
+    .game-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .game-card{background:var(--bg2);border-radius:var(--radius);padding:16px 12px;
+      text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;
+      border:2px solid rgba(255,255,255,.06);transition:border-color .15s,transform .1s;}
+    .game-card:active{transform:scale(.97);}
+    .game-card-icon{font-size:36px;margin-bottom:8px;}
+    .game-card-name{font-size:13px;font-weight:800;margin-bottom:3px;}
+    .game-card-desc{font-size:10px;color:var(--sub);}
+    .game-card-xp{font-size:10px;color:var(--gold);font-weight:700;margin-top:4px;}
+    .game-card.featured{grid-column:span 2;display:flex;align-items:center;gap:12px;text-align:left;}
+    .game-card.featured .game-card-icon{font-size:44px;flex-shrink:0;}
+
+    /* ═══════════════ TYPING GAME ═══════════════════════════════════════ */
+    .typing-text-wrap{background:rgba(255,255,255,.04);border-radius:10px;padding:14px;
+      font-size:16px;line-height:1.8;letter-spacing:.3px;margin-bottom:12px;min-height:80px;}
+    .typing-char{transition:background .05s;}
+    .typing-char.correct{color:var(--success);}
+    .typing-char.wrong{color:var(--danger);background:rgba(224,92,92,.15);border-radius:2px;}
+    .typing-char.current{background:var(--accent);color:#fff;border-radius:2px;}
+    .typing-input{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);
+      border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;outline:none;
+      -webkit-appearance:none;font-family:monospace;}
+    .typing-input:focus{border-color:var(--accent);}
+    .typing-stats{display:flex;gap:8px;margin-bottom:12px;}
+    .typing-stat{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
+    .typing-stat-val{font-size:20px;font-weight:900;color:var(--accent);}
+    .typing-stat-lbl{font-size:10px;color:var(--sub);margin-top:2px;}
+    .typing-progress-bar{width:100%;height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:12px;overflow:hidden;}
+    .typing-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--success));border-radius:3px;transition:width .1s;}
+
+    /* ═══════════════ QUIZ GAME ════════════════════════════════════════ */
+    .quiz-question{font-size:16px;font-weight:700;margin-bottom:16px;line-height:1.5;}
+    .quiz-opt{width:100%;text-align:left;padding:13px 14px;background:rgba(255,255,255,.06);
+      border:1.5px solid rgba(255,255,255,.08);border-radius:10px;color:var(--text);
+      font-size:13px;cursor:pointer;margin-bottom:8px;-webkit-tap-highlight-color:transparent;
+      transition:all .15s;}
+    .quiz-opt.correct{background:rgba(76,175,125,.2);border-color:var(--success);color:var(--success);}
+    .quiz-opt.wrong{background:rgba(224,92,92,.12);border-color:var(--danger);color:var(--danger);}
+    .quiz-opt.show-correct{background:rgba(76,175,125,.12);border-color:var(--success);}
+    .quiz-timer{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+    .quiz-timer-bar{flex:1;height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;}
+    .quiz-timer-fill{height:100%;background:var(--warn);border-radius:4px;transition:width .1s linear;}
+    .quiz-score-big{font-size:56px;font-weight:900;text-align:center;color:var(--gold);line-height:1;}
+    .quiz-result-row{display:flex;justify-content:space-between;padding:8px 0;
+      border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;}
+
+    /* ═══════════════ 2048 GAME ════════════════════════════════════════ */
+    .g2048-info{display:flex;gap:8px;margin-bottom:10px;}
+    .g2048-score-box{flex:1;background:var(--bg2);border-radius:8px;padding:8px;text-align:center;}
+    .g2048-score-lbl{font-size:9px;color:var(--sub);text-transform:uppercase;font-weight:700;}
+    .g2048-score-val{font-size:22px;font-weight:900;}
+    .g2048-board{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+      background:rgba(255,255,255,.06);border-radius:12px;padding:8px;margin-bottom:10px;
+      touch-action:none;user-select:none;}
+    .g2048-cell{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;
+      font-size:18px;font-weight:900;background:rgba(255,255,255,.05);transition:background .1s;}
+    .g2048-cell[data-val="2"]{background:#eee4da;color:#776e65;}
+    .g2048-cell[data-val="4"]{background:#ede0c8;color:#776e65;}
+    .g2048-cell[data-val="8"]{background:#f2b179;color:#fff;}
+    .g2048-cell[data-val="16"]{background:#f59563;color:#fff;}
+    .g2048-cell[data-val="32"]{background:#f67c5f;color:#fff;}
+    .g2048-cell[data-val="64"]{background:#f65e3b;color:#fff;}
+    .g2048-cell[data-val="128"]{background:#edcf72;color:#fff;font-size:15px;}
+    .g2048-cell[data-val="256"]{background:#edcc61;color:#fff;font-size:14px;}
+    .g2048-cell[data-val="512"]{background:#edc850;color:#fff;font-size:13px;}
+    .g2048-cell[data-val="1024"]{background:#edc53f;color:#fff;font-size:11px;}
+    .g2048-cell[data-val="2048"]{background:#edc22e;color:#fff;font-size:11px;}
+
+    /* ═══════════════ MEMORY MATCH ═════════════════════════════════════ */
+    .memory-board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+    .mem-card{aspect-ratio:1;border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+      font-size:22px;display:flex;align-items:center;justify-content:center;
+      background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.07);
+      transition:all .2s;user-select:none;}
+    .mem-card.flipped,.mem-card.matched{background:var(--accent);border-color:transparent;}
+    .mem-card.matched{background:var(--success);cursor:default;}
+    .mem-card:not(.flipped):not(.matched) > span{visibility:hidden;}
+    .memory-info{display:flex;gap:10px;margin-bottom:10px;}
+    .mem-info-box{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
+    .mem-info-val{font-size:20px;font-weight:900;}
+    .mem-info-lbl{font-size:10px;color:var(--sub);}
+
+    /* ═══════════════ CHESS GAME ════════════════════════════════════════ */
+    .chess-board{display:grid;grid-template-columns:repeat(8,1fr);
+      border-radius:8px;overflow:hidden;margin-bottom:10px;touch-action:none;}
+    .chess-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+      font-size:clamp(16px,5vw,28px);cursor:pointer;-webkit-tap-highlight-color:transparent;
+      position:relative;user-select:none;}
+    .chess-cell.light{background:#f0d9b5;}
+    .chess-cell.dark{background:#b58863;}
+    .chess-cell.selected{background:#7fc97f !important;}
+    .chess-cell.possible{background:#7fc9c9 !important;}
+    .chess-cell.last-move{background:#cdd16f !important;}
+    .chess-info{display:flex;gap:8px;margin-bottom:10px;}
+    .chess-stat{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
+    .chess-stat-val{font-size:16px;font-weight:800;}
+    .chess-stat-lbl{font-size:10px;color:var(--sub);}
+    .chess-msg{text-align:center;font-size:14px;font-weight:700;padding:10px;
+      border-radius:10px;margin-bottom:10px;background:rgba(255,255,255,.07);}
+
+    /* ═══════════════ MULTIPLAYER ═══════════════════════════════════════ */
+    .room-card{background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:8px;
+      display:flex;align-items:center;gap:10px;}
+    .room-av{width:36px;height:36px;border-radius:50%;background:var(--accent);
+      display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;}
+    .room-name{font-size:13px;font-weight:700;}
+    .room-sub{font-size:11px;color:var(--sub);}
+    .room-join-btn{margin-left:auto;padding:7px 14px;background:var(--success);color:#fff;
+      border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;}
+    .race-text{font-size:16px;line-height:1.9;letter-spacing:.3px;
+      background:rgba(255,255,255,.04);border-radius:10px;padding:14px;margin-bottom:12px;}
+    .race-p1,.race-p2{margin-bottom:8px;}
+    .race-pname{font-size:11px;color:var(--sub);margin-bottom:3px;font-weight:700;}
+    .race-bar{height:12px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;}
+    .race-bar-fill{height:100%;border-radius:6px;transition:width .3s;}
+    .race-p1 .race-bar-fill{background:var(--accent);}
+    .race-p2 .race-bar-fill{background:var(--warn);}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-title">🕹 O'yinlar</div>
+    <div class="xp-badge" id="hdrXp">0 XP</div>
+    <div style="font-size:11px;color:var(--sub);margin-left:4px" id="hdrLvl">Lv.1</div>
+  </div>
+
+  <div class="content" id="content">
+
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <p class="section-title">O'yinni tanlang</p>
+      <div class="game-grid">
+        <div class="game-card featured" onclick="goPage('typing')">
+          <div class="game-card-icon">⌨️</div>
+          <div>
+            <div class="game-card-name">Typing Speed</div>
+            <div class="game-card-desc">Yozish tezligini o'lchaymiz — WPM</div>
+            <div class="game-card-xp">+5…25 XP</div>
+          </div>
+        </div>
+        <div class="game-card" onclick="goPage('quiz')">
+          <div class="game-card-icon">🧠</div>
+          <div class="game-card-name">Code Quiz</div>
+          <div class="game-card-desc">Dasturlash savollari</div>
+          <div class="game-card-xp">+5 XP/savol</div>
+        </div>
+        <div class="game-card" onclick="goPage('g2048')">
+          <div class="game-card-icon">🔢</div>
+          <div class="game-card-name">2048</div>
+          <div class="game-card-desc">Klassik raqamlar o'yini</div>
+          <div class="game-card-xp">+10…30 XP</div>
+        </div>
+        <div class="game-card" onclick="goPage('memory')">
+          <div class="game-card-icon">🃏</div>
+          <div class="game-card-name">Memory</div>
+          <div class="game-card-desc">Karta juftlashtir</div>
+          <div class="game-card-xp">+15 XP</div>
+        </div>
+        <div class="game-card" onclick="goPage('chess')">
+          <div class="game-card-icon">♟</div>
+          <div class="game-card-name">Shaxmat</div>
+          <div class="game-card-desc">Bot bilan o'ynash</div>
+          <div class="game-card-xp">+20 XP (g'alaba)</div>
+        </div>
+        <div class="game-card featured" onclick="goPage('multi')" style="border-color:rgba(245,158,11,.3);">
+          <div class="game-card-icon">🏁</div>
+          <div>
+            <div class="game-card-name">Typing Race 🔥</div>
+            <div class="game-card-desc">2 o'yinchi — kim tez yozadi?</div>
+            <div class="game-card-xp">G'alaba: +20 XP · Yutqazish: +5 XP</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-title">Mening rekordlarim</p>
+      <div class="card" id="myBestScores"><div class="spinner"></div></div>
+    </div>
+
+    <!-- TYPING -->
+    <div class="page" id="page-typing">
+      <div class="typing-stats">
+        <div class="typing-stat"><div class="typing-stat-val" id="typWpm">0</div><div class="typing-stat-lbl">WPM</div></div>
+        <div class="typing-stat"><div class="typing-stat-val" id="typAcc">100%</div><div class="typing-stat-lbl">Aniqlik</div></div>
+        <div class="typing-stat"><div class="typing-stat-val" id="typTimer">60</div><div class="typing-stat-lbl">Vaqt</div></div>
+      </div>
+      <div class="typing-progress-bar"><div class="typing-progress-fill" id="typProg" style="width:0%"></div></div>
+      <div class="typing-text-wrap" id="typText"></div>
+      <input class="typing-input" id="typInput" placeholder="Yozishni boshlang..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onTypingInput()" />
+      <div id="typResult" style="display:none">
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:48px;font-weight:900;color:var(--gold)" id="typFinalWpm">0</div>
+          <div style="font-size:14px;color:var(--sub);margin-bottom:12px">WPM · <span id="typFinalAcc"></span> aniqlik</div>
+          <div style="font-size:13px;color:var(--success);font-weight:700;margin-bottom:14px" id="typXpMsg"></div>
+          <button class="btn btn-primary" onclick="startTyping()">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">← Orqaga</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUIZ -->
+    <div class="page" id="page-quiz">
+      <div id="quizGame">
+        <div class="quiz-timer">
+          <span style="font-size:12px;color:var(--sub);width:28px" id="quizTimerNum">30</span>
+          <div class="quiz-timer-bar"><div class="quiz-timer-fill" id="quizTimerFill" style="width:100%"></div></div>
+          <span style="font-size:12px;color:var(--sub)" id="quizQNum">1/10</span>
+        </div>
+        <div class="card">
+          <div class="quiz-question" id="quizQ">Savol yuklanmoqda...</div>
+          <div id="quizOpts"></div>
+        </div>
+      </div>
+      <div id="quizResult" style="display:none">
+        <div class="card" style="text-align:center;padding:20px 16px">
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Test yakunlandi!</div>
+          <div class="quiz-score-big" id="quizFinalScore">0</div>
+          <div style="font-size:13px;color:var(--sub);margin:6px 0 14px">ball · <span id="quizFinalXp"></span></div>
+          <div id="quizResultRows"></div>
+          <button class="btn btn-primary" onclick="startQuiz()" style="margin-top:12px">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">← Orqaga</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2048 -->
+    <div class="page" id="page-g2048">
+      <div class="g2048-info">
+        <div class="g2048-score-box"><div class="g2048-score-lbl">Ball</div><div class="g2048-score-val" id="s2048Score">0</div></div>
+        <div class="g2048-score-box"><div class="g2048-score-lbl">Rekord</div><div class="g2048-score-val" id="s2048Best">0</div></div>
+        <div class="g2048-score-box"><div class="g2048-score-lbl">Katak</div><div class="g2048-score-val" id="s2048Max">0</div></div>
+      </div>
+      <div class="g2048-board" id="board2048" ontouchstart="t2048Start(event)" ontouchend="t2048End(event)"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="init2048()" style="flex:1">Yangi o'yin</button>
+        <button class="btn btn-ghost" onclick="goPage('home')" style="flex:1">← Orqaga</button>
+      </div>
+    </div>
+
+    <!-- MEMORY -->
+    <div class="page" id="page-memory">
+      <div class="memory-info">
+        <div class="mem-info-box"><div class="mem-info-val" id="memMoves">0</div><div class="mem-info-lbl">Harakatlar</div></div>
+        <div class="mem-info-box"><div class="mem-info-val" id="memPairs">0/8</div><div class="mem-info-lbl">Juftlar</div></div>
+        <div class="mem-info-box"><div class="mem-info-val" id="memTimer">0</div><div class="mem-info-lbl">Soniya</div></div>
+      </div>
+      <div class="memory-board" id="memBoard"></div>
+      <button class="btn btn-ghost" onclick="initMemory()">Yangi o'yin</button>
+      <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">← Orqaga</button>
+    </div>
+
+    <!-- CHESS -->
+    <div class="page" id="page-chess">
+      <div class="chess-info">
+        <div class="chess-stat"><div class="chess-stat-val" id="chessStatus">Sizning navbat</div><div class="chess-stat-lbl">Holat</div></div>
+        <div class="chess-stat"><div class="chess-stat-val" id="chessMoves">0</div><div class="chess-stat-lbl">Harakatlar</div></div>
+      </div>
+      <div class="chess-msg" id="chessMsg">Dona bosib boshlang ♟</div>
+      <div class="chess-board" id="chessBoard"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-ghost" onclick="initChess()" style="flex:1">Yangi o'yin</button>
+        <button class="btn btn-ghost" onclick="goPage('home')" style="flex:1">← Orqaga</button>
+      </div>
+    </div>
+
+    <!-- MULTIPLAYER -->
+    <div class="page" id="page-multi">
+      <div id="multiLobby">
+        <p class="section-title">Typing Race — Multiplayer</p>
+        <button class="btn btn-primary" onclick="createRoom()" id="createRoomBtn">🎯 Xona yaratish</button>
+        <button class="btn btn-ghost" onclick="loadRooms()" style="margin-top:8px">🔄 Xonalarni yangilash</button>
+        <div style="margin-top:14px">
+          <p class="section-title">Ochiq xonalar</p>
+          <div id="roomsList"><div class="spinner"></div></div>
+        </div>
+      </div>
+      <div id="multiWaiting" style="display:none">
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:32px;margin-bottom:8px">⏳</div>
+          <div style="font-size:16px;font-weight:800;margin-bottom:6px">O'yinchi kutilmoqda</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:14px">Xona ID: <b id="waitRoomId">—</b></div>
+          <div class="spinner"></div>
+          <button class="btn btn-ghost" onclick="cancelRoom()" style="margin-top:14px">Bekor qilish</button>
+        </div>
+      </div>
+      <div id="multiGame" style="display:none">
+        <div class="chess-info" style="margin-bottom:8px">
+          <div class="chess-stat"><div class="chess-stat-val" id="raceTimer">60</div><div class="chess-stat-lbl">Vaqt</div></div>
+          <div class="chess-stat"><div class="chess-stat-val" id="raceStatus">Boshlang!</div><div class="chess-stat-lbl">Holat</div></div>
+        </div>
+        <div class="race-p1">
+          <div class="race-pname" id="raceP1Name">—</div>
+          <div class="race-bar"><div class="race-bar-fill" id="raceP1Bar" style="width:0%"></div></div>
+        </div>
+        <div class="race-p2" style="margin-bottom:12px">
+          <div class="race-pname" id="raceP2Name">—</div>
+          <div class="race-bar"><div class="race-bar-fill" id="raceP2Bar" style="width:0%"></div></div>
+        </div>
+        <div class="race-text" id="raceText"></div>
+        <input class="typing-input" id="raceInput" placeholder="Yozishni boshlang..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onRaceInput()" />
+      </div>
+    </div>
+
+  </div><!-- content -->
+
+  <div class="tabbar">
+    <div class="tab-item active" id="tab-home"   onclick="goPage('home')"><div class="tab-icon">🏠</div><div class="tab-label">Bosh</div></div>
+    <div class="tab-item"        id="tab-typing" onclick="goPage('typing')"><div class="tab-icon">⌨️</div><div class="tab-label">Typing</div></div>
+    <div class="tab-item"        id="tab-quiz"   onclick="goPage('quiz')"><div class="tab-icon">🧠</div><div class="tab-label">Quiz</div></div>
+    <div class="tab-item"        id="tab-chess"  onclick="goPage('chess')"><div class="tab-icon">♟</div><div class="tab-label">Shaxmat</div></div>
+    <div class="tab-item"        id="tab-multi"  onclick="goPage('multi')"><div class="tab-icon">🏁</div><div class="tab-label">Race</div></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ── Telegram WebApp ─────────────────────────────────────────────────── */
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color'); }
+const INIT_DATA = tg?.initData || '';
+const BASE_URL  = window.location.origin;
+
+/* ── API ─────────────────────────────────────────────────────────────── */
+async function api(path, opts = {}) {
+  const res = await fetch(BASE_URL + '/api' + path, {
+    headers: { 'X-Init-Data': INIT_DATA, 'Content-Type': 'application/json', ...(opts.headers||{}) },
+    ...opts,
+  });
+  if (!res.ok) {
+    const b = await res.json().catch(() => ({ error: res.statusText }));
+    const e = new Error(b.error || res.statusText); e.status = res.status; throw e;
+  }
+  return res.json();
+}
+
+/* ── Toast ───────────────────────────────────────────────────────────── */
+function toast(msg, dur = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+/* ── State ───────────────────────────────────────────────────────────── */
+let me = null;
+let currentPage = 'home';
+const PAGES = ['home','typing','quiz','g2048','memory','chess','multi'];
+
+function goPage(name) {
+  PAGES.forEach(p => {
+    document.getElementById('page-' + p)?.classList.remove('active');
+    document.getElementById('tab-' + p)?.classList.remove('active');
+  });
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.getElementById('tab-'  + name)?.classList.add('active');
+  currentPage = name;
+  const content = document.getElementById('content');
+  content.scrollTop = 0;
+  if (name === 'typing') startTyping();
+  if (name === 'quiz')   startQuiz();
+  if (name === 'g2048')  init2048();
+  if (name === 'memory') initMemory();
+  if (name === 'chess')  initChess();
+  if (name === 'multi')  { loadRooms(); showMultiLobby(); }
+}
+
+/* ── Init ────────────────────────────────────────────────────────────── */
+async function init() {
+  try {
+    me = await api('/me');
+    document.getElementById('hdrXp').textContent  = (me.xp || 0) + ' XP';
+    document.getElementById('hdrLvl').textContent = 'Lv.' + (me.level || 1);
+    loadBestScores();
+  } catch(e) {
+    if (e.status === 401 || e.status === 404) {
+      toast('Avval botda ro\'yxatdan o\'ting!');
+    }
+  }
+}
+
+async function loadBestScores() {
+  const el = document.getElementById('myBestScores');
+  try {
+    const prog = await api('/student/progress');
+    const best = prog.game_best || {};
+    const games = [
+      { key:'typing', name:'⌨️ Typing Speed', unit:'WPM' },
+      { key:'quiz',   name:'🧠 Code Quiz',    unit:'ball' },
+      { key:'2048',   name:'🔢 2048',          unit:'ball' },
+      { key:'memory', name:'🃏 Memory',         unit:'harakatda' },
+      { key:'chess',  name:'♟ Shaxmat',        unit:'g\'alaba' },
+    ];
+    el.innerHTML = games.map(g => {
+      const v = best[g.key];
+      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px">
+        <span>${g.name}</span>
+        <span style="font-weight:800;color:var(--gold)">${v ? v + ' ' + g.unit : '—'}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:12px;font-size:13px">Rekordlar yuklanmadi</div>';
+  }
+}
+
+async function saveScore(game_type, score, xp_earned) {
+  try {
+    const res = await api('/game/score', {
+      method:'POST',
+      body: JSON.stringify({ game_type, score, xp_earned }),
+    });
+    // Update header XP
+    if (res.new_xp !== undefined) {
+      document.getElementById('hdrXp').textContent  = res.new_xp + ' XP';
+      document.getElementById('hdrLvl').textContent = 'Lv.' + res.new_level;
+    }
+    if (res.leveled_up) toast('🎉 Daraja oshdi! Lv.' + res.new_level);
+    return res;
+  } catch { return null; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TYPING SPEED
+══════════════════════════════════════════════════════════════════════ */
+const TYPING_TEXTS = [
+  "Python dasturlash tili oddiy va o'qishga qulay sintaksisga ega. U data science, web va avtomatlashtirish uchun ishlatiladi.",
+  "Funksiyalar kodni qayta ishlatish imkonini beradi. Ular parametr qabul qilib natija qaytaradi.",
+  "Tsikl konstruktsiyalari kodni bir necha marta takrorlash uchun ishlatiladi. For va while tsikllari mavjud.",
+  "O'zgaruvchi — ma'lumotni saqlaydigan nomlangan xotira joyi. Python da tur ko'rsatmasdan e'lon qilinadi.",
+  "Massiv — bir xil turdagi elementlar to'plami. Python da list, tuple va set turlari mavjud.",
+];
+
+let typTimer=null, typStart=null, typTimeLeft=60, typWords=[], typIdx=0, typFinished=false;
+
+function startTyping() {
+  clearInterval(typTimer);
+  typFinished = false;
+  typTimeLeft = 60;
+  typIdx = 0;
+  const text = TYPING_TEXTS[Math.floor(Math.random() * TYPING_TEXTS.length)];
+  typWords = text.split('');
+  renderTypingText(0);
+  document.getElementById('typInput').value = '';
+  document.getElementById('typInput').disabled = false;
+  document.getElementById('typResult').style.display = 'none';
+  document.getElementById('typText').parentElement?.querySelector('#typResult')?.style?.setProperty('display','none');
+  document.getElementById('typWpm').textContent = '0';
+  document.getElementById('typAcc').textContent = '100%';
+  document.getElementById('typTimer').textContent = '60';
+  document.getElementById('typProg').style.width = '0%';
+  setTimeout(() => document.getElementById('typInput').focus(), 100);
+
+  typStart = null;
+  typTimer = setInterval(() => {
+    if (!typStart) return;
+    typTimeLeft--;
+    document.getElementById('typTimer').textContent = typTimeLeft;
+    if (typTimeLeft <= 0) finishTyping(false);
+  }, 1000);
+}
+
+function renderTypingText(currentIdx) {
+  const el = document.getElementById('typText');
+  el.innerHTML = typWords.map((ch, i) => {
+    const cls = i < currentIdx ? 'correct' : i === currentIdx ? 'current' : '';
+    return `<span class="typing-char ${cls}">${ch === ' ' ? '&nbsp;' : ch}</span>`;
+  }).join('');
+}
+
+function onTypingInput() {
+  if (typFinished) return;
+  const input = document.getElementById('typInput');
+  const val   = input.value;
+  if (!typStart) typStart = Date.now();
+
+  typIdx = val.length;
+  const correctSoFar = typWords.slice(0, typIdx).join('') === val;
+
+  // Color chars
+  const el = document.getElementById('typText');
+  const chars = el.querySelectorAll('.typing-char');
+  chars.forEach((ch, i) => {
+    ch.className = 'typing-char';
+    if (i < typIdx) {
+      ch.classList.add(typWords[i] === val[i] ? 'correct' : 'wrong');
+    } else if (i === typIdx) {
+      ch.classList.add('current');
+    }
+  });
+
+  // Progress
+  const pct = Math.min(100, Math.round(typIdx / typWords.length * 100));
+  document.getElementById('typProg').style.width = pct + '%';
+
+  // WPM
+  const elapsed = (Date.now() - typStart) / 60000;
+  const wpm = elapsed > 0 ? Math.round((typIdx / 5) / elapsed) : 0;
+  document.getElementById('typWpm').textContent = wpm;
+
+  // Accuracy
+  let correct = 0;
+  for (let i = 0; i < typIdx; i++) { if (typWords[i] === val[i]) correct++; }
+  const acc = typIdx ? Math.round(correct / typIdx * 100) : 100;
+  document.getElementById('typAcc').textContent = acc + '%';
+
+  if (typIdx >= typWords.length && correctSoFar) finishTyping(true);
+}
+
+async function finishTyping(completed) {
+  typFinished = true;
+  clearInterval(typTimer);
+  const input = document.getElementById('typInput');
+  input.disabled = true;
+  const elapsed = typStart ? (Date.now() - typStart) / 60000 : 1;
+  const wpm = Math.round((typIdx / 5) / Math.max(elapsed, 1/60));
+  let correct = 0;
+  const val = input.value;
+  for (let i = 0; i < typIdx; i++) { if (typWords[i] === val[i]) correct++; }
+  const acc = typIdx ? Math.round(correct / typIdx * 100) : 0;
+  const xp  = Math.min(25, 5 + Math.floor(wpm / 10));
+
+  document.getElementById('typFinalWpm').textContent = wpm;
+  document.getElementById('typFinalAcc').textContent = acc + '%';
+  document.getElementById('typXpMsg').textContent    = `+${xp} XP olindi!`;
+  document.getElementById('typResult').style.display = '';
+  document.getElementById('typText').style.display   = 'none';
+
+  tg?.HapticFeedback?.notificationOccurred('success');
+  await saveScore('typing', wpm, xp);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CODE QUIZ
+══════════════════════════════════════════════════════════════════════ */
+const QUIZ_QUESTIONS = [
+  { q:"Python da ro'yxat (list) yaratish uchun qaysi belgi ishlatiladi?", opts:["[]","{}","()","<>"], ans:0 },
+  { q:"Dasturlashda 'bug' nima?", opts:["Yangi funksiya","Xato/nosozlik","Kutubxona","O'zgaruvchi"], ans:1 },
+  { q:"HTML ning to'liq nomi nima?", opts:["HyperText Markup Language","High Text Machine Language","Hyper Transfer Mode Language","HyperText Machine Learner"], ans:0 },
+  { q:"Python da funksiya e'lon qilish uchun qaysi kalit so'z ishlatiladi?", opts:["function","fun","def","func"], ans:2 },
+  { q:"Boolean qiymatlari qanday?", opts:["0 va 1","True va False","Yes va No","On va Off"], ans:1 },
+  { q:"Tsikl ichida keyingi iteratsiyaga o'tish uchun qaysi operator?", opts:["break","skip","continue","next"], ans:2 },
+  { q:"Python da izoh (comment) qanday boshlanadi?", opts:["//","--","#","/* */"], ans:2 },
+  { q:"'for i in range(5)' necha marta ishlaydi?", opts:["4","5","6","10"], ans:1 },
+  { q:"CSS da matn rangini o'zgartirish uchun qaysi xususiyat?", opts:["text-color","font-color","color","style-color"], ans:2 },
+  { q:"Git da o'zgarishlarni saqlash uchun qaysi buyruq?", opts:["git save","git commit","git push","git store"], ans:1 },
+  { q:"API qisqartmasi nima?", opts:["App Programming Interface","Application Programming Interface","Advanced Program Interface","Automatic Protocol Interface"], ans:1 },
+  { q:"Python da 'None' qanday ma'no anglatadi?", opts:["0 qiymati","Bo'sh satr","Qiymat yo'q","Yolg'on"], ans:2 },
+  { q:"Rekursiya nima?", opts:["Tsikl turi","O'z-o'zini chaqiruvchi funksiya","Ma'lumotlar turi","Xatolik turi"], ans:1 },
+  { q:"JSON nimaning qisqartmasi?", opts:["Java Standard Object Node","JavaScript Object Notation","Joint Standard Open Network","Java Script Option Node"], ans:1 },
+  { q:"O(n) — bu nima?", opts:["Dastur tezligi","Xotira hajmi","Algoritmik murakkablik","Kodni sifati"], ans:2 },
+];
+
+let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false;
+let quizResults=[];
+
+function startQuiz() {
+  quizResults = [];
+  quizScore = 0;
+  quizIdx   = 0;
+  // Shuffle and pick 10
+  quizQ = [...QUIZ_QUESTIONS].sort(() => Math.random() - .5).slice(0, 10);
+  document.getElementById('quizGame').style.display   = '';
+  document.getElementById('quizResult').style.display = 'none';
+  showQuizQ();
+}
+
+function showQuizQ() {
+  const q = quizQ[quizIdx];
+  document.getElementById('quizQNum').textContent = `${quizIdx+1}/10`;
+  document.getElementById('quizQ').textContent    = q.q;
+  document.getElementById('quizOpts').innerHTML   = q.opts.map((o,i) =>
+    `<button class="quiz-opt" onclick="answerQuiz(${i})">${o}</button>`
+  ).join('');
+  quizTimeLeft  = 30;
+  quizAnswered  = false;
+  clearInterval(quizTimer);
+  quizTimer = setInterval(quizTick, 1000);
+  updateQuizTimer();
+}
+
+function updateQuizTimer() {
+  document.getElementById('quizTimerNum').textContent = quizTimeLeft;
+  document.getElementById('quizTimerFill').style.width = (quizTimeLeft / 30 * 100) + '%';
+}
+
+function quizTick() {
+  quizTimeLeft--;
+  updateQuizTimer();
+  if (quizTimeLeft <= 0) answerQuiz(-1);
+}
+
+function answerQuiz(chosen) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  clearInterval(quizTimer);
+  const q     = quizQ[quizIdx];
+  const opts  = document.getElementById('quizOpts').querySelectorAll('.quiz-opt');
+  const isOk  = chosen === q.ans;
+  if (isOk) { quizScore++; tg?.HapticFeedback?.impactOccurred('light'); }
+  opts.forEach((el, i) => {
+    if (i === q.ans)   el.classList.add('show-correct');
+    if (i === chosen && !isOk) el.classList.add('wrong');
+  });
+  quizResults.push({ q: q.q, correct: isOk, chosen, ans: q.ans, opts: q.opts });
+  setTimeout(() => {
+    quizIdx++;
+    if (quizIdx < quizQ.length) showQuizQ();
+    else finishQuiz();
+  }, 800);
+}
+
+async function finishQuiz() {
+  clearInterval(quizTimer);
+  const xp = quizScore * 5;
+  document.getElementById('quizFinalScore').textContent = quizScore * 10;
+  document.getElementById('quizFinalXp').textContent    = `+${xp} XP olindi`;
+  document.getElementById('quizResultRows').innerHTML   = quizResults.map(r =>
+    `<div class="quiz-result-row"><span>${r.q.slice(0,40)}…</span><span style="color:${r.correct ? 'var(--success)':'var(--danger)'}">${r.correct ? '✅' : '❌'}</span></div>`
+  ).join('');
+  document.getElementById('quizGame').style.display   = 'none';
+  document.getElementById('quizResult').style.display = '';
+  tg?.HapticFeedback?.notificationOccurred('success');
+  await saveScore('quiz', quizScore * 10, xp);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   2048
+══════════════════════════════════════════════════════════════════════ */
+let board2048=[], score2048=0, best2048=0, g2048Over=false;
+let t2048X0=0, t2048Y0=0;
+
+function init2048() {
+  g2048Over = false; score2048 = 0;
+  board2048 = Array(4).fill(null).map(() => Array(4).fill(0));
+  addTile2048(); addTile2048();
+  render2048();
+}
+
+function addTile2048() {
+  const empty = [];
+  board2048.forEach((r,i) => r.forEach((v,j) => { if (!v) empty.push([i,j]); }));
+  if (!empty.length) return;
+  const [r,c] = empty[Math.floor(Math.random()*empty.length)];
+  board2048[r][c] = Math.random() < .9 ? 2 : 4;
+}
+
+function render2048() {
+  const el = document.getElementById('board2048');
+  el.innerHTML = board2048.flat().map(v =>
+    `<div class="g2048-cell" data-val="${v||''}">${v||''}</div>`
+  ).join('');
+  document.getElementById('s2048Score').textContent = score2048;
+  document.getElementById('s2048Best').textContent  = best2048;
+  const max = Math.max(...board2048.flat());
+  document.getElementById('s2048Max').textContent  = max;
+  if (max >= best2048) best2048 = max;
+}
+
+function slide2048(row) {
+  const r = row.filter(v => v);
+  const res = []; let merged = false;
+  for (let i = 0; i < r.length; i++) {
+    if (!merged && r[i+1] === r[i]) { res.push(r[i]*2); score2048 += r[i]*2; i++; merged = true; }
+    else { res.push(r[i]); merged = false; }
+  }
+  while (res.length < 4) res.push(0);
+  return res;
+}
+
+function move2048(dir) {
+  if (g2048Over) return;
+  const prev = JSON.stringify(board2048);
+  let b = board2048;
+  if (dir==='left')  b = b.map(r => slide2048(r));
+  if (dir==='right') b = b.map(r => slide2048([...r].reverse()).reverse());
+  if (dir==='up')    { b = transpose2048(b); b = b.map(r => slide2048(r)); b = transpose2048(b); }
+  if (dir==='down')  { b = transpose2048(b); b = b.map(r => slide2048([...r].reverse()).reverse()); b = transpose2048(b); }
+  board2048 = b;
+  if (JSON.stringify(board2048) !== prev) addTile2048();
+  render2048();
+  // Check 2048 milestone
+  const max = Math.max(...board2048.flat());
+  if (max === 2048) {
+    toast('🎉 2048! +30 XP'); saveScore('2048', score2048, 30);
+  }
+  // Game over check
+  if (!hasMove2048()) { g2048Over = true; toast(`Game Over! Ball: ${score2048}`); saveScore('2048', score2048, 10); }
+}
+
+function transpose2048(b) { return b[0].map((_, i) => b.map(r => r[i])); }
+
+function hasMove2048() {
+  if (board2048.flat().includes(0)) return true;
+  for (let r=0;r<4;r++) for (let c=0;c<4;c++) {
+    if (c<3 && board2048[r][c]===board2048[r][c+1]) return true;
+    if (r<3 && board2048[r][c]===board2048[r+1][c]) return true;
+  }
+  return false;
+}
+
+function t2048Start(e) { t2048X0=e.touches[0].clientX; t2048Y0=e.touches[0].clientY; }
+function t2048End(e) {
+  const dx=e.changedTouches[0].clientX-t2048X0, dy=e.changedTouches[0].clientY-t2048Y0;
+  if (Math.abs(dx)<20 && Math.abs(dy)<20) return;
+  if (Math.abs(dx)>Math.abs(dy)) move2048(dx>0?'right':'left');
+  else move2048(dy>0?'down':'up');
+}
+
+document.addEventListener('keydown', e => {
+  if (currentPage !== 'g2048') return;
+  const map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down' };
+  if (map[e.key]) { e.preventDefault(); move2048(map[e.key]); }
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   MEMORY MATCH
+══════════════════════════════════════════════════════════════════════ */
+const MEM_EMOJIS = ['🐍','🌐','💾','🔧','⚡','🎯','🔍','🛡'];
+let memCards=[], memFlipped=[], memMatched=0, memMoves=0, memTimerInt=null, memSecs=0, memLocked=false;
+
+function initMemory() {
+  clearInterval(memTimerInt);
+  memFlipped=[]; memMatched=0; memMoves=0; memSecs=0; memLocked=false;
+  const pairs = [...MEM_EMOJIS, ...MEM_EMOJIS].sort(() => Math.random()-.5);
+  memCards = pairs.map((em,i) => ({ id:i, em, flipped:false, matched:false }));
+  renderMemory();
+  memTimerInt = setInterval(() => {
+    memSecs++;
+    document.getElementById('memTimer').textContent = memSecs;
+  }, 1000);
+}
+
+function renderMemory() {
+  const el = document.getElementById('memBoard');
+  el.innerHTML = memCards.map((c,i) =>
+    `<div class="mem-card${c.flipped||c.matched?' flipped':''}${c.matched?' matched':''}" onclick="flipCard(${i})">
+      <span>${c.em}</span>
+    </div>`
+  ).join('');
+  document.getElementById('memMoves').textContent = memMoves;
+  document.getElementById('memPairs').textContent = memMatched + '/8';
+}
+
+function flipCard(idx) {
+  if (memLocked || memCards[idx].flipped || memCards[idx].matched) return;
+  memCards[idx].flipped = true;
+  memFlipped.push(idx);
+  renderMemory();
+  if (memFlipped.length === 2) {
+    memMoves++;
+    memLocked = true;
+    const [a,b] = memFlipped;
+    if (memCards[a].em === memCards[b].em) {
+      memCards[a].matched = memCards[b].matched = true;
+      memMatched++;
+      memFlipped = []; memLocked = false;
+      renderMemory();
+      tg?.HapticFeedback?.impactOccurred('light');
+      if (memMatched === 8) {
+        clearInterval(memTimerInt);
+        toast(`🎉 Bajarildi! ${memMoves} harakatda, ${memSecs}s`);
+        saveScore('memory', memMoves, 15);
+      }
+    } else {
+      setTimeout(() => {
+        memCards[a].flipped = memCards[b].flipped = false;
+        memFlipped = []; memLocked = false;
+        renderMemory();
+      }, 800);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CHESS (chess.js CDN — solo vs random AI)
+══════════════════════════════════════════════════════════════════════ */
+let chess=null, chessSelected=null, chessMoveCount=0, chessGameOver=false;
+
+function initChess() {
+  chess = new Chess();
+  chessSelected  = null;
+  chessMoveCount = 0;
+  chessGameOver  = false;
+  renderChess();
+  document.getElementById('chessMsg').textContent = 'Dona bosib boshlang ♟';
+  document.getElementById('chessStatus').textContent = 'Sizning navbat';
+  document.getElementById('chessMoves').textContent = '0';
+}
+
+const PIECE_SYMBOLS = {
+  'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙',
+  'bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟',
+};
+
+function renderChess() {
+  const el = document.getElementById('chessBoard');
+  if (!chess) return;
+  const board = chess.board();
+  let html = '';
+  for (let r=7; r>=0; r--) {
+    for (let c=0; c<8; c++) {
+      const sq   = String.fromCharCode(97+c) + (r+1);
+      const p    = board[r][c];
+      const sym  = p ? (PIECE_SYMBOLS[p.color+p.type.toUpperCase()] || '?') : '';
+      const light= (r+c)%2===0;
+      const selCls = chessSelected === sq ? ' selected' : '';
+      html += `<div class="chess-cell ${light?'light':'dark'}${selCls}" onclick="chessClick('${sq}')">${sym}</div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+function chessClick(sq) {
+  if (chessGameOver || chess.turn() !== 'w') return;
+  if (!chessSelected) {
+    const piece = chess.get(sq);
+    if (piece && piece.color === 'w') { chessSelected = sq; renderChess(); }
+  } else {
+    const moves = chess.moves({ square: chessSelected, verbose: true });
+    const mv    = moves.find(m => m.to === sq);
+    if (mv) {
+      chess.move(mv);
+      chessMoveCount++;
+      chessSelected = null;
+      document.getElementById('chessMoves').textContent = chessMoveCount;
+      renderChess();
+      if (chess.game_over()) { endChess(); return; }
+      document.getElementById('chessStatus').textContent = 'AI o\'ylayapti...';
+      setTimeout(aiMove, 400);
+    } else {
+      const piece = chess.get(sq);
+      chessSelected = (piece && piece.color === 'w') ? sq : null;
+      renderChess();
+    }
+  }
+}
+
+function aiMove() {
+  const moves = chess.moves();
+  if (!moves.length) { endChess(); return; }
+  // Random move (simple AI)
+  chess.move(moves[Math.floor(Math.random()*moves.length)]);
+  chessMoveCount++;
+  document.getElementById('chessMoves').textContent = chessMoveCount;
+  document.getElementById('chessStatus').textContent = 'Sizning navbat';
+  renderChess();
+  if (chess.game_over()) endChess();
+}
+
+async function endChess() {
+  chessGameOver = true;
+  let msg, xp=0;
+  if (chess.in_checkmate()) {
+    if (chess.turn() === 'b') { msg = '🎉 Siz yutdingiz!'; xp = 20; tg?.HapticFeedback?.notificationOccurred('success'); }
+    else { msg = '😔 AI yutdi. Qayta urinib ko\'ring!'; xp = 5; }
+  } else { msg = '🤝 Durang!'; xp = 8; }
+  document.getElementById('chessMsg').textContent   = msg;
+  document.getElementById('chessStatus').textContent = 'Tugadi';
+  toast(msg + ' +' + xp + ' XP');
+  await saveScore('chess', xp===20?1:0, xp);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MULTIPLAYER TYPING RACE
+══════════════════════════════════════════════════════════════════════ */
+let myRoomId=null, raceText='', racePollTimer=null, raceTimerInt=null;
+let raceTimeLeft=60, raceMyProgress=0, raceFinished=false, raceMyPlayerId=null;
+
+function showMultiLobby() {
+  document.getElementById('multiLobby').style.display  = '';
+  document.getElementById('multiWaiting').style.display = 'none';
+  document.getElementById('multiGame').style.display   = 'none';
+  clearInterval(racePollTimer);
+  clearInterval(raceTimerInt);
+  myRoomId = null;
+}
+
+async function loadRooms() {
+  const el = document.getElementById('roomsList');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await api('/game/rooms?type=typing_race');
+    if (!data.rooms.length) {
+      el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:14px;font-size:13px">Hozircha ochiq xona yo\'q. Yangi yarating!</div>';
+      return;
+    }
+    el.innerHTML = data.rooms.map(r =>
+      `<div class="room-card">
+        <div class="room-av">${r.player1_name.charAt(0).toUpperCase()}</div>
+        <div><div class="room-name">${r.player1_name}</div><div class="room-sub">Typing Race kutmoqda</div></div>
+        <button class="room-join-btn" onclick="joinRoom(${r.id})">Qo'shilish</button>
+      </div>`
+    ).join('');
+  } catch { el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:14px">Xatolik</div>'; }
+}
+
+async function createRoom() {
+  document.getElementById('createRoomBtn').disabled = true;
+  try {
+    const res = await api('/game/rooms', { method:'POST', body: JSON.stringify({ game_type:'typing_race' }) });
+    myRoomId        = res.room.id;
+    raceText        = res.room.text;
+    raceMyPlayerId  = me?.user_id;
+    document.getElementById('waitRoomId').textContent = myRoomId;
+    document.getElementById('multiLobby').style.display   = 'none';
+    document.getElementById('multiWaiting').style.display = '';
+    // Poll for player2
+    racePollTimer = setInterval(pollRoomStatus, 2000);
+  } catch(e) { toast('⚠️ ' + e.message); }
+  document.getElementById('createRoomBtn').disabled = false;
+}
+
+async function joinRoom(roomId) {
+  try {
+    const res = await api(`/game/rooms/${roomId}/join`, { method:'POST' });
+    myRoomId       = roomId;
+    raceText       = res.room.text;
+    raceMyPlayerId = me?.user_id;
+    startRaceGame(res.room);
+  } catch(e) { toast('⚠️ ' + (e.message || 'Xona band')); loadRooms(); }
+}
+
+function cancelRoom() {
+  clearInterval(racePollTimer);
+  showMultiLobby();
+}
+
+async function pollRoomStatus() {
+  if (!myRoomId) return;
+  try {
+    const room = await api(`/game/rooms/${myRoomId}`);
+    if (room.status === 'active') {
+      clearInterval(racePollTimer);
+      startRaceGame(room);
+    }
+  } catch {}
+}
+
+function startRaceGame(room) {
+  document.getElementById('multiLobby').style.display   = 'none';
+  document.getElementById('multiWaiting').style.display = 'none';
+  document.getElementById('multiGame').style.display    = '';
+  raceText       = room.text || raceText;
+  raceTimeLeft   = 60;
+  raceMyProgress = 0;
+  raceFinished   = false;
+  const isP1 = (me?.user_id === room.player1_id);
+  document.getElementById('raceP1Name').textContent = room.player1_name + (isP1 ? ' (Sen)':'');
+  document.getElementById('raceP2Name').textContent = (room.player2_name || '...') + (!isP1 ? ' (Sen)':'');
+  renderRaceText(0);
+  document.getElementById('raceInput').value = '';
+  document.getElementById('raceInput').disabled = false;
+  document.getElementById('raceStatus').textContent = 'Boshlang!';
+  setTimeout(() => document.getElementById('raceInput').focus(), 100);
+  // Timer
+  clearInterval(raceTimerInt);
+  raceTimerInt = setInterval(() => {
+    raceTimeLeft--;
+    document.getElementById('raceTimer').textContent = raceTimeLeft;
+    if (raceTimeLeft <= 0) endRace('time');
+  }, 1000);
+  // Poll opponent
+  clearInterval(racePollTimer);
+  racePollTimer = setInterval(pollRaceProgress, 1500);
+}
+
+function renderRaceText(progress) {
+  const el = document.getElementById('raceText');
+  el.innerHTML = raceText.split('').map((ch,i) => {
+    const cls = i < progress ? 'correct' : i === progress ? 'current' : '';
+    return `<span class="typing-char ${cls}">${ch===' '?'&nbsp;':ch}</span>`;
+  }).join('');
+}
+
+async function onRaceInput() {
+  if (raceFinished) return;
+  const val = document.getElementById('raceInput').value;
+  raceMyProgress = val.length;
+  renderRaceText(raceMyProgress);
+  const pct = Math.round(raceMyProgress / raceText.length * 100);
+  const isP1 = me?.user_id !== null;
+  // Update my bar
+  document.getElementById('raceP1Bar').style.width = pct + '%';
+  // Send progress
+  try {
+    const done = raceMyProgress >= raceText.length &&
+                 val === raceText.slice(0, raceMyProgress);
+    const res = await api(`/game/rooms/${myRoomId}/progress`, {
+      method:'POST',
+      body: JSON.stringify({ progress: raceMyProgress, finished: done }),
+    });
+    if (res.winner_id) endRace('finish', res.winner_id);
+  } catch {}
+}
+
+async function pollRaceProgress() {
+  if (raceFinished || !myRoomId) return;
+  try {
+    const room = await api(`/game/rooms/${myRoomId}`);
+    const pct1 = Math.round(room.p1_progress / raceText.length * 100);
+    const pct2 = Math.round(room.p2_progress / raceText.length * 100);
+    document.getElementById('raceP1Bar').style.width = pct1 + '%';
+    document.getElementById('raceP2Bar').style.width = pct2 + '%';
+    if (room.winner_id) endRace('finish', room.winner_id);
+  } catch {}
+}
+
+function endRace(reason, winnerId) {
+  if (raceFinished) return;
+  raceFinished = true;
+  clearInterval(raceTimerInt);
+  clearInterval(racePollTimer);
+  document.getElementById('raceInput').disabled = true;
+  const isWinner = winnerId === me?.user_id;
+  const msg = reason === 'time' ? 'Vaqt tugadi!' : (isWinner ? '🎉 Siz yutdingiz!' : '😔 Raqib tezroq!');
+  document.getElementById('raceStatus').textContent = msg;
+  toast(msg + (isWinner ? ' +20 XP' : ' +5 XP'));
+  tg?.HapticFeedback?.notificationOccurred(isWinner ? 'success' : 'warning');
+  setTimeout(() => showMultiLobby(), 3000);
+}
+
+/* ── Start ───────────────────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>

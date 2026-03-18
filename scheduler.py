@@ -89,6 +89,11 @@ async def send_daily_reminders(
     - O'quvchilarga alohida xabar
     - Yuborilgan message_id lar bazaga saqlanadi
     """
+    # Avto xabar o'chirilgan bo'lsa — to'xtatamiz
+    if await db.get_setting("AUTO_MSG_GROUPS", "1") == "0":
+        logger.info("SCHEDULER: AUTO_MSG_GROUPS o'chirilgan — guruh xabarlari yuborilmadi")
+        return
+
     logger.info("=" * 55)
     logger.info("SCHEDULER: send_daily_reminders boshlandi")
     logger.info("=" * 55)
@@ -96,6 +101,15 @@ async def send_daily_reminders(
     try:
         info   = get_tomorrow_info(timezone_str)
         groups = await db.get_groups_by_type(info.group_type)
+
+        # Toq/juft kun o'chirilgan bo'lsa — to'xtatamiz
+        day_setting_key = "AUTO_MSG_ODD" if info.group_type == GroupType.ODD else "AUTO_MSG_EVEN"
+        if await db.get_setting(day_setting_key, "1") == "0":
+            logger.info(
+                f"SCHEDULER: {day_setting_key} o'chirilgan — "
+                f"{info.type_label} kun xabarlari yuborilmadi"
+            )
+            return
 
         logger.info(
             f"Ertangi kun: {info.date_str} ({info.type_label}) | "
@@ -109,6 +123,11 @@ async def send_daily_reminders(
         ok, fail = 0, 0
 
         for group in groups:
+            # Guruh uchun avto xabar o'chirilgan bo'lsa — o'tkazamiz
+            if await db.get_setting(f"AUTO_MSG_GROUP:{group.name}", "1") == "0":
+                logger.info(f"  ⏭ '{group.name}' guruhi avto xabari o'chirilgan")
+                continue
+
             # Auditoriyaga mos xabarni tanlaymiz
             text = build_reminder_message(info, group.audience)
             audience_label = "Ota-ona" if group.audience == AudienceType.PARENT else "O'quvchi"
@@ -173,6 +192,10 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
       1-eslatma: reminder_start dan 10 daqiqa ichida
       2-eslatma: reminder_start + 30 daqiqadan keyin (10 daqiqa oyna)
     """
+    # Avto xabar o'chirilgan bo'lsa — to'xtatamiz
+    if await db.get_setting("AUTO_MSG_STUDENTS", "1") == "0":
+        return
+
     from keyboards import kb_attendance
 
     tz  = pytz.timezone(timezone_str)
@@ -187,10 +210,19 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
         return
 
     day_type  = "ODD" if weekday in (0, 2, 4) else "EVEN"
+
+    # Toq/juft kun o'chirilgan bo'lsa — to'xtatamiz
+    day_setting_key = "AUTO_MSG_ODD" if day_type == "ODD" else "AUTO_MSG_EVEN"
+    if await db.get_setting(day_setting_key, "1") == "0":
+        return
+
     schedule  = CLASS_SCHEDULE.get(day_type, {})
     today_str = now.strftime("%Y-%m-%d")
 
     for group_name, class_time_str in schedule.items():
+        # Guruh uchun avto xabar o'chirilgan bo'lsa — o'tkazamiz
+        if await db.get_setting(f"AUTO_MSG_GROUP:{group_name}", "1") == "0":
+            continue
         class_hour, class_min = map(int, class_time_str.split(":"))
         class_dt       = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
         reminder_start = class_dt - timedelta(hours=3)
@@ -263,6 +295,10 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
     Har 10 daqiqada tekshiradi: dars boshlanganidan 20-30 daqiqa o'tgan
     guruhlar uchun kuratorlarga davomat yuborish eslatmasi ketadi.
     """
+    # Avto xabar o'chirilgan bo'lsa — to'xtatamiz
+    if await db.get_setting("AUTO_MSG_CURATORS", "1") == "0":
+        return
+
     from sqlalchemy import select
     from database import CuratorSession
     from keyboards import kb_davomat_start
@@ -278,6 +314,12 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
         return
 
     day_type  = "ODD" if weekday in (0, 2, 4) else "EVEN"
+
+    # Toq/juft kun o'chirilgan bo'lsa — to'xtatamiz
+    day_setting_key = "AUTO_MSG_ODD" if day_type == "ODD" else "AUTO_MSG_EVEN"
+    if await db.get_setting(day_setting_key, "1") == "0":
+        return
+
     schedule  = CLASS_SCHEDULE.get(day_type, {})
     today_str = now.strftime("%Y-%m-%d")
 
@@ -310,6 +352,9 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
             f"Davomat yoqlamasini ota-ona guruhiga yuborishingiz mumkin."
         )
         for cs in curator_sessions:
+            # Kurator uchun avto xabar o'chirilgan bo'lsa — o'tkazamiz
+            if await db.get_setting(f"AUTO_MSG_CURATOR:{cs.telegram_id}", "1") == "0":
+                continue
             try:
                 await bot.send_message(
                     cs.telegram_id,

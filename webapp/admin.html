@@ -570,6 +570,92 @@
     <!-- ═══════════════ TAB 5: ACTIONS ═══════════════ -->
     <div class="page" id="page-actions">
 
+      <!-- Avto xabarlar boshqaruvi -->
+      <div class="action-section">
+        <div class="action-section-title">🔔 Avto xabarlar</div>
+        <p style="font-size:12px;color:var(--sub);margin-bottom:14px">
+          Bayram yoki dam olish kunlari avto xabarlarni o'chiring
+        </p>
+
+        <!-- Kunlar -->
+        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📅 Kunlar</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 12px">
+            <div>
+              <div style="font-size:13px;font-weight:600">Toq kunlar</div>
+              <div style="font-size:10px;color:var(--sub)">Du / Ch / Ju</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-odd" onchange="toggleAutoMsg('odd', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 12px">
+            <div>
+              <div style="font-size:13px;font-weight:600">Juft kunlar</div>
+              <div style="font-size:10px;color:var(--sub)">Se / Pa / Sh</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-even" onchange="toggleAutoMsg('even', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Umumiy -->
+        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚙️ Umumiy</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 14px">
+            <div>
+              <div style="font-size:13px;font-weight:600">📢 Guruhga xabar (20:00)</div>
+              <div style="font-size:11px;color:var(--sub)">Kunlik dars eslatmasi guruhlarga</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-groups" onchange="toggleAutoMsg('groups', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 14px">
+            <div>
+              <div style="font-size:13px;font-weight:600">👨‍🎓 O'quvchiga davomat so'rovi</div>
+              <div style="font-size:11px;color:var(--sub)">Darsdan 3 soat oldin shaxsiy xabar</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-students" onchange="toggleAutoMsg('students', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 14px">
+            <div>
+              <div style="font-size:13px;font-weight:600">👨‍💼 Kuratorga eslatma</div>
+              <div style="font-size:11px;color:var(--sub)">Dars boshlanganidan 20 daqiqa o'tgach</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-curators" onchange="toggleAutoMsg('curators', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Guruhlar alohida -->
+        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Guruhlar alohida</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px" id="grpFilterBtns">
+          <button class="chip active" onclick="setGrpFilter('all',this)">Hammasi</button>
+          <button class="chip" onclick="setGrpFilter('parent',this)">Ota-onalar</button>
+          <button class="chip" onclick="setGrpFilter('student',this)">O'quvchilar</button>
+        </div>
+        <div id="perGroupList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <div style="color:var(--sub);font-size:12px">Yuklanmoqda...</div>
+        </div>
+
+        <!-- Kuratorlar alohida -->
+        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">👨‍💼 Kuratorlar alohida</div>
+        <div id="perCuratorList" style="display:flex;flex-direction:column;gap:8px">
+          <div style="color:var(--sub);font-size:12px">Yuklanmoqda...</div>
+        </div>
+
+      </div>
+
       <!-- Eslatma vaqti -->
       <div class="action-section">
         <div class="action-section-title">⏰ Eslatma vaqti</div>
@@ -1159,9 +1245,159 @@ async function toggleGroup(chatId, newState, inputEl) {
 }
 
 /* ═══════════════════════════════════════════════════
+   Auto Messages Toggle
+═══════════════════════════════════════════════════ */
+let _autoMsgData = {};   // cache
+let _grpFilter   = 'all';
+
+async function loadAutoMsg() {
+  try {
+    // Load auto-msg settings + groups (for audience filter)
+    const [data, grpData] = await Promise.all([
+      api('/admin/auto-msg'),
+      api('/admin/groups').catch(() => ({ groups: [] })),
+    ]);
+    data._groups = grpData.groups || [];
+    _autoMsgData = data;
+
+    // Also enrich per_curator with curator_key label from curator-stats
+    try {
+      const curStats = await api('/admin/curator-stats');
+      _autoMsgData._curators = curStats.curators || [];
+    } catch {}
+
+    // Global + day toggles
+    ['groups','students','curators','odd','even'].forEach(k => {
+      const el = document.getElementById('toggle-' + k);
+      if (el) el.checked = !!data[k];
+    });
+
+    renderPerGroup(data.per_group || {}, data);
+    renderPerCurator(data.per_curator || {}, data);
+  } catch (e) {
+    console.error('loadAutoMsg:', e);
+  }
+}
+
+function setGrpFilter(filter, btn) {
+  _grpFilter = filter;
+  document.querySelectorAll('#grpFilterBtns .chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPerGroup(_autoMsgData.per_group || {}, _autoMsgData);
+}
+
+function renderPerGroup(perGroup, data) {
+  const wrap = document.getElementById('perGroupList');
+  if (!wrap) return;
+  const keys = Object.keys(perGroup);
+  if (!keys.length) {
+    wrap.innerHTML = '<div style="color:var(--sub);font-size:12px">Guruhlar topilmadi</div>';
+    return;
+  }
+  wrap.innerHTML = keys.map(name => {
+    // audience filter from groups API data — we use per_group key name matching
+    // Filter by audience if needed: we need group audience info
+    // Since we don't have audience here, show all and rely on server-side filtering
+    const on = perGroup[name];
+    // Find group audience from _autoMsgData if available
+    const grpInfo = (_autoMsgData._groups || []).find(g => g.name === name);
+    if (_grpFilter !== 'all' && grpInfo) {
+      const aud = grpInfo.audience; // 'PARENT' | 'STUDENT'
+      if (_grpFilter === 'parent' && aud !== 'PARENT') return '';
+      if (_grpFilter === 'student' && aud !== 'STUDENT') return '';
+    }
+    const icon = on ? '🟢' : '🔴';
+    const audLabel = grpInfo ? (grpInfo.audience === 'PARENT' ? 'Ota' : "O'q") : '';
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px">
+        <div style="font-size:13px">${icon} <b>${name}</b>${audLabel ? ' <span style="color:var(--sub);font-size:11px">('+audLabel+')</span>' : ''}</div>
+        <label class="toggle">
+          <input type="checkbox" ${on ? 'checked' : ''} onchange="togglePerGroup('${name}', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`;
+  }).filter(Boolean).join('') || '<div style="color:var(--sub);font-size:12px">Filterlangan guruh yo\'q</div>';
+}
+
+function renderPerCurator(perCurator, data) {
+  const wrap = document.getElementById('perCuratorList');
+  if (!wrap) return;
+  const keys = Object.keys(perCurator);
+  if (!keys.length) {
+    wrap.innerHTML = '<div style="color:var(--sub);font-size:12px">Faol kuratorlar yo\'q</div>';
+    return;
+  }
+  const curators = data._curators || [];
+  wrap.innerHTML = keys.map(tid => {
+    const on   = perCurator[tid];
+    const icon = on ? '🟢' : '🔴';
+    const info = curators.find(c => String(c.telegram_id) === String(tid));
+    const name = info ? (info.full_name || info.key || `ID:${tid}`) : `ID:${tid}`;
+    const last = info?.last_active ? `| ${info.last_active.slice(0,16).replace('T',' ')}` : '';
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px">
+        <div>
+          <div style="font-size:13px">${icon} <b>${name}</b></div>
+          ${last ? `<div style="font-size:11px;color:var(--sub)">${last}</div>` : ''}
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${on ? 'checked' : ''} onchange="togglePerCurator('${tid}', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`;
+  }).join('');
+}
+
+async function toggleAutoMsg(key, checked) {
+  const labels = { groups: 'Guruh', students: "O'quvchi", curators: 'Kurator', odd: 'Toq kun', even: 'Juft kun' };
+  try {
+    await api('/admin/auto-msg', { method: 'POST', body: JSON.stringify({ [key]: checked }) });
+    _autoMsgData[key] = checked;
+    const state = checked ? 'yoqildi 🟢' : "o'chirildi 🔴";
+    toast(`${labels[key] || key}: ${state}`);
+    tg?.HapticFeedback?.impactOccurred('medium');
+  } catch (e) {
+    document.getElementById('toggle-' + key).checked = !checked;
+    toast('⚠️ ' + e.message);
+  }
+}
+
+async function togglePerGroup(groupName, checked) {
+  try {
+    await api('/admin/auto-msg', { method: 'POST', body: JSON.stringify({ per_group: { [groupName]: checked } }) });
+    if (!_autoMsgData.per_group) _autoMsgData.per_group = {};
+    _autoMsgData.per_group[groupName] = checked;
+    const state = checked ? 'yoqildi 🟢' : "o'chirildi 🔴";
+    toast(`'${groupName}': ${state}`);
+    tg?.HapticFeedback?.impactOccurred('light');
+    renderPerGroup(_autoMsgData.per_group, _autoMsgData);
+  } catch (e) {
+    toast('⚠️ ' + e.message);
+    renderPerGroup(_autoMsgData.per_group || {}, _autoMsgData);
+  }
+}
+
+async function togglePerCurator(curatorId, checked) {
+  try {
+    await api('/admin/auto-msg', { method: 'POST', body: JSON.stringify({ per_curator: { [curatorId]: checked } }) });
+    if (!_autoMsgData.per_curator) _autoMsgData.per_curator = {};
+    _autoMsgData.per_curator[curatorId] = checked;
+    const state = checked ? 'yoqildi 🟢' : "o'chirildi 🔴";
+    toast(`Kurator ${curatorId}: ${state}`);
+    tg?.HapticFeedback?.impactOccurred('light');
+    renderPerCurator(_autoMsgData.per_curator, _autoMsgData);
+  } catch (e) {
+    toast('⚠️ ' + e.message);
+    renderPerCurator(_autoMsgData.per_curator || {}, _autoMsgData);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
    Actions (Tab 5)
 ═══════════════════════════════════════════════════ */
 async function loadActions() {
+  loadAutoMsg();
+
   // Load reminder time
   try {
     const data = await api('/admin/reminder-time');

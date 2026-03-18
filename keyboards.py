@@ -52,6 +52,9 @@ def kb_admin_panel() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🔍 Faollik",         callback_data="admin:check_activity"),
         InlineKeyboardButton(text="🗑 Xabarlarni o'chir", callback_data="admin:delete_all_msgs"),
     )
+    builder.row(
+        InlineKeyboardButton(text="🔔 Avto xabarlar",  callback_data="admin:auto_msg"),
+    )
     return builder.as_markup()
 
 

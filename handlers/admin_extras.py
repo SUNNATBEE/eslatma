@@ -337,6 +337,269 @@ async def admin_set_time_save(message: Message, state: FSMContext, db: DatabaseS
 
 
 # ════════════════════════════════════════════════════════════════════════════════
+# AVTO XABARLAR BOSHQARUVI
+# ════════════════════════════════════════════════════════════════════════════════
+
+_ICON   = lambda v: "🟢" if v == "1" else "🔴"
+_LBL    = lambda v: "Yoq" if v == "1" else "O'ch"
+_STATE  = lambda v: "yoqildi 🟢" if v == "1" else "o'chirildi 🔴"
+
+
+# ── Asosiy sahifa ─────────────────────────────────────────────────────────────
+
+async def _build_main_auto_msg(db: DatabaseService):
+    g   = await db.get_setting("AUTO_MSG_GROUPS",   "1")
+    s   = await db.get_setting("AUTO_MSG_STUDENTS", "1")
+    c   = await db.get_setting("AUTO_MSG_CURATORS", "1")
+    odd = await db.get_setting("AUTO_MSG_ODD",      "1")
+    evn = await db.get_setting("AUTO_MSG_EVEN",     "1")
+
+    text = (
+        "🔔 <b>Avto xabarlar boshqaruvi</b>\n\n"
+        f"📅 <b>Kunlar:</b>\n"
+        f"  {_ICON(odd)} Toq kun (Du/Ch/Ju)\n"
+        f"  {_ICON(evn)} Juft kun (Se/Pa/Sh)\n\n"
+        f"⚙️ <b>Umumiy:</b>\n"
+        f"  {_ICON(g)} Guruhga kunlik xabar (20:00)\n"
+        f"  {_ICON(s)} O'quvchiga davomat so'rovi\n"
+        f"  {_ICON(c)} Kuratorga eslatma\n\n"
+        "<i>Alohida guruh/kurator boshqaruvi uchun quyidagi tugmalardan foydalaning.</i>"
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text=f"{_ICON(odd)} Toq kun",  callback_data="auto_msg:day:odd"),
+        InlineKeyboardButton(text=f"{_ICON(evn)} Juft kun", callback_data="auto_msg:day:even"),
+    )
+    builder.row(
+        InlineKeyboardButton(text=f"{_ICON(g)} Guruhlar",    callback_data="auto_msg:toggle:groups"),
+        InlineKeyboardButton(text=f"{_ICON(s)} O'quvchilar", callback_data="auto_msg:toggle:students"),
+    )
+    builder.row(
+        InlineKeyboardButton(text=f"{_ICON(c)} Kuratorlar",  callback_data="auto_msg:toggle:curators"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="📋 Guruhlar alohida →",  callback_data="auto_msg:groups:all"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="👨‍💼 Kuratorlar alohida →", callback_data="auto_msg:curators"),
+    )
+    builder.row(InlineKeyboardButton(text="◀️ Panel", callback_data="admin:panel"))
+    return text, builder.as_markup()
+
+
+@router.callback_query(F.data == "admin:auto_msg")
+async def admin_auto_msg(cb: CallbackQuery, db: DatabaseService) -> None:
+    if cb.from_user.id not in ADMIN_IDS:
+        await cb.answer("❌", show_alert=True); return
+    text, kb = await _build_main_auto_msg(db)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb)
+    except TelegramBadRequest:
+        await cb.message.answer(text, reply_markup=kb)
+    await cb.answer()
+
+
+# ── Umumiy toggle ─────────────────────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("auto_msg:toggle:"))
+async def admin_auto_msg_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
+    if cb.from_user.id not in ADMIN_IDS:
+        await cb.answer("❌", show_alert=True); return
+
+    target = cb.data.split(":")[2]  # groups | students | curators
+    key_map   = {"groups": "AUTO_MSG_GROUPS", "students": "AUTO_MSG_STUDENTS", "curators": "AUTO_MSG_CURATORS"}
+    label_map = {"groups": "Guruhlar", "students": "O'quvchilar", "curators": "Kuratorlar"}
+    setting_key = key_map.get(target)
+    if not setting_key:
+        await cb.answer("❌", show_alert=True); return
+
+    cur = await db.get_setting(setting_key, "1")
+    new = "0" if cur == "1" else "1"
+    await db.set_setting(setting_key, new)
+    await cb.answer(f"{label_map[target]}: {_STATE(new)}", show_alert=True)
+
+    text, kb = await _build_main_auto_msg(db)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb)
+    except TelegramBadRequest:
+        pass
+
+
+# ── Kun toggle ────────────────────────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("auto_msg:day:"))
+async def admin_auto_msg_day(cb: CallbackQuery, db: DatabaseService) -> None:
+    if cb.from_user.id not in ADMIN_IDS:
+        await cb.answer("❌", show_alert=True); return
+
+    day = cb.data.split(":")[2]  # odd | even
+    key = "AUTO_MSG_ODD" if day == "odd" else "AUTO_MSG_EVEN"
+    lbl = "Toq kun" if day == "odd" else "Juft kun"
+
+    cur = await db.get_setting(key, "1")
+    new = "0" if cur == "1" else "1"
+    await db.set_setting(key, new)
+    await cb.answer(f"{lbl}: {_STATE(new)}", show_alert=True)
+
+    text, kb = await _build_main_auto_msg(db)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb)
+    except TelegramBadRequest:
+        pass
+
+
+# ── Guruhlar alohida ──────────────────────────────────────────────────────────
+
+async def _build_groups_auto_msg(db: DatabaseService, aud_filter: str):
+    from database import AudienceType
+
+    all_groups = await db.get_all_groups()
+    if aud_filter == "parent":
+        groups = [g for g in all_groups if g.audience == AudienceType.PARENT]
+    elif aud_filter == "student":
+        groups = [g for g in all_groups if g.audience == AudienceType.STUDENT]
+    else:
+        groups = all_groups
+
+    filter_label = {
+        "all": "Hammasi", "parent": "Ota-onalar", "student": "O'quvchilar"
+    }.get(aud_filter, "Hammasi")
+
+    text = (
+        f"📋 <b>Guruhlar alohida boshqaruv</b>\n"
+        f"Filter: <b>{filter_label}</b>\n\n"
+        "Guruhni bosing — avto xabar yoqiladi/o'chiriladi."
+    )
+    builder = InlineKeyboardBuilder()
+    # Filter tugmalari
+    builder.row(
+        InlineKeyboardButton(
+            text=("✅ Hammasi" if aud_filter == "all" else "Hammasi"),
+            callback_data="auto_msg:groups:all",
+        ),
+        InlineKeyboardButton(
+            text=("✅ Ota-onalar" if aud_filter == "parent" else "Ota-onalar"),
+            callback_data="auto_msg:groups:parent",
+        ),
+        InlineKeyboardButton(
+            text=("✅ O'quvchilar" if aud_filter == "student" else "O'quvchilar"),
+            callback_data="auto_msg:groups:student",
+        ),
+    )
+    if not groups:
+        text += "\n\n<i>Guruhlar topilmadi.</i>"
+    for g in groups:
+        state = await db.get_setting(f"AUTO_MSG_GROUP:{g.name}", "1")
+        aud_short = "Ota" if g.audience == AudienceType.PARENT else "O'q"
+        active_mark = "" if g.is_active else " 🔴"
+        builder.row(
+            InlineKeyboardButton(
+                text=f"{_ICON(state)} {g.name} ({aud_short}){active_mark}",
+                callback_data=f"auto_msg:grp:{aud_filter}:{g.name}",
+            )
+        )
+    builder.row(InlineKeyboardButton(text="◀️ Orqaga", callback_data="admin:auto_msg"))
+    return text, builder.as_markup()
+
+
+@router.callback_query(F.data.startswith("auto_msg:groups:"))
+async def admin_auto_msg_groups_page(cb: CallbackQuery, db: DatabaseService) -> None:
+    if cb.from_user.id not in ADMIN_IDS:
+        await cb.answer("❌", show_alert=True); return
+    aud_filter = cb.data.split(":")[2]  # all | parent | student
+    text, kb = await _build_groups_auto_msg(db, aud_filter)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb)
+    except TelegramBadRequest:
+        await cb.message.answer(text, reply_markup=kb)
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("auto_msg:grp:"))
+async def admin_auto_msg_group_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
+    if cb.from_user.id not in ADMIN_IDS:
+        await cb.answer("❌", show_alert=True); return
+
+    parts = cb.data.split(":", 3)  # ["auto_msg", "grp", filter, group_name]
+    if len(parts) < 4:
+        await cb.answer("❌", show_alert=True); return
+    aud_filter, group_name = parts[2], parts[3]
+
+    key = f"AUTO_MSG_GROUP:{group_name}"
+    cur = await db.get_setting(key, "1")
+    new = "0" if cur == "1" else "1"
+    await db.set_setting(key, new)
+    await cb.answer(f"'{group_name}': {_STATE(new)}", show_alert=True)
+
+    text, kb = await _build_groups_auto_msg(db, aud_filter)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb)
+    except TelegramBadRequest:
+        pass
+
+
+# ── Kuratorlar alohida ────────────────────────────────────────────────────────
+
+async def _build_curators_auto_msg(db: DatabaseService):
+    from sqlalchemy import select
+    from database import CuratorSession
+
+    async with db.session_factory() as session:
+        result = await session.execute(select(CuratorSession))
+        curator_sessions = list(result.scalars().all())
+
+    text = "👨‍💼 <b>Kuratorlar alohida boshqaruv</b>\n\n"
+    builder = InlineKeyboardBuilder()
+
+    if not curator_sessions:
+        text += "<i>Faol kuratorlar yo'q.\nKurator botga kirishi kerak.</i>"
+    else:
+        text += "Kuratorni bosing — avto xabar yoqiladi/o'chiriladi.\n"
+        for cs in curator_sessions:
+            state = await db.get_setting(f"AUTO_MSG_CURATOR:{cs.telegram_id}", "1")
+            last = cs.last_active.strftime("%d.%m %H:%M") if cs.last_active else "—"
+            builder.row(
+                InlineKeyboardButton(
+                    text=f"{_ICON(state)} {cs.curator_key} | {last}",
+                    callback_data=f"auto_msg:cur:{cs.telegram_id}",
+                )
+            )
+    builder.row(InlineKeyboardButton(text="◀️ Orqaga", callback_data="admin:auto_msg"))
+    return text, builder.as_markup()
+
+
+@router.callback_query(F.data == "auto_msg:curators")
+async def admin_auto_msg_curators_page(cb: CallbackQuery, db: DatabaseService) -> None:
+    if cb.from_user.id not in ADMIN_IDS:
+        await cb.answer("❌", show_alert=True); return
+    text, kb = await _build_curators_auto_msg(db)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb)
+    except TelegramBadRequest:
+        await cb.message.answer(text, reply_markup=kb)
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("auto_msg:cur:"))
+async def admin_auto_msg_curator_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
+    if cb.from_user.id not in ADMIN_IDS:
+        await cb.answer("❌", show_alert=True); return
+
+    tg_id_str = cb.data.split(":")[2]
+    key = f"AUTO_MSG_CURATOR:{tg_id_str}"
+    cur = await db.get_setting(key, "1")
+    new = "0" if cur == "1" else "1"
+    await db.set_setting(key, new)
+    await cb.answer(f"Kurator: {_STATE(new)}", show_alert=True)
+
+    text, kb = await _build_curators_auto_msg(db)
+    try:
+        await cb.message.edit_text(text, reply_markup=kb)
+    except TelegramBadRequest:
+        pass
+
+
+# ════════════════════════════════════════════════════════════════════════════════
 # FAOLLIK TEKSHIRISH
 # ════════════════════════════════════════════════════════════════════════════════
 

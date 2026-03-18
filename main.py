@@ -662,6 +662,62 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
 
         return web.json_response({"ok": True, "sent": ok, "failed": fail})
 
+    async def api_admin_auto_msg_get(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        from sqlalchemy import select
+        from database import CuratorSession
+
+        groups = await db.get_all_groups()
+        per_group = {}
+        for g in groups:
+            per_group[g.name] = await db.get_setting(f"AUTO_MSG_GROUP:{g.name}", "1") == "1"
+
+        async with db.session_factory() as _sess:
+            _res = await _sess.execute(select(CuratorSession))
+            curator_sessions = list(_res.scalars().all())
+        per_curator = {}
+        for cs in curator_sessions:
+            per_curator[str(cs.telegram_id)] = (
+                await db.get_setting(f"AUTO_MSG_CURATOR:{cs.telegram_id}", "1") == "1"
+            )
+
+        return web.json_response({
+            "groups":      await db.get_setting("AUTO_MSG_GROUPS",   "1") == "1",
+            "students":    await db.get_setting("AUTO_MSG_STUDENTS", "1") == "1",
+            "curators":    await db.get_setting("AUTO_MSG_CURATORS", "1") == "1",
+            "odd":         await db.get_setting("AUTO_MSG_ODD",      "1") == "1",
+            "even":        await db.get_setting("AUTO_MSG_EVEN",     "1") == "1",
+            "per_group":   per_group,
+            "per_curator": per_curator,
+        })
+
+    async def api_admin_auto_msg_set(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+
+        # Global toggles
+        for key in ("groups", "students", "curators", "odd", "even"):
+            if key in body:
+                await db.set_setting(f"AUTO_MSG_{key.upper()}", "1" if body[key] else "0")
+
+        # Per-group toggles: {"per_group": {"nF-2506": true, ...}}
+        for group_name, enabled in body.get("per_group", {}).items():
+            await db.set_setting(f"AUTO_MSG_GROUP:{group_name}", "1" if enabled else "0")
+
+        # Per-curator toggles: {"per_curator": {"123456789": true, ...}}
+        for curator_id, enabled in body.get("per_curator", {}).items():
+            await db.set_setting(f"AUTO_MSG_CURATOR:{curator_id}", "1" if enabled else "0")
+
+        return web.json_response({"ok": True})
+
     async def api_admin_reminder_get(request: web.Request) -> web.Response:
         user_id = _admin_auth(request)
         if not user_id:
@@ -989,6 +1045,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/admin/broadcast",        api_admin_broadcast)
     app.router.add_get("/api/admin/reminder-time",     api_admin_reminder_get)
     app.router.add_post("/api/admin/reminder-time",    api_admin_reminder_set)
+    app.router.add_get("/api/admin/auto-msg",          api_admin_auto_msg_get)
+    app.router.add_post("/api/admin/auto-msg",         api_admin_auto_msg_set)
     app.router.add_get("/api/admin/inactive",          api_admin_inactive)
     app.router.add_post("/api/admin/test-send",        api_admin_test_send)
     app.router.add_get("/api/admin/curator-stats",     api_admin_curator_stats)

@@ -1069,6 +1069,85 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             "att_status": rec.status if rec else None,
         })
 
+    # ── Public (no auth) ──────────────────────────────────────────────────────
+
+    async def api_public_groups(request: web.Request) -> web.Response:
+        """Mini App ro'yxatdan o'tish uchun guruhlar ro'yxati (auth shart emas)."""
+        from credentials import MARS_GROUPS
+        return web.json_response({"groups": MARS_GROUPS})
+
+    # ── Student Registration ───────────────────────────────────────────────────
+
+    async def api_student_register(request: web.Request) -> web.Response:
+        """Mini App orqali o'quvchi ro'yxatdan o'tishi."""
+        import re as _re
+        user_id = _get_user_id_from_init_data(request.headers.get("X-Init-Data", ""))
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+
+        mars_id    = (body.get("mars_id")    or "").strip()
+        password   = (body.get("password")   or "").strip()
+        phone      = (body.get("phone")      or "").strip()
+        group_name = (body.get("group_name") or "").strip()
+
+        if not mars_id or not password or not phone or not group_name:
+            return web.json_response({"error": "Barcha maydonlarni to'ldiring"}, status=400)
+        if not _re.fullmatch(r"\+998\d{9}", phone):
+            return web.json_response({"error": "Telefon formati: +998901234567"}, status=400)
+
+        from credentials import MARS_CREDENTIALS
+        cred = MARS_CREDENTIALS.get(mars_id)
+        if not cred:
+            db_cred = await db.get_student_credential(mars_id)
+            if db_cred:
+                cred = {"password": db_cred.password, "name": db_cred.name, "group": db_cred.group_name}
+        if not cred:
+            return web.json_response({"error": "Bu Mars ID topilmadi"}, status=403)
+        if cred["password"] != password:
+            return web.json_response({"error": "Parol noto'g'ri"}, status=403)
+        if cred["group"] != group_name:
+            return web.json_response({
+                "error": f"Sizning guruhingiz: {cred['group']}. {group_name} ni tanlamang."
+            }, status=403)
+
+        existing = await db.get_student_by_mars_id(mars_id)
+        if existing and existing.user_id != user_id:
+            return web.json_response({
+                "error": "Bu Mars ID boshqa Telegram akkountda ro'yxatdan o'tilgan. Admin bilan bog'laning."
+            }, status=409)
+
+        parsed   = _verify_webapp_init_data(request.headers.get("X-Init-Data", ""))
+        tg_udata = json.loads(parsed.get("user", "{}")) if parsed else {}
+        tg_un    = f"@{tg_udata['username']}" if tg_udata.get("username") else str(user_id)
+
+        await db.register_student(
+            user_id=user_id, telegram_username=tg_un,
+            full_name=cred["name"], mars_id=mars_id,
+            group_name=group_name, phone_number=phone,
+        )
+
+        # Adminga bildirishnoma
+        notify = (
+            f"🔔 <b>Yangi o'quvchi (Mini App)</b>\n\n"
+            f"👤 {cred['name']}\n"
+            f"📚 Guruh: {group_name}\n"
+            f"🆔 Mars ID: <code>{mars_id}</code>\n"
+            f"📱 Telefon: <code>{phone}</code>\n"
+            f"💬 {tg_un}"
+        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, notify)
+            except Exception:
+                pass
+
+        return web.json_response({"ok": True, "full_name": cred["name"], "group_name": group_name})
+
     # ── Student Gamification API ──────────────────────────────────────────────
 
     async def api_student_checkin(request: web.Request) -> web.Response:
@@ -1209,6 +1288,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     webapp_dir = os.path.join(os.path.dirname(__file__), "webapp")
 
     app = web.Application(middlewares=[cors_middleware])
+    app.router.add_get("/api/public/groups",    api_public_groups)
+    app.router.add_post("/api/student/register", api_student_register)
     app.router.add_get("/api/me",               api_me)
     app.router.add_get("/api/tomorrow",         api_tomorrow)
     app.router.add_get("/api/homework",         api_homework)

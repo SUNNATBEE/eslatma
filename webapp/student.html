@@ -363,6 +363,62 @@
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
 
+    /* ── Registration page ── */
+    .reg-page {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg); flex-direction: column; overflow-y: auto;
+    }
+    .reg-page.show { display: flex; }
+    .reg-header {
+      background: var(--bg2); padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      text-align: center;
+    }
+    .reg-logo { font-size: 40px; margin-bottom: 6px; }
+    .reg-title { font-size: 18px; font-weight: 800; }
+    .reg-sub   { font-size: 12px; color: var(--sub); margin-top: 3px; }
+    .reg-body  { flex: 1; padding: 20px 16px; }
+    .reg-step  { display: none; }
+    .reg-step.active { display: block; }
+    .reg-step-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; color: var(--text); }
+    .reg-label { font-size: 12px; color: var(--sub); margin-bottom: 5px; margin-top: 12px; }
+    .reg-input {
+      width: 100%; background: var(--bg2);
+      border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+      padding: 13px 14px; color: var(--text);
+      font-size: 15px; outline: none; font-family: inherit;
+      -webkit-appearance: none; transition: border-color .2s;
+    }
+    .reg-input:focus { border-color: var(--accent); }
+    .reg-select {
+      width: 100%; background: var(--bg2);
+      border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+      padding: 13px 14px; color: var(--text);
+      font-size: 15px; outline: none; font-family: inherit;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23708499' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+    }
+    .reg-btn {
+      width: 100%; margin-top: 20px; padding: 15px;
+      background: var(--accent); color: var(--btn-text);
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: opacity .15s;
+    }
+    .reg-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .reg-err {
+      background: rgba(224,92,92,.12); border: 1px solid rgba(224,92,92,.3);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; color: var(--danger);
+      margin-top: 12px; display: none; line-height: 1.5;
+    }
+    .reg-err.show { display: block; }
+    .reg-hint { font-size: 12px; color: var(--sub); margin-top: 8px; line-height: 1.5; }
+    .reg-progress { display: flex; gap: 6px; padding: 14px 16px 0; }
+    .reg-dot { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); transition: background .3s; }
+    .reg-dot.done { background: var(--accent); }
+
     /* ── Guide Modal ── */
     .guide-overlay {
       display: none; position: fixed; inset: 0; z-index: 9002;
@@ -570,6 +626,56 @@
       <button class="no-modal-cancel" onclick="hideNoModal()">Bekor</button>
       <button class="no-modal-submit" onclick="submitNoAttend()">❌ Yuborish</button>
     </div>
+  </div>
+</div>
+
+<!-- ── Ro'yxatdan o'tish sahifasi ── -->
+<div class="reg-page" id="regPage">
+  <div class="reg-header">
+    <div class="reg-logo">🎓</div>
+    <div class="reg-title">Mars IT</div>
+    <div class="reg-sub">O'quvchi kabineti — Ro'yxatdan o'tish</div>
+  </div>
+  <div class="reg-progress">
+    <div class="reg-dot done" id="rd1"></div>
+    <div class="reg-dot" id="rd2"></div>
+    <div class="reg-dot" id="rd3"></div>
+  </div>
+  <div class="reg-body">
+
+    <!-- Qadam 1: Guruh tanlash -->
+    <div class="reg-step active" id="regStep1">
+      <div class="reg-step-title">1️⃣ Guruhingizni tanlang</div>
+      <div class="reg-label">Guruh</div>
+      <select class="reg-select" id="regGroup">
+        <option value="">— Guruh tanlang —</option>
+      </select>
+      <button class="reg-btn" onclick="regNext1()">Davom etish →</button>
+      <div class="reg-err" id="regErr1"></div>
+    </div>
+
+    <!-- Qadam 2: Mars ID va parol -->
+    <div class="reg-step" id="regStep2">
+      <div class="reg-step-title">2️⃣ Mars Space ma'lumotlaringiz</div>
+      <div class="reg-label">Mars Space ID</div>
+      <input class="reg-input" id="regMarsId" type="number" placeholder="Masalan: 1342455" inputmode="numeric">
+      <div class="reg-label">Parol</div>
+      <input class="reg-input" id="regPassword" type="password" placeholder="Parolingiz">
+      <div class="reg-hint">💡 Mars Space ID va parolni o'qituvchingizdan yoki administratordan olishingiz mumkin.</div>
+      <button class="reg-btn" onclick="regNext2()" id="regBtn2">Tekshirish →</button>
+      <div class="reg-err" id="regErr2"></div>
+    </div>
+
+    <!-- Qadam 3: Telefon raqam -->
+    <div class="reg-step" id="regStep3">
+      <div class="reg-step-title">3️⃣ Telefon raqamingiz</div>
+      <div class="reg-label">Telefon raqam</div>
+      <input class="reg-input" id="regPhone" type="tel" placeholder="+998901234567" inputmode="tel">
+      <div class="reg-hint">📱 Format: +998XXXXXXXXX (12 raqam)</div>
+      <button class="reg-btn" onclick="regSubmit()" id="regBtn3">✅ Ro'yxatdan o'tish</button>
+      <div class="reg-err" id="regErr3"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1140,12 +1246,82 @@ async function init() {
       document.getElementById('hdrName').textContent  = 'Telegram kerak';
       document.getElementById('hdrGroup').textContent = 'Botni Telegram orqali oching';
       classEl.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Mini App faqat Telegram botidan ochiladi</div></div>';
+    } else if (e.status === 404) {
+      // Not registered — show registration form
+      showRegPage();
     } else {
-      document.getElementById('hdrName').textContent  = "Ro'yxatdan o'ting";
-      document.getElementById('hdrGroup').textContent = '@otaOnaMars_bot → /start';
-      classEl.innerHTML = "<div class='empty'><div class='empty-icon'>👋</div><div class='empty-text'>Botda ro'yxatdan o'ting va qaytib keling</div></div>";
+      document.getElementById('hdrName').textContent  = "Xatolik";
+      classEl.innerHTML = `<div class='empty'><div class='empty-icon'>⚠️</div><div class='empty-text'>${e.message || 'Xatolik yuz berdi'}</div></div>`;
     }
   }
+}
+
+/* ── Registration ────────────────────────────────────────────────────────── */
+let _regGroup = '';
+let _regMarsId = '';
+let _regPassword = '';
+
+function showRegPage() {
+  document.getElementById('regPage').classList.add('show');
+  api('/public/groups').then(data => {
+    const sel = document.getElementById('regGroup');
+    sel.innerHTML = '<option value="">— Guruh tanlang —</option>';
+    (data.groups || []).forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g; opt.textContent = g;
+      sel.appendChild(opt);
+    });
+  }).catch(() => {});
+}
+
+function _regSetDots(step) {
+  [1,2,3].forEach(i =>
+    document.getElementById('rd' + i).classList.toggle('done', i <= step)
+  );
+}
+
+function regNext1() {
+  const grp = document.getElementById('regGroup').value;
+  if (!grp) { _regErr(1, 'Guruhni tanlang!'); return; }
+  _regGroup = grp; _regErr(1, ''); _regSetDots(2);
+  document.getElementById('regStep1').classList.remove('active');
+  document.getElementById('regStep2').classList.add('active');
+}
+
+function regNext2() {
+  const marsId = document.getElementById('regMarsId').value.trim();
+  const pwd    = document.getElementById('regPassword').value.trim();
+  if (!marsId || !pwd) { _regErr(2, "Mars ID va parolni to'ldiring!"); return; }
+  _regMarsId = marsId; _regPassword = pwd; _regErr(2, ''); _regSetDots(3);
+  document.getElementById('regStep2').classList.remove('active');
+  document.getElementById('regStep3').classList.add('active');
+}
+
+async function regSubmit() {
+  const phone = document.getElementById('regPhone').value.trim();
+  if (!phone.match(/^\+998\d{9}$/)) { _regErr(3, 'Format: +998901234567'); return; }
+  const btn = document.getElementById('regBtn3');
+  btn.disabled = true; btn.textContent = '⏳ Saqlanmoqda...';
+  try {
+    await api('/student/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        group_name: _regGroup, mars_id: _regMarsId,
+        password: _regPassword, phone,
+      }),
+    });
+    tg?.HapticFeedback?.notificationOccurred('success');
+    document.getElementById('regPage').classList.remove('show');
+    init();  // Re-init to show dashboard
+  } catch(e) {
+    btn.disabled = false; btn.textContent = "✅ Ro'yxatdan o'tish";
+    _regErr(3, e.message || 'Xatolik yuz berdi');
+  }
+}
+
+function _regErr(step, msg) {
+  const el = document.getElementById('regErr' + step);
+  el.textContent = msg; el.classList.toggle('show', !!msg);
 }
 
 init();

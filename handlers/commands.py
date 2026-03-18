@@ -54,21 +54,43 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
         )
         return
 
-    # Ro'yxatdan o'tgan o'quvchimi?
+    # O'quvchi — faqat Mini App tugmasi
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo as WAI
+    from config import WEBAPP_URL as _WA
+
     student = await db.get_student(user_id)
     if student:
         await db.update_last_active(user_id)
-        await message.answer(
-            f"👋 <b>Salom, {student.full_name}!</b>\n\n"
-            f"📚 Guruh: <b>{student.group_name}</b>\n\n"
-            f"Quyidagi tugmalardan foydalaning:",
-            reply_markup=kb_student_menu(),
-        )
-        return
 
-    # Yangi foydalanuvchi — ro'yxatdan o'tish
-    from handlers.registration import start_registration
-    await start_registration(message, state)
+    if _WA:
+        markup = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text="📱 Mini App — Shaxsiy kabinet",
+                web_app=WAI(url=f"{_WA.rstrip('/')}/webapp/student.html"),
+            )
+        ]])
+        greet = f"Salom, <b>{student.full_name}</b>! 👋" if student else "Xush kelibsiz! 👋"
+        await message.answer(
+            f"{greet}\n\n"
+            f"Barcha imkoniyatlar Mini App da:\n"
+            f"• Ro'yxatdan o'tish\n"
+            f"• Dars jadvali va davomat\n"
+            f"• Uy vazifalari\n"
+            f"• XP, daraja, reyting\n\n"
+            f"👇 Tugmani bosing:",
+            reply_markup=markup,
+        )
+    else:
+        # WEBAPP_URL sozlanmagan — eski oqim (fallback)
+        if student:
+            await message.answer(
+                f"👋 <b>Salom, {student.full_name}!</b>\n\n"
+                f"📚 Guruh: <b>{student.group_name}</b>",
+                reply_markup=kb_student_menu(),
+            )
+        else:
+            from handlers.registration import start_registration
+            await start_registration(message, state)
 
 
 @router.message(Command("help"))

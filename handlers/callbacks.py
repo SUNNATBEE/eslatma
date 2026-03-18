@@ -783,6 +783,169 @@ async def cb_quickadd_skip(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
+# ─── Mini App qo'llanmasi (reyting xabaridan) ─────────────────────────────────
+
+_GUIDE_UZ = """🎓 <b>Mars IT Mini App — To'liq Qo'llanma</b>
+
+📱 <b>Bu nima?</b>
+O'quv markaz boti uchun maxsus mobil ilova. Dars jadvali, uy vazifalari, reyting va o'yinlar — barchasi bir joyda!
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+📌 <b>SAHIFALAR VA TUGMALAR</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏠 <b>Bosh sahifa</b>
+• 📅 Bugungi dars kartochkasi — dars vaqtini ko'rsatadi
+• <b>✅ Ha, boraman</b> — kelishingizni belgilash <b>(+10 XP)</b>
+• <b>❌ Kela olmayman</b> — sabab yozasiz; ota-onangizga, ustozingizga va kuratorgizga yuboriladi
+• 😊 Kayfiyat satrı — har kuni bir marta tanlang
+• ⭐ XP · 🔥 Streak · 🏅 O'rin · ✅ Davomad — statistikangiz
+
+📚 <b>Vazifa</b>
+• Kunlik uy vazifasini ko'rish va tasdiqlash <b>(+15 XP)</b>
+
+📊 <b>Natija</b>
+• XP to'plash tarixi
+• Guruh reytingi — guruhingizda kimlar oldinda?
+
+💬 <b>Chat</b>
+• Barcha Mars IT o'quvchilari bilan real vaqtda muloqot
+
+🕐 <b>Tarix</b>
+• O'tgan uy vazifalarini ko'rish
+
+🎮 <b>O'yinlar — XP yig'ish</b>
+• ⌨️ Terilish tezligi — <b>+5–25 XP</b>
+• 🧠 Quiz (HTML / CSS / JS / Python / React) — <b>+5 XP</b> / savol
+• 🔢 2048 — <b>+10–30 XP</b>
+• 🃏 Memory Match — <b>+15 XP</b>
+• ♟️ Shaxmat (AI ga qarshi) — <b>+5–20 XP</b>
+• 👥 Multiplayer yozish — <b>+20 XP</b> (g'alaba)
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ <b>XP JADVALI</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+<code>+5 XP   — Har kuni kirish (checkin)
++10 XP  — "Boraman" davomat belgilash
++15 XP  — Uy vazifasini tasdiqlash
++20 XP  — 7 kunlik streak bonusi
++5–25   — Terilish tezligi o'yini
++5/sav  — Quiz to'g'ri javob
++10–30  — 2048 o'yini
++15 XP  — Memory Match
++5–20   — Shaxmat (AI)
++20 XP  — Multiplayer g'alaba</code>
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 <b>REYTINGDA BIRINCHI BO'LISH</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ Har kuni Mini Appga kiring <i>(streak uzilmasin!)</i>
+2️⃣ Dars bor kuni "Boraman" belgilang
+3️⃣ Uy vazifasini bajaring va tasdiqlang
+4️⃣ O'yinlar orqali qo'shimcha XP yig'ing
+5️⃣ 7 kunlik streak uchun <b>+20 XP</b> bonus!"""
+
+_GUIDE_RU = """🎓 <b>Mars IT Mini App — Полное руководство</b>
+
+📱 <b>Что это?</b>
+Специальное мобильное приложение учебного центра. Расписание, домашние задания, рейтинг и игры — всё в одном месте!
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+📌 <b>СТРАНИЦЫ И КНОПКИ</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏠 <b>Главная страница</b>
+• 📅 Карточка урока — показывает время занятия
+• <b>✅ Приду</b> — отметить посещаемость <b>(+10 XP)</b>
+• <b>❌ Не приду</b> — написать причину; отправится родителям, учителю и куратору
+• 😊 Настроение — один раз в день
+• ⭐ XP · 🔥 Серия · 🏅 Место · ✅ Посещ. — ваша статистика
+
+📚 <b>Задание</b>
+• Просмотр и подтверждение домашнего задания <b>(+15 XP)</b>
+
+📊 <b>Итог</b>
+• История набора XP
+• Рейтинг группы — кто впереди?
+
+💬 <b>Чат</b>
+• Общение со всеми студентами Mars IT в реальном времени
+
+🕐 <b>История</b>
+• Просмотр прошлых домашних заданий
+
+🎮 <b>Игры — Зарабатывай XP</b>
+• ⌨️ Скорость печати — <b>+5–25 XP</b>
+• 🧠 Квиз (HTML / CSS / JS / Python / React) — <b>+5 XP</b> / вопрос
+• 🔢 2048 — <b>+10–30 XP</b>
+• 🃏 Пары карточек — <b>+15 XP</b>
+• ♟️ Шахматы (vs AI) — <b>+5–20 XP</b>
+• 👥 Мультиплеер — <b>+20 XP</b> (победа)
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ <b>ТАБЛИЦА XP</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+<code>+5 XP   — Ежедневный вход (чекин)
++10 XP  — Отметить "Приду"
++15 XP  — Подтвердить домашнее задание
++20 XP  — Бонус за 7 дней подряд
++5–25   — Скорость печати
++5/вопр — Правильный ответ в квизе
++10–30  — 2048
++15 XP  — Пары карточек
++5–20   — Шахматы (AI)
++20 XP  — Победа в мультиплеере</code>
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 <b>КАК СТАТЬ ПЕРВЫМ В РЕЙТИНГЕ</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ Заходи каждый день <i>(не прерывай серию!)</i>
+2️⃣ Отмечай "Приду", когда есть занятие
+3️⃣ Выполняй и подтверждай домашнее задание
+4️⃣ Зарабатывай доп. XP через игры
+5️⃣ Бонус <b>+20 XP</b> за 7-дневную серию!"""
+
+
+@router.callback_query(F.data == "guide:show")
+async def cb_guide_show(callback: CallbackQuery, bot: Bot) -> None:
+    """Reyting xabaridan 'Reytingni ko'rish' tugmasi — DM orqali to'liq qo'llanma."""
+    await callback.answer()  # spinner o'chirish
+
+    lang = (callback.from_user.language_code or "uz").lower()
+    is_ru = lang.startswith("ru")
+    guide_text = _GUIDE_RU if is_ru else _GUIDE_UZ
+
+    if is_ru:
+        btn_text  = "📱 Открыть Mini App"
+        alert_msg = "📩 Руководство отправлено вам в личные сообщения!"
+        fail_msg  = "⚠️ Сначала запустите бота: нажмите /start в личных сообщениях с ботом."
+    else:
+        btn_text  = "📱 Mini Appni ochish"
+        alert_msg = "📩 Qo'llanma shaxsiy xabaringizga yuborildi!"
+        fail_msg  = "⚠️ Avval botni ishga tushiring: botga shaxsiy xabarda /start yuboring."
+
+    if not WEBAPP_URL:
+        await callback.answer("⚠️ Mini App URL sozlanmagan", show_alert=True)
+        return
+
+    mini_app_url = WEBAPP_URL.rstrip("/") + "/student.html"
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text=btn_text, web_app=WebAppInfo(url=mini_app_url)),
+    ]])
+
+    try:
+        await bot.send_message(
+            chat_id=callback.from_user.id,
+            text=guide_text,
+            parse_mode="HTML",
+            reply_markup=kb,
+        )
+        await callback.answer(alert_msg, show_alert=True)
+    except Exception:
+        await callback.answer(fail_msg, show_alert=True)
+
+
 @router.callback_query(F.data == "noop")
 async def cb_noop(callback: CallbackQuery) -> None:
     """Bo'sh tugma — hech narsa qilmaydi."""

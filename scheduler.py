@@ -458,7 +458,7 @@ async def send_leaderboard_broadcast(
       - Reytingni to'liq ko'rish
       - Reyting oshirish
     """
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
     if not webapp_url:
         logger.warning("LEADERBOARD BROADCAST: WEBAPP_URL sozlanmagan — o'tkazib yuborildi")
@@ -492,19 +492,14 @@ async def send_leaderboard_broadcast(
         f"🏆 <b>Kunlik Global Reyting</b> — {date_str}\n\n"
         f"{top_line}\n\n"
         f"👥 Jami o'quvchilar: <b>{total}</b> ta\n\n"
-        f"💪 Siz ham yetib oling! Mini App orqali har kuni XP to'plang "
-        f"va birinchi o'ringa chiqing! 🚀"
+        f"💪 Siz ham yetib oling! Har kuni XP to'plang va birinchi o'ringa chiqing! 🚀\n"
+        f"👇 Reyting va Mini App haqida to'liq ma'lumot uchun tugmani bosing."
     )
 
-    mini_app_url = webapp_url.rstrip("/") + "/student.html"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="🏆 Reytingni to'liq ko'rish",
-            web_app=WebAppInfo(url=mini_app_url),
-        )],
-        [InlineKeyboardButton(
-            text="⚡ Reyting oshirish (+XP olish)",
-            web_app=WebAppInfo(url=mini_app_url),
+            text="📊 Reytingni ko'rish / Посмотреть рейтинг",
+            callback_data="guide:show",
         )],
     ])
 

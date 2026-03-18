@@ -351,6 +351,30 @@
     .preview-msg { font-size:12px; color:var(--sub); line-height:1.5; margin-top:4px; word-break:break-word; }
     .preview-reason { font-size:11px; color:var(--warn); margin-top:4px; }
 
+    /* ─────────────────────── AUTOMSG TOP BAR */
+    .amsg-top-bar {
+      display:flex; align-items:center; gap:10px;
+      margin-bottom:14px; padding-bottom:12px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .amsg-back-btn {
+      background:rgba(255,255,255,.08); border:none; color:var(--sub);
+      font-size:14px; font-weight:700; padding:7px 14px; border-radius:20px;
+      cursor:pointer; -webkit-tap-highlight-color:transparent; white-space:nowrap;
+    }
+    .amsg-back-btn:active { opacity:.75; }
+    .amsg-top-title { flex:1; font-size:15px; font-weight:800; }
+    .test-btn-grid { display:flex; flex-direction:column; gap:8px; padding:0 16px 14px; }
+    .test-btn {
+      width:100%; padding:12px 14px; border:none; border-radius:10px;
+      font-size:13px; font-weight:700; cursor:pointer;
+      -webkit-tap-highlight-color:transparent; transition:opacity .15s;
+    }
+    .test-btn:active { opacity:.8; }
+    .test-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .test-btn-dars    { background:var(--accent); color:#fff; }
+    .test-btn-reyting { background:var(--success); color:#fff; }
+
     /* ─────────────────────── ACTIONS PAGE */
     .action-section {
       background: var(--bg2); border-radius: var(--radius);
@@ -683,79 +707,117 @@
       <div id="curatorsList"><div class="spinner" style="margin:32px auto"></div></div>
     </div>
 
+
+    <!-- ═══════════════ TAB 7: AVTO XABARLAR ═══════════════ -->
+    <div class="page" id="page-automsg">
+
+      <!-- Top bar: back button -->
+      <div class="amsg-top-bar">
+        <button class="amsg-back-btn" onclick="automsgBack()">‹ Orqaga</button>
+        <span class="amsg-top-title">🔔 Avto Xabarlar</span>
+        <button class="refresh-btn" onclick="loadAutoMsg(true)" style="padding:5px 10px;font-size:11px">↻</button>
+      </div>
+
+      <!-- Kunlar -->
+      <div class="amsg-card">
+        <div class="amsg-card-hdr">📅 Faol kunlar</div>
+        <div class="amsg-day-grid">
+          <div class="amsg-day-card">
+            <div><div class="amsg-row-title">Toq kunlar</div><div class="amsg-row-sub">Du / Ch / Ju</div></div>
+            <label class="toggle"><input type="checkbox" id="amsg-odd" onchange="toggleAmsg('odd',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="amsg-day-card">
+            <div><div class="amsg-row-title">Juft kunlar</div><div class="amsg-row-sub">Se / Pa / Sh</div></div>
+            <label class="toggle"><input type="checkbox" id="amsg-even" onchange="toggleAmsg('even',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Umumiy boshqaruv -->
+      <div class="amsg-card">
+        <div class="amsg-card-hdr">⚙️ Umumiy boshqaruv</div>
+        <div class="amsg-row">
+          <div class="amsg-row-info">
+            <div class="amsg-row-title">📢 Guruhga kunlik dars xabari</div>
+            <div class="amsg-row-sub">Har kuni soat 20:00 da dars eslatmasi</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="amsg-groups" onchange="toggleAmsg('groups',this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="amsg-row">
+          <div class="amsg-row-info">
+            <div class="amsg-row-title">👨‍🎓 O'quvchiga davomat so'rovi</div>
+            <div class="amsg-row-sub">Darsdan 3 soat oldin shaxsiy xabar</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="amsg-students" onchange="toggleAmsg('students',this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="amsg-row">
+          <div class="amsg-row-info">
+            <div class="amsg-row-title">👨‍💼 Kuratorga davomat eslatmasi</div>
+            <div class="amsg-row-sub">Dars boshlanganidan 20 daqiqa o'tgach</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="amsg-curators" onchange="toggleAmsg('curators',this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="amsg-row">
+          <div class="amsg-row-info">
+            <div class="amsg-row-title">🏆 Kunlik reyting xabari</div>
+            <div class="amsg-row-sub">Har kuni soat 21:05 da global reyting top-5</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="amsg-leaderboard" onchange="toggleAmsg('leaderboard',this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <!-- Test yuborish -->
+      <div class="amsg-card">
+        <div class="amsg-card-hdr">🧪 Test yuborish</div>
+        <div style="padding:12px 16px 8px">
+          <label class="form-label">Guruh tanlash:</label>
+          <select class="action-select" id="testGroupSelect">
+            <option value="all">🌐 Barcha faol guruhlarga</option>
+          </select>
+        </div>
+        <div class="test-btn-grid">
+          <button class="test-btn test-btn-dars" id="testDarsBtn" onclick="doTestDars()">
+            📢 Dars eslatmasi — Test yuborish
+          </button>
+          <button class="test-btn test-btn-reyting" id="testReyBtn" onclick="doTestLeaderboard()">
+            🏆 Reyting xabari — Test yuborish
+          </button>
+        </div>
+        <div id="testSendResult" style="display:none;padding:0 16px 12px;font-size:13px;font-weight:700;text-align:center;color:var(--success)"></div>
+      </div>
+
+      <!-- Guruhlar alohida -->
+      <div class="amsg-card">
+        <div class="amsg-card-hdr">📋 Guruhlar alohida yoq/o'chir</div>
+        <div class="amsg-filter-row" id="amsgGrpFilters">
+          <button class="chip active" onclick="setAmsgGrpFilter('all',this)">Hammasi</button>
+          <button class="chip" onclick="setAmsgGrpFilter('parent',this)">👨‍👩‍👧 Ota-onalar</button>
+          <button class="chip" onclick="setAmsgGrpFilter('student',this)">🎓 O'quvchilar</button>
+        </div>
+        <div id="amsgGroupList"><div class="spinner"></div></div>
+        <div style="height:8px"></div>
+      </div>
+
+      <!-- Kuratorlar alohida -->
+      <div class="amsg-card">
+        <div class="amsg-card-hdr">👨‍💼 Kuratorlar alohida</div>
+        <div id="amsgCuratorList"><div class="spinner"></div></div>
+        <div style="height:8px"></div>
+      </div>
+
+      <!-- Ertangi xabarlar ko'rinishi -->
+      <div class="amsg-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0">
+          <div class="amsg-card-hdr" style="padding:0">📨 Ertangi xabarlar ko'rinishi</div>
+          <button class="refresh-btn" onclick="loadAmsgPreview()">↻</button>
+        </div>
+        <div id="amsgPreview"><div class="spinner"></div></div>
+        <div style="height:8px"></div>
+      </div>
+
+    </div><!-- /page-automsg -->
+
   </div><!-- /content -->
-
-  <!-- Tab bar -->
-  <!-- ═══════════════ TAB 7: AVTO XABARLAR ═══════════════ -->
-  <div class="page" id="page-automsg">
-
-    <div class="section-header" style="padding:16px 16px 4px;display:flex;align-items:center;justify-content:space-between">
-      <div class="section-title">🔔 Avto Xabarlar</div>
-      <button class="refresh-btn" onclick="loadAutoMsg(true)">↻</button>
-    </div>
-
-    <!-- Kunlar -->
-    <div class="amsg-card">
-      <div class="amsg-card-hdr">📅 Kunlar</div>
-      <div class="amsg-day-grid">
-        <div class="amsg-day-card">
-          <div><div class="amsg-row-title">Toq kunlar</div><div class="amsg-row-sub">Du / Ch / Ju</div></div>
-          <label class="toggle"><input type="checkbox" id="amsg-odd" onchange="toggleAmsg('odd',this.checked)"><span class="toggle-slider"></span></label>
-        </div>
-        <div class="amsg-day-card">
-          <div><div class="amsg-row-title">Juft kunlar</div><div class="amsg-row-sub">Se / Pa / Sh</div></div>
-          <label class="toggle"><input type="checkbox" id="amsg-even" onchange="toggleAmsg('even',this.checked)"><span class="toggle-slider"></span></label>
-        </div>
-      </div>
-    </div>
-
-    <!-- Umumiy -->
-    <div class="amsg-card">
-      <div class="amsg-card-hdr">⚙️ Umumiy boshqaruv</div>
-      <div class="amsg-row">
-        <div class="amsg-row-info"><div class="amsg-row-title">📢 Guruhga kunlik xabar</div><div class="amsg-row-sub">Har kuni soat 20:00 da dars eslatmasi</div></div>
-        <label class="toggle"><input type="checkbox" id="amsg-groups" onchange="toggleAmsg('groups',this.checked)"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="amsg-row">
-        <div class="amsg-row-info"><div class="amsg-row-title">👨‍🎓 O'quvchiga davomat so'rovi</div><div class="amsg-row-sub">Darsdan 3 soat oldin shaxsiy xabar</div></div>
-        <label class="toggle"><input type="checkbox" id="amsg-students" onchange="toggleAmsg('students',this.checked)"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="amsg-row">
-        <div class="amsg-row-info"><div class="amsg-row-title">👨‍💼 Kuratorga davomat eslatmasi</div><div class="amsg-row-sub">Dars boshlanganidan 20 daqiqa o'tgach</div></div>
-        <label class="toggle"><input type="checkbox" id="amsg-curators" onchange="toggleAmsg('curators',this.checked)"><span class="toggle-slider"></span></label>
-      </div>
-    </div>
-
-    <!-- Guruhlar alohida -->
-    <div class="amsg-card">
-      <div class="amsg-card-hdr">📋 Guruhlar alohida</div>
-      <div class="amsg-filter-row" id="amsgGrpFilters">
-        <button class="chip active" onclick="setAmsgGrpFilter('all',this)">Hammasi</button>
-        <button class="chip" onclick="setAmsgGrpFilter('parent',this)">👨‍👩‍👧 Ota-onalar</button>
-        <button class="chip" onclick="setAmsgGrpFilter('student',this)">🎓 O'quvchilar</button>
-      </div>
-      <div id="amsgGroupList"><div class="spinner"></div></div>
-      <div style="height:8px"></div>
-    </div>
-
-    <!-- Kuratorlar alohida -->
-    <div class="amsg-card">
-      <div class="amsg-card-hdr">👨‍💼 Kuratorlar alohida</div>
-      <div id="amsgCuratorList"><div class="spinner"></div></div>
-      <div style="height:8px"></div>
-    </div>
-
-    <!-- Ertangi xabarlar ko'rinishi -->
-    <div class="amsg-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0">
-        <div class="amsg-card-hdr" style="padding:0">📨 Ertangi xabarlar ko'rinishi</div>
-        <button class="refresh-btn" onclick="loadAmsgPreview()">↻</button>
-      </div>
-      <div id="amsgPreview"><div class="spinner"></div></div>
-      <div style="height:8px"></div>
-    </div>
-
-  </div>
 
   <div class="tabbar">
     <div class="tab-item active" id="tab-dashboard" onclick="goTab('dashboard')">
@@ -856,6 +918,7 @@ let allStudents    = [];
 let activeGroup    = 'all';
 let regFilter      = 'all';   // 'all' | 'registered' | 'unregistered'
 let currentTab     = 'dashboard';
+let _prevTab       = 'actions'; // for automsg back button
 let attData        = null;
 let attSubTab      = 'all';
 let statsData      = null;
@@ -900,6 +963,7 @@ function todayLabel() {
    Tab navigation
 ═══════════════════════════════════════════════════ */
 function goTab(name) {
+  if (currentTab && currentTab !== name) _prevTab = currentTab;
   TABS.forEach(t => {
     document.getElementById('page-' + t)?.classList.remove('active');
     document.getElementById('tab-'  + t)?.classList.remove('active');
@@ -916,6 +980,10 @@ function goTab(name) {
   if (name === 'actions'    && !actionsLoaded)     { actionsLoaded = true; loadActions(); }
   if (name === 'curators')                           loadCurators();
   if (name === 'automsg'    && !automsgLoaded)     { automsgLoaded = true; loadAutoMsg(); }
+}
+
+function automsgBack() {
+  goTab(_prevTab && _prevTab !== 'automsg' ? _prevTab : 'actions');
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1295,6 +1363,7 @@ async function loadAutoMsg(force) {
     _syncAmsgToggles();
     _renderAmsgGroups();
     _renderAmsgCurators();
+    _populateTestGroupSelect();
     loadAmsgPreview();
   } catch (e) {
     toast('⚠️ Yuklashda xato: ' + e.message);
@@ -1302,11 +1371,28 @@ async function loadAutoMsg(force) {
 }
 
 function _syncAmsgToggles() {
-  const map = { groups:'amsg-groups', students:'amsg-students', curators:'amsg-curators', odd:'amsg-odd', even:'amsg-even' };
+  const map = {
+    groups:'amsg-groups', students:'amsg-students', curators:'amsg-curators',
+    odd:'amsg-odd', even:'amsg-even', leaderboard:'amsg-leaderboard',
+  };
   for (const [key, id] of Object.entries(map)) {
     const el = document.getElementById(id);
     if (el) el.checked = !!_amsgData[key];
   }
+}
+
+function _populateTestGroupSelect() {
+  const sel = document.getElementById('testGroupSelect');
+  if (!sel) return;
+  while (sel.options.length > 1) sel.remove(1);
+  const groups = _amsgData._groups || [];
+  groups.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.name;
+    const aud = g.audience === 'PARENT' ? '👨‍👩‍👧 Ota-onalar' : "🎓 O'quvchilar";
+    opt.textContent = `📚 ${g.name} (${aud})`;
+    sel.appendChild(opt);
+  });
 }
 
 function setAmsgGrpFilter(filter, btn) {
@@ -1381,7 +1467,7 @@ function _renderAmsgCurators() {
 }
 
 async function toggleAmsg(key, checked) {
-  const labels = { groups:'Guruhga xabar', students:"O'quvchiga so'rov", curators:'Kuratorga eslatma', odd:'Toq kunlar', even:'Juft kunlar' };
+  const labels = { groups:'Guruhga xabar', students:"O'quvchiga so'rov", curators:'Kuratorga eslatma', odd:'Toq kunlar', even:'Juft kunlar', leaderboard:'Reyting xabari' };
   try {
     await api('/admin/auto-msg', { method:'POST', body: JSON.stringify({ [key]: checked }) });
     _amsgData[key] = checked;
@@ -1765,6 +1851,53 @@ async function loadButtonStats() {
     container.innerHTML = `<div style="color:var(--danger);font-size:13px">${esc(e.message)}</div>`;
   } finally {
     btn.disabled = false; btn.textContent = '📊 Ko\'rish';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   Automsg — Test yuborish
+═══════════════════════════════════════════════════ */
+async function doTestDars() {
+  const groupName = document.getElementById('testGroupSelect')?.value || 'all';
+  const btn = document.getElementById('testDarsBtn');
+  const res = document.getElementById('testSendResult');
+  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
+  res.style.display = 'none';
+  try {
+    const body = groupName === 'all' ? {} : { group_name: groupName };
+    await api('/admin/test-send', { method:'POST', body: JSON.stringify(body) });
+    res.style.display = ''; res.style.color = 'var(--success)';
+    res.textContent = groupName === 'all'
+      ? '✅ Dars eslatmasi barcha guruhlarga yuborilmoqda!'
+      : `✅ Dars eslatmasi "${groupName}" guruhiga yuborilmoqda!`;
+    toast('🚀 Test xabar yuborilmoqda...');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } catch(e) {
+    res.style.display = ''; res.style.color = 'var(--danger)';
+    res.textContent = '⚠️ ' + e.message;
+    toast('⚠️ ' + e.message);
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = '📢 Dars eslatmasi — Test yuborish'; }, 4000);
+  }
+}
+
+async function doTestLeaderboard() {
+  const btn = document.getElementById('testReyBtn');
+  const res = document.getElementById('testSendResult');
+  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
+  res.style.display = 'none';
+  try {
+    await api('/admin/test-leaderboard', { method:'POST', body:'{}' });
+    res.style.display = ''; res.style.color = 'var(--success)';
+    res.textContent = '✅ Reyting xabari barcha guruhlarga yuborilmoqda!';
+    toast('🏆 Reyting xabari yuborilmoqda...');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } catch(e) {
+    res.style.display = ''; res.style.color = 'var(--danger)';
+    res.textContent = '⚠️ ' + e.message;
+    toast('⚠️ ' + e.message);
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = '🏆 Reyting xabari — Test yuborish'; }, 4000);
   }
 }
 

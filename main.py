@@ -879,6 +879,19 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
+    async def api_admin_test_leaderboard(request: web.Request) -> web.Response:
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            from scheduler import send_leaderboard_broadcast
+            asyncio.create_task(
+                send_leaderboard_broadcast(bot=bot, db=db, webapp_url=WEBAPP_URL, timezone_str=TIMEZONE)
+            )
+            return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
     async def api_admin_curator_stats(request: web.Request) -> web.Response:
         """Admin: kuratorlar ro'yxati va aktivlik statistikasi."""
         user_id = _admin_auth(request)
@@ -1641,6 +1654,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/admin/auto-msg-preview",  api_admin_auto_msg_preview)
     app.router.add_get("/api/admin/inactive",          api_admin_inactive)
     app.router.add_post("/api/admin/test-send",        api_admin_test_send)
+    app.router.add_post("/api/admin/test-leaderboard", api_admin_test_leaderboard)
     app.router.add_get("/api/admin/curator-stats",     api_admin_curator_stats)
     app.router.add_get("/api/admin/button-stats",      api_admin_button_stats)
     app.router.add_get("/api/curator/me",         api_curator_me)

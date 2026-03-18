@@ -662,6 +662,57 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
 
         return web.json_response({"ok": True, "sent": ok, "failed": fail})
 
+    async def api_admin_auto_msg_preview(request: web.Request) -> web.Response:
+        """Ertangi yuborilishi mumkin bo'lgan xabarlar ko'rinishi."""
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+
+        from scheduler import get_tomorrow_info, build_reminder_message
+        from database import GroupType
+
+        info = get_tomorrow_info(TIMEZONE)
+        h = await db.get_setting("SEND_HOUR",   str(SEND_HOUR))
+        m = await db.get_setting("SEND_MINUTE", str(SEND_MINUTE))
+
+        global_on = await db.get_setting("AUTO_MSG_GROUPS", "1") == "1"
+        day_key   = "AUTO_MSG_ODD" if info.group_type == GroupType.ODD else "AUTO_MSG_EVEN"
+        day_on    = await db.get_setting(day_key, "1") == "1"
+
+        groups = await db.get_groups_by_type(info.group_type)
+
+        will_send, will_skip = [], []
+        for g in groups:
+            msg = build_reminder_message(info, g.audience)
+            grp_on = await db.get_setting(f"AUTO_MSG_GROUP:{g.name}", "1") == "1"
+
+            if not global_on:
+                reason = "Umumiy guruh xabari o'chirilgan"
+            elif not day_on:
+                reason = f"{'Toq' if info.group_type == GroupType.ODD else 'Juft'} kun o'chirilgan"
+            elif not grp_on:
+                reason = "Bu guruh uchun avto xabar o'chirilgan"
+            else:
+                reason = None
+
+            entry = {"group_name": g.name, "audience": g.audience.value, "message": msg}
+            if reason:
+                entry["reason_off"] = reason
+                will_skip.append(entry)
+            else:
+                will_send.append(entry)
+
+        return web.json_response({
+            "tomorrow":  info.date_str,
+            "weekday":   info.weekday_uz,
+            "day_type":  info.group_type.value,
+            "send_time": f"{int(h):02d}:{int(m):02d}",
+            "global_on": global_on,
+            "day_on":    day_on,
+            "will_send": will_send,
+            "will_skip": will_skip,
+        })
+
     async def api_admin_auto_msg_get(request: web.Request) -> web.Response:
         user_id = _admin_auth(request)
         if not user_id:
@@ -1047,6 +1098,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/admin/reminder-time",    api_admin_reminder_set)
     app.router.add_get("/api/admin/auto-msg",          api_admin_auto_msg_get)
     app.router.add_post("/api/admin/auto-msg",         api_admin_auto_msg_set)
+    app.router.add_get("/api/admin/auto-msg-preview",  api_admin_auto_msg_preview)
     app.router.add_get("/api/admin/inactive",          api_admin_inactive)
     app.router.add_post("/api/admin/test-send",        api_admin_test_send)
     app.router.add_get("/api/admin/curator-stats",     api_admin_curator_stats)

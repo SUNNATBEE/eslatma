@@ -326,6 +326,31 @@
     .toggle-slider::before { content: ""; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: transform .2s; }
     .toggle input:checked + .toggle-slider::before { transform: translateX(19px); }
 
+    /* ─────────────────────── CHIP (filter button) */
+    .chip { flex-shrink:0; padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; background:rgba(255,255,255,.06); color:var(--sub); cursor:pointer; border:1px solid transparent; transition:background .15s,color .15s; white-space:nowrap; }
+    .chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+    /* ─────────────────────── AUTO-MSG TAB */
+    .amsg-card { background:var(--bg2); border-radius:var(--radius); margin-bottom:12px; border:1px solid rgba(255,255,255,.05); overflow:hidden; }
+    .amsg-card-hdr { font-size:11px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:.6px; padding:14px 16px 0; }
+    .amsg-row { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-top:1px solid rgba(255,255,255,.04); }
+    .amsg-row:first-of-type { border-top:none; }
+    .amsg-row-info { flex:1; min-width:0; }
+    .amsg-row-title { font-size:13px; font-weight:600; }
+    .amsg-row-sub { font-size:11px; color:var(--sub); margin-top:2px; }
+    .amsg-day-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:10px 16px 14px; }
+    .amsg-day-card { background:rgba(255,255,255,.05); border-radius:10px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; }
+    .amsg-filter-row { display:flex; gap:6px; padding:10px 16px; overflow-x:auto; scrollbar-width:none; }
+    .amsg-filter-row::-webkit-scrollbar { display:none; }
+    .preview-grp { background:rgba(255,255,255,.04); border-radius:10px; padding:12px 14px; margin:0 16px 8px; }
+    .preview-grp-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; }
+    .preview-grp-name { font-size:13px; font-weight:700; }
+    .preview-badge { font-size:11px; padding:3px 8px; border-radius:12px; font-weight:600; }
+    .badge-on  { background:rgba(76,175,125,.2); color:var(--success); }
+    .badge-off { background:rgba(224,92,92,.2);  color:var(--danger); }
+    .preview-msg { font-size:12px; color:var(--sub); line-height:1.5; margin-top:4px; word-break:break-word; }
+    .preview-reason { font-size:11px; color:var(--warn); margin-top:4px; }
+
     /* ─────────────────────── ACTIONS PAGE */
     .action-section {
       background: var(--bg2); border-radius: var(--radius);
@@ -570,90 +595,12 @@
     <!-- ═══════════════ TAB 5: ACTIONS ═══════════════ -->
     <div class="page" id="page-actions">
 
-      <!-- Avto xabarlar boshqaruvi -->
-      <div class="action-section">
-        <div class="action-section-title">🔔 Avto xabarlar</div>
-        <p style="font-size:12px;color:var(--sub);margin-bottom:14px">
-          Bayram yoki dam olish kunlari avto xabarlarni o'chiring
-        </p>
-
-        <!-- Kunlar -->
-        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📅 Kunlar</div>
-        <div style="display:flex;gap:10px;margin-bottom:16px">
-          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 12px">
-            <div>
-              <div style="font-size:13px;font-weight:600">Toq kunlar</div>
-              <div style="font-size:10px;color:var(--sub)">Du / Ch / Ju</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-odd" onchange="toggleAutoMsg('odd', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 12px">
-            <div>
-              <div style="font-size:13px;font-weight:600">Juft kunlar</div>
-              <div style="font-size:10px;color:var(--sub)">Se / Pa / Sh</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-even" onchange="toggleAutoMsg('even', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Umumiy -->
-        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚙️ Umumiy</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 14px">
-            <div>
-              <div style="font-size:13px;font-weight:600">📢 Guruhga xabar (20:00)</div>
-              <div style="font-size:11px;color:var(--sub)">Kunlik dars eslatmasi guruhlarga</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-groups" onchange="toggleAutoMsg('groups', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 14px">
-            <div>
-              <div style="font-size:13px;font-weight:600">👨‍🎓 O'quvchiga davomat so'rovi</div>
-              <div style="font-size:11px;color:var(--sub)">Darsdan 3 soat oldin shaxsiy xabar</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-students" onchange="toggleAutoMsg('students', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 14px">
-            <div>
-              <div style="font-size:13px;font-weight:600">👨‍💼 Kuratorga eslatma</div>
-              <div style="font-size:11px;color:var(--sub)">Dars boshlanganidan 20 daqiqa o'tgach</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-curators" onchange="toggleAutoMsg('curators', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Guruhlar alohida -->
-        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Guruhlar alohida</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px" id="grpFilterBtns">
-          <button class="chip active" onclick="setGrpFilter('all',this)">Hammasi</button>
-          <button class="chip" onclick="setGrpFilter('parent',this)">Ota-onalar</button>
-          <button class="chip" onclick="setGrpFilter('student',this)">O'quvchilar</button>
-        </div>
-        <div id="perGroupList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-          <div style="color:var(--sub);font-size:12px">Yuklanmoqda...</div>
-        </div>
-
-        <!-- Kuratorlar alohida -->
-        <div style="font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">👨‍💼 Kuratorlar alohida</div>
-        <div id="perCuratorList" style="display:flex;flex-direction:column;gap:8px">
-          <div style="color:var(--sub);font-size:12px">Yuklanmoqda...</div>
-        </div>
-
+      <!-- Avto xabarlar — alohida tabga o'tilgan -->
+      <div class="action-section" style="text-align:center;padding:20px 16px">
+        <div style="font-size:32px;margin-bottom:8px">🔔</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">Avto Xabarlar boshqaruvi</div>
+        <div style="font-size:12px;color:var(--sub);margin-bottom:14px">Kunlar, guruhlar va kuratorlar bo'yicha alohida sozlash</div>
+        <button class="primary-btn" onclick="goTab('automsg')">🔔 Avto Xabarlarga o'tish</button>
       </div>
 
       <!-- Eslatma vaqti -->
@@ -739,6 +686,77 @@
   </div><!-- /content -->
 
   <!-- Tab bar -->
+  <!-- ═══════════════ TAB 7: AVTO XABARLAR ═══════════════ -->
+  <div class="page" id="page-automsg">
+
+    <div class="section-header" style="padding:16px 16px 4px;display:flex;align-items:center;justify-content:space-between">
+      <div class="section-title">🔔 Avto Xabarlar</div>
+      <button class="refresh-btn" onclick="loadAutoMsg(true)">↻</button>
+    </div>
+
+    <!-- Kunlar -->
+    <div class="amsg-card">
+      <div class="amsg-card-hdr">📅 Kunlar</div>
+      <div class="amsg-day-grid">
+        <div class="amsg-day-card">
+          <div><div class="amsg-row-title">Toq kunlar</div><div class="amsg-row-sub">Du / Ch / Ju</div></div>
+          <label class="toggle"><input type="checkbox" id="amsg-odd" onchange="toggleAmsg('odd',this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="amsg-day-card">
+          <div><div class="amsg-row-title">Juft kunlar</div><div class="amsg-row-sub">Se / Pa / Sh</div></div>
+          <label class="toggle"><input type="checkbox" id="amsg-even" onchange="toggleAmsg('even',this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Umumiy -->
+    <div class="amsg-card">
+      <div class="amsg-card-hdr">⚙️ Umumiy boshqaruv</div>
+      <div class="amsg-row">
+        <div class="amsg-row-info"><div class="amsg-row-title">📢 Guruhga kunlik xabar</div><div class="amsg-row-sub">Har kuni soat 20:00 da dars eslatmasi</div></div>
+        <label class="toggle"><input type="checkbox" id="amsg-groups" onchange="toggleAmsg('groups',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="amsg-row">
+        <div class="amsg-row-info"><div class="amsg-row-title">👨‍🎓 O'quvchiga davomat so'rovi</div><div class="amsg-row-sub">Darsdan 3 soat oldin shaxsiy xabar</div></div>
+        <label class="toggle"><input type="checkbox" id="amsg-students" onchange="toggleAmsg('students',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="amsg-row">
+        <div class="amsg-row-info"><div class="amsg-row-title">👨‍💼 Kuratorga davomat eslatmasi</div><div class="amsg-row-sub">Dars boshlanganidan 20 daqiqa o'tgach</div></div>
+        <label class="toggle"><input type="checkbox" id="amsg-curators" onchange="toggleAmsg('curators',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <!-- Guruhlar alohida -->
+    <div class="amsg-card">
+      <div class="amsg-card-hdr">📋 Guruhlar alohida</div>
+      <div class="amsg-filter-row" id="amsgGrpFilters">
+        <button class="chip active" onclick="setAmsgGrpFilter('all',this)">Hammasi</button>
+        <button class="chip" onclick="setAmsgGrpFilter('parent',this)">👨‍👩‍👧 Ota-onalar</button>
+        <button class="chip" onclick="setAmsgGrpFilter('student',this)">🎓 O'quvchilar</button>
+      </div>
+      <div id="amsgGroupList"><div class="spinner"></div></div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- Kuratorlar alohida -->
+    <div class="amsg-card">
+      <div class="amsg-card-hdr">👨‍💼 Kuratorlar alohida</div>
+      <div id="amsgCuratorList"><div class="spinner"></div></div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- Ertangi xabarlar ko'rinishi -->
+    <div class="amsg-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0">
+        <div class="amsg-card-hdr" style="padding:0">📨 Ertangi xabarlar ko'rinishi</div>
+        <button class="refresh-btn" onclick="loadAmsgPreview()">↻</button>
+      </div>
+      <div id="amsgPreview"><div class="spinner"></div></div>
+      <div style="height:8px"></div>
+    </div>
+
+  </div>
+
   <div class="tabbar">
     <div class="tab-item active" id="tab-dashboard" onclick="goTab('dashboard')">
       <div class="tab-icon">📊</div>
@@ -763,6 +781,10 @@
     <div class="tab-item" id="tab-curators" onclick="goTab('curators')">
       <div class="tab-icon">👨‍💼</div>
       <div class="tab-label">Kuratorlar</div>
+    </div>
+    <div class="tab-item" id="tab-automsg" onclick="goTab('automsg')">
+      <div class="tab-icon">🔔</div>
+      <div class="tab-label">Avto</div>
     </div>
   </div>
 
@@ -841,8 +863,11 @@ let selectedStudent = null;
 let groupsData     = [];
 let dayTypeFilter  = 'all';
 let actionsLoaded  = false;
+let automsgLoaded  = false;
+let _amsgData      = {};
+let _amsgGrpFilter = 'all';
 
-const TABS = ['dashboard', 'students', 'attendance', 'groups', 'actions', 'curators'];
+const TABS = ['dashboard', 'students', 'attendance', 'groups', 'actions', 'curators', 'automsg'];
 
 /* ═══════════════════════════════════════════════════
    Utilities
@@ -890,6 +915,7 @@ function goTab(name) {
   if (name === 'groups'     && !groupsData.length)  loadGroups();
   if (name === 'actions'    && !actionsLoaded)     { actionsLoaded = true; loadActions(); }
   if (name === 'curators')                           loadCurators();
+  if (name === 'automsg'    && !automsgLoaded)     { automsgLoaded = true; loadAutoMsg(); }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1245,150 +1271,214 @@ async function toggleGroup(chatId, newState, inputEl) {
 }
 
 /* ═══════════════════════════════════════════════════
-   Auto Messages Toggle
+   Avto Xabarlar — Tab 7
 ═══════════════════════════════════════════════════ */
-let _autoMsgData = {};   // cache
-let _grpFilter   = 'all';
 
-async function loadAutoMsg() {
+async function loadAutoMsg(force) {
+  if (!force && Object.keys(_amsgData).length) { _syncAmsgToggles(); return; }
+
+  document.getElementById('amsgGroupList').innerHTML   = '<div class="spinner"></div>';
+  document.getElementById('amsgCuratorList').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('amsgPreview').innerHTML     = '<div class="spinner"></div>';
+
   try {
-    // Load auto-msg settings + groups (for audience filter)
-    const [data, grpData] = await Promise.all([
+    const [data, grpResp] = await Promise.all([
       api('/admin/auto-msg'),
       api('/admin/groups').catch(() => ({ groups: [] })),
     ]);
-    data._groups = grpData.groups || [];
-    _autoMsgData = data;
-
-    // Also enrich per_curator with curator_key label from curator-stats
+    data._groups = grpResp.groups || [];
     try {
-      const curStats = await api('/admin/curator-stats');
-      _autoMsgData._curators = curStats.curators || [];
+      const cs = await api('/admin/curator-stats');
+      data._curators = cs.curators || [];
     } catch {}
-
-    // Global + day toggles
-    ['groups','students','curators','odd','even'].forEach(k => {
-      const el = document.getElementById('toggle-' + k);
-      if (el) el.checked = !!data[k];
-    });
-
-    renderPerGroup(data.per_group || {}, data);
-    renderPerCurator(data.per_curator || {}, data);
+    _amsgData = data;
+    _syncAmsgToggles();
+    _renderAmsgGroups();
+    _renderAmsgCurators();
+    loadAmsgPreview();
   } catch (e) {
-    console.error('loadAutoMsg:', e);
+    toast('⚠️ Yuklashda xato: ' + e.message);
   }
 }
 
-function setGrpFilter(filter, btn) {
-  _grpFilter = filter;
-  document.querySelectorAll('#grpFilterBtns .chip').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderPerGroup(_autoMsgData.per_group || {}, _autoMsgData);
+function _syncAmsgToggles() {
+  const map = { groups:'amsg-groups', students:'amsg-students', curators:'amsg-curators', odd:'amsg-odd', even:'amsg-even' };
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!_amsgData[key];
+  }
 }
 
-function renderPerGroup(perGroup, data) {
-  const wrap = document.getElementById('perGroupList');
+function setAmsgGrpFilter(filter, btn) {
+  _amsgGrpFilter = filter;
+  document.querySelectorAll('#amsgGrpFilters .chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _renderAmsgGroups();
+}
+
+function _renderAmsgGroups() {
+  const wrap = document.getElementById('amsgGroupList');
   if (!wrap) return;
-  const keys = Object.keys(perGroup);
+  const perGroup = _amsgData.per_group || {};
+  const allGrps  = _amsgData._groups   || [];
+
+  let groups = allGrps;
+  if (_amsgGrpFilter === 'parent')  groups = allGrps.filter(g => g.audience === 'PARENT');
+  if (_amsgGrpFilter === 'student') groups = allGrps.filter(g => g.audience === 'STUDENT');
+
+  // Agar groups bo'sh bo'lsa per_group kalitlaridan ham ko'rsatamiz
+  const keys = groups.length ? groups.map(g => g.name) : Object.keys(perGroup);
+
   if (!keys.length) {
-    wrap.innerHTML = '<div style="color:var(--sub);font-size:12px">Guruhlar topilmadi</div>';
+    wrap.innerHTML = '<div style="padding:12px 16px;font-size:13px;color:var(--sub)">Guruhlar topilmadi</div>';
     return;
   }
   wrap.innerHTML = keys.map(name => {
-    // audience filter from groups API data — we use per_group key name matching
-    // Filter by audience if needed: we need group audience info
-    // Since we don't have audience here, show all and rely on server-side filtering
-    const on = perGroup[name];
-    // Find group audience from _autoMsgData if available
-    const grpInfo = (_autoMsgData._groups || []).find(g => g.name === name);
-    if (_grpFilter !== 'all' && grpInfo) {
-      const aud = grpInfo.audience; // 'PARENT' | 'STUDENT'
-      if (_grpFilter === 'parent' && aud !== 'PARENT') return '';
-      if (_grpFilter === 'student' && aud !== 'STUDENT') return '';
-    }
-    const icon = on ? '🟢' : '🔴';
-    const audLabel = grpInfo ? (grpInfo.audience === 'PARENT' ? 'Ota' : "O'q") : '';
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px">
-        <div style="font-size:13px">${icon} <b>${name}</b>${audLabel ? ' <span style="color:var(--sub);font-size:11px">('+audLabel+')</span>' : ''}</div>
-        <label class="toggle">
-          <input type="checkbox" ${on ? 'checked' : ''} onchange="togglePerGroup('${name}', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>`;
-  }).filter(Boolean).join('') || '<div style="color:var(--sub);font-size:12px">Filterlangan guruh yo\'q</div>';
-}
-
-function renderPerCurator(perCurator, data) {
-  const wrap = document.getElementById('perCuratorList');
-  if (!wrap) return;
-  const keys = Object.keys(perCurator);
-  if (!keys.length) {
-    wrap.innerHTML = '<div style="color:var(--sub);font-size:12px">Faol kuratorlar yo\'q</div>';
-    return;
-  }
-  const curators = data._curators || [];
-  wrap.innerHTML = keys.map(tid => {
-    const on   = perCurator[tid];
-    const icon = on ? '🟢' : '🔴';
-    const info = curators.find(c => String(c.telegram_id) === String(tid));
-    const name = info ? (info.full_name || info.key || `ID:${tid}`) : `ID:${tid}`;
-    const last = info?.last_active ? `| ${info.last_active.slice(0,16).replace('T',' ')}` : '';
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px">
-        <div>
-          <div style="font-size:13px">${icon} <b>${name}</b></div>
-          ${last ? `<div style="font-size:11px;color:var(--sub)">${last}</div>` : ''}
-        </div>
-        <label class="toggle">
-          <input type="checkbox" ${on ? 'checked' : ''} onchange="togglePerCurator('${tid}', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>`;
+    const on = perGroup[name] !== false && perGroup[name] !== undefined ? (perGroup[name] !== false) : true;
+    const grp = allGrps.find(g => g.name === name);
+    const audLabel = grp ? (grp.audience === 'PARENT' ? '👨‍👩‍👧 Ota-onalar' : "🎓 O'quvchilar") : '';
+    const audColor = grp ? (grp.audience === 'PARENT' ? 'var(--warn)' : 'var(--accent)') : 'var(--sub)';
+    return `<div class="amsg-row">
+      <div class="amsg-row-info">
+        <div class="amsg-row-title">${esc(name)}</div>
+        ${audLabel ? `<div class="amsg-row-sub" style="color:${audColor}">${audLabel}</div>` : ''}
+      </div>
+      <label class="toggle">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleAmsgGroup('${esc(name)}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`;
   }).join('');
 }
 
-async function toggleAutoMsg(key, checked) {
-  const labels = { groups: 'Guruh', students: "O'quvchi", curators: 'Kurator', odd: 'Toq kun', even: 'Juft kun' };
+function _renderAmsgCurators() {
+  const wrap = document.getElementById('amsgCuratorList');
+  if (!wrap) return;
+  const perCurator = _amsgData.per_curator || {};
+  const curators   = _amsgData._curators   || [];
+  const keys = Object.keys(perCurator);
+
+  if (!keys.length) {
+    wrap.innerHTML = '<div style="padding:12px 16px;font-size:13px;color:var(--sub)">Faol kuratorlar yo\'q. Kurator botga kirishi kerak.</div>';
+    return;
+  }
+  wrap.innerHTML = keys.map(tid => {
+    const on   = !!perCurator[tid];
+    const info = curators.find(c => String(c.telegram_id) === String(tid));
+    const name = info ? (info.full_name || info.key || ('ID:' + tid)) : ('ID:' + tid);
+    const last = info?.last_active ? fmtAgo(info.last_active) : '';
+    return `<div class="amsg-row">
+      <div class="amsg-row-info">
+        <div class="amsg-row-title">${esc(name)}</div>
+        ${last ? `<div class="amsg-row-sub">${last}</div>` : ''}
+      </div>
+      <label class="toggle">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleAmsgCurator('${tid}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`;
+  }).join('');
+}
+
+async function toggleAmsg(key, checked) {
+  const labels = { groups:'Guruhga xabar', students:"O'quvchiga so'rov", curators:'Kuratorga eslatma', odd:'Toq kunlar', even:'Juft kunlar' };
   try {
-    await api('/admin/auto-msg', { method: 'POST', body: JSON.stringify({ [key]: checked }) });
-    _autoMsgData[key] = checked;
-    const state = checked ? 'yoqildi 🟢' : "o'chirildi 🔴";
-    toast(`${labels[key] || key}: ${state}`);
+    await api('/admin/auto-msg', { method:'POST', body: JSON.stringify({ [key]: checked }) });
+    _amsgData[key] = checked;
+    toast((labels[key] || key) + ': ' + (checked ? 'yoqildi ✅' : "o'chirildi 🔴"));
     tg?.HapticFeedback?.impactOccurred('medium');
   } catch (e) {
-    document.getElementById('toggle-' + key).checked = !checked;
+    const el = document.getElementById('amsg-' + key);
+    if (el) el.checked = !checked;
     toast('⚠️ ' + e.message);
   }
 }
 
-async function togglePerGroup(groupName, checked) {
+async function toggleAmsgGroup(groupName, checked) {
   try {
-    await api('/admin/auto-msg', { method: 'POST', body: JSON.stringify({ per_group: { [groupName]: checked } }) });
-    if (!_autoMsgData.per_group) _autoMsgData.per_group = {};
-    _autoMsgData.per_group[groupName] = checked;
-    const state = checked ? 'yoqildi 🟢' : "o'chirildi 🔴";
-    toast(`'${groupName}': ${state}`);
+    await api('/admin/auto-msg', { method:'POST', body: JSON.stringify({ per_group: { [groupName]: checked } }) });
+    if (!_amsgData.per_group) _amsgData.per_group = {};
+    _amsgData.per_group[groupName] = checked;
+    toast(groupName + ': ' + (checked ? 'yoqildi ✅' : "o'chirildi 🔴"));
     tg?.HapticFeedback?.impactOccurred('light');
-    renderPerGroup(_autoMsgData.per_group, _autoMsgData);
+    _renderAmsgGroups();
   } catch (e) {
     toast('⚠️ ' + e.message);
-    renderPerGroup(_autoMsgData.per_group || {}, _autoMsgData);
+    _renderAmsgGroups();
   }
 }
 
-async function togglePerCurator(curatorId, checked) {
+async function toggleAmsgCurator(tid, checked) {
   try {
-    await api('/admin/auto-msg', { method: 'POST', body: JSON.stringify({ per_curator: { [curatorId]: checked } }) });
-    if (!_autoMsgData.per_curator) _autoMsgData.per_curator = {};
-    _autoMsgData.per_curator[curatorId] = checked;
-    const state = checked ? 'yoqildi 🟢' : "o'chirildi 🔴";
-    toast(`Kurator ${curatorId}: ${state}`);
+    await api('/admin/auto-msg', { method:'POST', body: JSON.stringify({ per_curator: { [tid]: checked } }) });
+    if (!_amsgData.per_curator) _amsgData.per_curator = {};
+    _amsgData.per_curator[tid] = checked;
+    toast('Kurator: ' + (checked ? 'yoqildi ✅' : "o'chirildi 🔴"));
     tg?.HapticFeedback?.impactOccurred('light');
-    renderPerCurator(_autoMsgData.per_curator, _autoMsgData);
+    _renderAmsgCurators();
   } catch (e) {
     toast('⚠️ ' + e.message);
-    renderPerCurator(_autoMsgData.per_curator || {}, _autoMsgData);
+    _renderAmsgCurators();
+  }
+}
+
+async function loadAmsgPreview() {
+  const wrap = document.getElementById('amsgPreview');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="spinner"></div>';
+  try {
+    const d = await api('/admin/auto-msg-preview');
+    const dayIcon  = d.day_on    ? '🟢' : '🔴';
+    const globIcon = d.global_on ? '🟢' : '🔴';
+    const dtLabel  = d.day_type === 'ODD' ? 'Toq kun (Du/Ch/Ju)' : 'Juft kun (Se/Pa/Sh)';
+
+    let html = `<div style="margin:10px 16px 12px;background:rgba(255,255,255,.04);border-radius:10px;padding:12px 14px">
+      <div style="font-size:12px;color:var(--sub);margin-bottom:5px">📅 Ertangi kun ma'lumoti</div>
+      <div style="font-size:15px;font-weight:700">${esc(d.weekday)}, ${esc(d.tomorrow)}</div>
+      <div style="font-size:12px;color:var(--sub);margin-top:4px">${dtLabel} &nbsp;•&nbsp; Yuborish vaqti: <b>${esc(d.send_time)}</b></div>
+      <div style="margin-top:8px;font-size:12px;display:flex;gap:14px">
+        <span>${dayIcon} Kun: ${d.day_on ? 'Yoqiq' : "O'chiq"}</span>
+        <span>${globIcon} Umumiy: ${d.global_on ? 'Yoqiq' : "O'chiq"}</span>
+      </div>
+    </div>`;
+
+    if (d.will_send && d.will_send.length) {
+      html += `<div style="padding:0 16px;margin-bottom:8px;font-size:12px;font-weight:700;color:var(--success)">✅ Yuboriladi — ${d.will_send.length} ta guruh</div>`;
+      d.will_send.forEach(g => {
+        const audIco = g.audience === 'PARENT' ? '👨‍👩‍👧' : '🎓';
+        const audLbl = g.audience === 'PARENT' ? 'Ota-onalar' : "O'quvchilar";
+        html += `<div class="preview-grp">
+          <div class="preview-grp-hdr">
+            <div class="preview-grp-name">${esc(g.group_name)}</div>
+            <span class="preview-badge badge-on">Yuboriladi</span>
+          </div>
+          <div style="font-size:11px;color:var(--sub);margin-bottom:5px">${audIco} ${audLbl}</div>
+          <div class="preview-msg">"${esc(g.message)}"</div>
+        </div>`;
+      });
+    }
+
+    if (d.will_skip && d.will_skip.length) {
+      html += `<div style="padding:0 16px;margin:12px 0 8px;font-size:12px;font-weight:700;color:var(--danger)">🔴 O'tkazib yuboriladi — ${d.will_skip.length} ta guruh</div>`;
+      d.will_skip.forEach(g => {
+        html += `<div class="preview-grp" style="opacity:.65">
+          <div class="preview-grp-hdr">
+            <div class="preview-grp-name">${esc(g.group_name)}</div>
+            <span class="preview-badge badge-off">O'chirilgan</span>
+          </div>
+          <div class="preview-reason">⚠️ ${esc(g.reason_off)}</div>
+        </div>`;
+      });
+    }
+
+    if (!d.will_send?.length && !d.will_skip?.length) {
+      html += `<div style="padding:12px 16px;font-size:13px;color:var(--sub)">Bu kun uchun aktiv guruhlar topilmadi.</div>`;
+    }
+
+    html += '<div style="height:4px"></div>';
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = `<div style="padding:12px 16px;font-size:13px;color:var(--sub)">⚠️ Ko'rib bo'lmadi: ${esc(e.message)}</div>`;
   }
 }
 
@@ -1396,8 +1486,6 @@ async function togglePerCurator(curatorId, checked) {
    Actions (Tab 5)
 ═══════════════════════════════════════════════════ */
 async function loadActions() {
-  loadAutoMsg();
-
   // Load reminder time
   try {
     const data = await api('/admin/reminder-time');

@@ -579,6 +579,13 @@ class DatabaseService:
             )
             return list(result.scalars().all())
 
+    async def get_students_count(self) -> int:
+        """Jami ro'yxatdan o'tgan o'quvchilar soni."""
+        from sqlalchemy import func as sqlfunc
+        async with self.session_factory() as session:
+            result = await session.execute(select(sqlfunc.count()).select_from(Student))
+            return result.scalar_one() or 0
+
     async def get_all_students(self) -> list["Student"]:
         async with self.session_factory() as session:
             result = await session.execute(

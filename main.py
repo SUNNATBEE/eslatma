@@ -1578,7 +1578,7 @@ async def main() -> None:
     logger.info("Handler router'lari ulandi.")
 
     # 5. Schedulerni sozlash va ishga tushirish
-    scheduler = setup_scheduler(bot=bot, db=db, timezone_str=TIMEZONE)
+    scheduler = setup_scheduler(bot=bot, db=db, timezone_str=TIMEZONE, webapp_url=WEBAPP_URL)
     scheduler.start()
 
     # 6. Keep-alive web server'ni ishga tushirish (Mini App API bilan)

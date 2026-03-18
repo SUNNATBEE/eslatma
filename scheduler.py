@@ -384,6 +384,93 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
         logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
 
 
+# ─── Kunlik global reyting broadcast ─────────────────────────────────────────
+
+_RANK_ICONS = {1: "🥇", 2: "🥈", 3: "🥉", 4: "4️⃣", 5: "5️⃣"}
+
+
+async def send_leaderboard_broadcast(
+    bot: Bot,
+    db: DatabaseService,
+    webapp_url: str,
+    timezone_str: str,
+) -> None:
+    """
+    Har kuni 21:00 da barcha aktiv guruhlarga global top-5 reyting yuboradi.
+    Xabarda 2 ta Mini App tugmasi bo'ladi:
+      - Reytingni to'liq ko'rish
+      - Reyting oshirish
+    """
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+
+    if not webapp_url:
+        logger.warning("LEADERBOARD BROADCAST: WEBAPP_URL sozlanmagan — o'tkazib yuborildi")
+        return
+
+    tz       = pytz.timezone(timezone_str)
+    date_str = datetime.now(tz).strftime("%d.%m.%Y")
+
+    try:
+        leaders = await db.get_global_leaderboard(limit=10)
+    except Exception as e:
+        logger.error(f"LEADERBOARD BROADCAST: leaderboard xatosi: {e}")
+        return
+
+    if not leaders:
+        logger.info("LEADERBOARD BROADCAST: o'quvchilar yo'q — o'tkazib yuborildi")
+        return
+
+    # Top-5 satrlarini qurish
+    rows = []
+    for i, s in enumerate(leaders[:5], start=1):
+        icon  = _RANK_ICONS.get(i, f"{i}.")
+        group = f" ({s.group_name})" if s.group_name else ""
+        xp    = s.xp or 0
+        rows.append(f"{icon} <b>{s.full_name}</b>{group} — <b>{xp} XP</b>")
+
+    total = await db.get_students_count() if hasattr(db, "get_students_count") else len(leaders)
+    top_line = "\n".join(rows)
+
+    text = (
+        f"🏆 <b>Kunlik Global Reyting</b> — {date_str}\n\n"
+        f"{top_line}\n\n"
+        f"👥 Jami o'quvchilar: <b>{total}</b> ta\n\n"
+        f"💪 Siz ham yetib oling! Mini App orqali har kuni XP to'plang "
+        f"va birinchi o'ringa chiqing! 🚀"
+    )
+
+    mini_app_url = webapp_url.rstrip("/") + "/student.html"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="🏆 Reytingni to'liq ko'rish",
+            web_app=WebAppInfo(url=mini_app_url),
+        )],
+        [InlineKeyboardButton(
+            text="⚡ Reyting oshirish (+XP olish)",
+            web_app=WebAppInfo(url=mini_app_url),
+        )],
+    ])
+
+    groups = await db.get_all_groups()
+    ok, fail = 0, 0
+    for group in groups:
+        if not group.is_active:
+            continue
+        try:
+            await bot.send_message(
+                chat_id=group.chat_id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=kb,
+            )
+            ok += 1
+        except Exception as e:
+            fail += 1
+            logger.warning(f"LEADERBOARD BROADCAST: '{group.name}' ({group.chat_id}): {e}")
+
+    logger.info(f"LEADERBOARD BROADCAST: {ok} guruhga yuborildi, {fail} xato | {date_str}")
+
+
 # ─── 7 kun nofaol o'quvchilarni o'chirish ────────────────────────────────────
 
 async def check_inactive_students(bot: Bot, db: DatabaseService) -> None:
@@ -436,7 +523,12 @@ def reschedule_reminder(hour: int, minute: int) -> None:
 
 # ─── Scheduler setup ─────────────────────────────────────────────────────────
 
-def setup_scheduler(bot: Bot, db: DatabaseService, timezone_str: str) -> AsyncIOScheduler:
+def setup_scheduler(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+    webapp_url: str = "",
+) -> AsyncIOScheduler:
     global _scheduler_ref
     scheduler = AsyncIOScheduler(timezone=timezone_str)
 
@@ -484,9 +576,20 @@ def setup_scheduler(bot: Bot, db: DatabaseService, timezone_str: str) -> AsyncIO
         misfire_grace_time=300,
     )
 
+    # Kunlik global reyting broadcast (har kuni 21:05)
+    scheduler.add_job(
+        func=send_leaderboard_broadcast,
+        trigger=CronTrigger(hour=21, minute=5, timezone=timezone_str),
+        args=[bot, db, webapp_url, timezone_str],
+        id="daily_leaderboard_broadcast",
+        name="Kunlik global reyting xabari",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
     _scheduler_ref = scheduler
     logger.info(
         f"Scheduler sozlandi: har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} + "
-        f"har 10 daqiqada dars/davomat eslatmasi ({timezone_str})"
+        f"har 10 daqiqada dars/davomat eslatmasi + 21:05 reyting broadcast ({timezone_str})"
     )
     return scheduler

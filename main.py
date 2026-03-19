@@ -1777,16 +1777,16 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     # ── Game Play Count API ───────────────────────────────────────────────────
 
     async def api_game_plays_today(request: web.Request) -> web.Response:
-        """Bugungi o'yinlar uchun o'ynash soni."""
+        """12-soatlik oyna uchun o'ynash ma'lumotlari.
+        Qaytaradi: {game_type: {count, blocked, seconds_left, plays_left}}"""
         user_id = _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        today = datetime.now(tz).strftime("%Y-%m-%d")
-        counts = await db.get_all_play_counts_today(user_id, today)
-        return web.json_response(counts)
+        windows = await db.get_all_play_windows(user_id)
+        return web.json_response(windows)
 
     async def api_game_record_play(request: web.Request) -> web.Response:
-        """O'yin boshlanishida o'ynash sonini oshiradi."""
+        """O'yin boshlanishida o'ynash sonini oshiradi (12-soatlik limit)."""
         user_id = _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
@@ -1797,12 +1797,22 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         game_type = (body.get("game_type") or "").strip()
         if not game_type:
             return web.json_response({"error": "game_type kerak"}, status=400)
-        today = datetime.now(tz).strftime("%Y-%m-%d")
-        current = await db.get_or_create_play_count(user_id, game_type, today)
-        if current >= 3:
-            return web.json_response({"blocked": True, "plays_left": 0, "play_count": current})
-        new_count = await db.increment_play_count(user_id, game_type, today)
-        return web.json_response({"blocked": False, "plays_left": 3 - new_count, "play_count": new_count})
+        # Avval tekshiramiz
+        current = await db.get_play_window(user_id, game_type)
+        if current["blocked"]:
+            return web.json_response({
+                "blocked":     True,
+                "plays_left":  0,
+                "play_count":  current["count"],
+                "seconds_left": current["seconds_left"],
+            })
+        result = await db.increment_play_in_window(user_id, game_type)
+        return web.json_response({
+            "blocked":     result["blocked"],
+            "plays_left":  result["plays_left"],
+            "play_count":  result["count"],
+            "seconds_left": result["seconds_left"],
+        })
 
     # ── Referral API ──────────────────────────────────────────────────────────
 

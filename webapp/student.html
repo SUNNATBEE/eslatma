@@ -1773,8 +1773,16 @@ function closeXpModal() {
 }
 
 // ── Daily Game Limits ────────────────────────────────────────────────────────
-let _playsToday = {};
-const DAILY_LIMIT = 3;
+let _playsToday = {}; // {gameType: {count, blocked, seconds_left, plays_left}}
+const PLAY_LIMIT = 3;
+let _limitCountdownTimers = {};
+
+function _fmtCountdown(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h > 0) return h + ' soat ' + m + ' daqiqa';
+  return m + ' daqiqa';
+}
 
 async function loadPlaysToday() {
   try {
@@ -1790,17 +1798,38 @@ async function recordPlay(gameType) {
     body: JSON.stringify({game_type: gameType})
   });
   const data = await r.json();
-  _playsToday[gameType] = data.play_count || (_playsToday[gameType] || 0) + 1;
+  _playsToday[gameType] = {
+    count:        data.play_count || 0,
+    blocked:      data.blocked || false,
+    seconds_left: data.seconds_left || 0,
+    plays_left:   data.plays_left || 0,
+  };
   return data;
 }
 
 function checkDailyLimit(gameType) {
-  const plays = _playsToday[gameType] || 0;
-  return plays >= DAILY_LIMIT;
+  return _playsToday[gameType]?.blocked === true;
 }
 
 function showLimitModal(gameType) {
-  showToast(`⏳ ${gameType} uchun kunlik limit tugadi! (${DAILY_LIMIT}/${DAILY_LIMIT})\nErtaga yana o'ynashingiz mumkin.`);
+  const secs = _playsToday[gameType]?.seconds_left || 0;
+  const timeStr = _fmtCountdown(secs);
+  // Show a nice modal-like toast with countdown
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a2035;border:1px solid #f44336;border-radius:16px;padding:24px 28px;z-index:99999;text-align:center;max-width:300px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.6)';
+  el.innerHTML = `<div style="font-size:40px;margin-bottom:12px">⏳</div>
+    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px">Limit tugadi!</div>
+    <div style="font-size:13px;color:#aaa;margin-bottom:16px">3/3 o'yinni o'ynab bo'ldingiz.<br><span style="color:#FF9800;font-weight:700" id="limitCountdownTxt">${timeStr}</span>dan keyin ochiladi.</div>
+    <button onclick="this.parentElement.remove();clearInterval(_limitCountdownTimers['__modal'])" style="background:#f44336;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">OK</button>`;
+  document.body.appendChild(el);
+  // Live countdown in modal
+  let s = secs;
+  _limitCountdownTimers['__modal'] = setInterval(() => {
+    s--;
+    const txt = document.getElementById('limitCountdownTxt');
+    if (!txt || s <= 0) { clearInterval(_limitCountdownTimers['__modal']); if (txt) txt.textContent = 'Hozir ochilmoqda...'; loadPlaysToday(); return; }
+    txt.textContent = _fmtCountdown(s);
+  }, 1000);
 }
 
 // ── Refresh current tab ──────────────────────────────────────────────────────
@@ -3065,6 +3094,46 @@ const QUIZ_QUESTIONS = {
     { q: '<br> nima qiladi?', opts: ['Yangi qator', 'Gorizontal chiziq', 'Bo\'sh joy', 'Bo\'lim'], ans: 0 },
     { q: 'Jadval qatori uchun teg?', opts: ['<tr>', '<td>', '<th>', '<table>'], ans: 0 },
     { q: 'class atributi nima uchun?', opts: ['CSS ulanishi', 'ID berish', 'Havola', 'Rasm'], ans: 0 },
+    { q: 'Tartibli ro\'yxat uchun qaysi teg?', opts: ['<ol>', '<ul>', '<li>', '<dl>'], ans: 0 },
+    { q: 'HTML da izoh (comment) qanday yoziladi?', opts: ['<!-- -->', '// izoh', '/* izoh */', '# izoh'], ans: 0 },
+    { q: '<title> tegi qayerga yoziladi?', opts: ['<head> ichiga', '<body> ichiga', '<html> ichiga', '<footer> ichiga'], ans: 0 },
+    { q: 'HTML da matnni qalin (bold) qilish uchun?', opts: ['<strong>', '<bold>', '<b>', '<thick>'], ans: 0 },
+    { q: 'Input uchun placeholder nima?', opts: ['Maslahat matni', 'Tugma nomi', 'Forma sarlavhasi', 'Qiymat'], ans: 0 },
+    { q: '<div> tegi nima uchun?', opts: ['Blok-konteyner', 'Havola', 'Rasm', 'Jadval'], ans: 0 },
+    { q: 'Gorizontal chiziq chizish uchun?', opts: ['<hr>', '<line>', '<br>', '<sep>'], ans: 0 },
+    { q: 'Video qo\'shish uchun HTML tegi?', opts: ['<video>', '<movie>', '<media>', '<film>'], ans: 0 },
+    { q: 'Audio qo\'shish uchun HTML tegi?', opts: ['<audio>', '<sound>', '<music>', '<mp3>'], ans: 0 },
+    { q: 'Meta charset UTF-8 nima uchun?', opts: ['Kodlashni belgilaydi', 'Rangni beradi', 'Shriftni ulaydi', 'Rasmni yuklaydi'], ans: 0 },
+    { q: '<span> tegi qanday element?', opts: ['Inline element', 'Block element', 'Form element', 'Media element'], ans: 0 },
+    { q: 'HTML da jadval sarlavhasi uchun teg?', opts: ['<th>', '<td>', '<tr>', '<caption>'], ans: 0 },
+    { q: '<input type="checkbox"> nima?', opts: ['Belgilash katakchasi', 'Radio tugma', 'Matn maydoni', 'Tugma'], ans: 0 },
+    { q: 'Favicon qo\'shish uchun qaysi teg?', opts: ['<link rel="icon">', '<img favicon>', '<meta icon>', '<icon>'], ans: 0 },
+    { q: 'HTML5 da semantic teg misoli?', opts: ['<article>', '<div>', '<span>', '<p>'], ans: 0 },
+    { q: '<footer> tegi nima uchun?', opts: ['Sahifa pastki qismi', 'Sarlavha', 'Navigatsiya', 'Yon panel'], ans: 0 },
+    { q: '<nav> tegi nima uchun?', opts: ['Navigatsiya', 'Yangiliklar', 'Forma', 'Media'], ans: 0 },
+    { q: 'HTML da jadval yaratish uchun asosiy teg?', opts: ['<table>', '<grid>', '<list>', '<row>'], ans: 0 },
+    { q: '<select> tegi nima?', opts: ['Tanlov ro\'yxati', 'Matn maydoni', 'Belgilash katakchasi', 'Radio tugma'], ans: 0 },
+    { q: '<textarea> nima?', opts: ['Ko\'p qatorli matn maydoni', 'Bir qatorli kiritish', 'Tugma', 'Sarlavha'], ans: 0 },
+    { q: 'Rasmga alt atributi nima uchun?', opts: ['Muqobil matn', 'Rasm o\'lchami', 'Rasm nomi', 'Rasm rangi'], ans: 0 },
+    { q: '<section> vs <div> farqi?', opts: ['Section semantik, div generic', 'Bir xil', 'Div semantik', 'Section blok emas'], ans: 0 },
+    { q: 'HTML da mailto havola qanday?', opts: ['<a href="mailto:...">', '<a href="mail:...">', '<email>', '<mail>'], ans: 0 },
+    { q: '<details> va <summary> nima uchun?', opts: ['Yig\'iladigan kontent', 'Jadval', 'Ro\'yxat', 'Forma'], ans: 0 },
+    { q: 'HTML da iframe nima?', opts: ['Boshqa sahifani joylashtirish', 'Rasm ramkasi', 'Video ramka', 'Matn qutisi'], ans: 0 },
+    { q: 'data-* atributlari nima uchun?', opts: ['Maxsus ma\'lumot saqlash', 'CSS stil berish', 'Event qo\'shish', 'ID berish'], ans: 0 },
+    { q: '<canvas> tegi nima uchun?', opts: ['Grafik chizish', 'Rasm ko\'rsatish', 'Video o\'ynash', 'Animatsiya'], ans: 0 },
+    { q: 'HTML da required atributi nima?', opts: ['Majburiy maydon', 'Faqat o\'qish', 'Yashirin maydon', 'Disabled'], ans: 0 },
+    { q: 'autofocus atributi nima qiladi?', opts: ['Sahifa ochilganda kursor o\'tadi', 'Avtomatik to\'ldiradi', 'Yopadi', 'Yuboradi'], ans: 0 },
+    { q: '<progress> tegi nima?', opts: ['Bajarilish ko\'rsatkichi', 'Reyting', 'Rang', 'Jadval'], ans: 0 },
+    { q: 'HTML da tabindex nima uchun?', opts: ['Tab bosish tartibini belgilaydi', 'Jadval indeksi', 'Rang kodi', 'Font'], ans: 0 },
+    { q: '<abbr> tegi nima?', opts: ['Qisqartma', 'Katta harf', 'Kichik harf', 'Kod'], ans: 0 },
+    { q: '<blockquote> nima uchun?', opts: ['Iqtibos bloki', 'Kod bloki', 'Jadval', 'Ro\'yxat'], ans: 0 },
+    { q: 'HTML da target="_blank" nima?', opts: ['Yangi tab/oynada ochadi', 'Xuddi shu tabda ochadi', 'Saqlaydi', 'Yuboradi'], ans: 0 },
+    { q: '<fieldset> nima uchun?', opts: ['Forma maydonlarini guruhlaydi', 'Jadval yaratadi', 'Ro\'yxat', 'Navigatsiya'], ans: 0 },
+    { q: '<legend> tegi qayerda ishlatiladi?', opts: ['Fieldset ichida sarlavha', 'Jadval sarlavhasi', 'Rasm sarlavhasi', 'Sahifa sarlavhasi'], ans: 0 },
+    { q: 'HTML da script tegi qayerga joylashtiriladi (optimal)?', opts: ['Body oxiriga', 'Head ichiga', 'Html teging oldiga', 'Footer ichiga'], ans: 0 },
+    { q: '<noscript> tegi nima?', opts: ['JS o\'chirilganda matn', 'Skript nomi', 'CSS ulanishi', 'Meta ma\'lumot'], ans: 0 },
+    { q: 'HTML da download atributi nima?', opts: ['Faylni yuklab olish', 'Havola ochish', 'Forma yuborish', 'Sahifa yangilash'], ans: 0 },
+    { q: 'Viewport meta tegi nima uchun?', opts: ['Mobil ekran moslashuvi', 'Rang berish', 'Font ulash', 'Skript ulash'], ans: 0 },
   ],
   css: [
     { q: 'CSS da rangni o\'zgartirish xususiyati?', opts: ['color', 'font-color', 'text-color', 'background'], ans: 0 },
@@ -3073,15 +3142,56 @@ const QUIZ_QUESTIONS = {
     { q: 'Border yumaloqlash xususiyati?', opts: ['border-radius', 'border-round', 'round-border', 'corner-radius'], ans: 0 },
     { q: 'Shrift o\'lchamini o\'zgartirish?', opts: ['font-size', 'text-size', 'font-weight', 'text-font'], ans: 0 },
     { q: 'Z-index nima qiladi?', opts: ['Qatlam tartibini belgilaydi', 'Zoom darajasi', 'Zichlik', 'Chegara'], ans: 0 },
-    { q: 'Position: absolute nima?', opts: ['Ota elementga nisbatan joylashuv', 'Oynaga nisbatan', 'O\'z joyida', 'Qimirlamaydigan'], ans: 0 },
+    { q: 'Position: absolute nima?', opts: ['Ota elementga nisbatan', 'Oynaga nisbatan', 'O\'z joyida', 'Qimirlamaydigan'], ans: 0 },
     { q: 'CSS da animatsiya uchun?', opts: ['@keyframes', '@animation', '@frames', '@motion'], ans: 0 },
     { q: 'Grid qo\'llash uchun?', opts: ['display: grid', 'grid: true', 'layout: grid', 'type: grid'], ans: 0 },
     { q: 'Hover effekti uchun qaysi pseudo-klass?', opts: [':hover', ':focus', ':active', ':visited'], ans: 0 },
+    { q: 'CSS da o\'zgaruvchi yaratish?', opts: ['--myVar: value', '$myVar: value', 'var myVar', '#myVar: value'], ans: 0 },
+    { q: 'CSS o\'zgaruvchisini ishlatish?', opts: ['var(--myVar)', 'use(myVar)', '$(myVar)', 'ref(myVar)'], ans: 0 },
+    { q: 'Media query sintaksisi?', opts: ['@media (max-width:768px)', '@screen 768px', '@mobile', '@breakpoint'], ans: 0 },
+    { q: 'CSS da opacity 0 nima?', opts: ['To\'liq shaffof', 'To\'liq opak', 'Yashirin', 'O\'chirilgan'], ans: 0 },
+    { q: 'Box-shadow qo\'shish?', opts: ['box-shadow: 2px 2px 5px #000', 'shadow: 2px', 'element-shadow', 'shade: 2px'], ans: 0 },
+    { q: 'CSS da matnni pastiga chiziq qo\'shish?', opts: ['text-decoration: underline', 'text-underline', 'underline: true', 'font-underline'], ans: 0 },
+    { q: 'Flex elementlarini oralab joylashtirish?', opts: ['justify-content: space-between', 'align: space', 'flex-space', 'distribute: even'], ans: 0 },
+    { q: 'CSS da font-weight: bold nima?', opts: ['Qalin matn', 'Kursiv matn', 'Kichik matn', 'Rangli matn'], ans: 0 },
+    { q: 'position: fixed nima?', opts: ['Oynaga nisbatan qimirlamaydi', 'O\'z joyida', 'Ota elementga nisbatan', 'Oqimdan chiqadi'], ans: 0 },
+    { q: 'CSS selector: .class va #id farqi?', opts: ['.class ko\'p, #id yagona', 'Bir xil', '#id ko\'p', '.class yagona'], ans: 0 },
+    { q: 'CSS da overflow: hidden nima?', opts: ['Tashqaridagi kontent yashiriladi', 'Skrollbar qo\'shiladi', 'Kontent kesib tashlanadi', 'Kengayadi'], ans: 0 },
+    { q: 'transition xususiyati nima uchun?', opts: ['Silliq o\'tish animatsiyasi', 'Transform qo\'shish', 'O\'zgaruvchi', 'Animatsiya kadr'], ans: 0 },
+    { q: 'transform: rotate(45deg) nima qiladi?', opts: ['45 darajaga aylantiradi', '45 px siljitadi', 'Kattalashtiradi', 'Teskari aylantiradi'], ans: 0 },
+    { q: 'CSS da cursor: pointer nima?', opts: ['Qo\'l ko\'rsatkichi', 'Strelka', 'Kesuvchi', 'Kutish'], ans: 0 },
+    { q: 'CSS specificity tartibida eng kuchli?', opts: ['!important', 'ID', 'Class', 'Element'], ans: 0 },
+    { q: 'grid-template-columns nima?', opts: ['Grid ustunlarini belgilaydi', 'Grid qatorlarini', 'Grid oraliqlarini', 'Grid rangini'], ans: 0 },
+    { q: 'align-items: center flex da nima?', opts: ['Ko\'ndalang o\'qda markazlaydi', 'Asosiy o\'qda markazlaydi', 'Yuqoriga', 'Pastga'], ans: 0 },
+    { q: 'CSS da white-space: nowrap nima?', opts: ['Matn yangi qatorga tushmaydi', 'Matn bo\'linadi', 'Bo\'sh joy yo\'q', 'Katta harf'], ans: 0 },
+    { q: ':nth-child(2) nima?', opts: ['2-chi farzand element', '2-chi tur', '2-chi ID', '2-chi klass'], ans: 0 },
+    { q: 'CSS da inherit qiymati nima?', opts: ['Ota elementdan meros oladi', 'Standart qiymat', 'Hech qiymat yo\'q', 'O\'chiriladi'], ans: 0 },
+    { q: 'CSS da calc() funksiyasi nima?', opts: ['Hisoblash uchun', 'Rang hisoblash', 'Animatsiya', 'Transformatsiya'], ans: 0 },
+    { q: 'object-fit: cover nima qiladi?', opts: ['Rasm konteynerga to\'ladi, kesiladi', 'Cho\'ziladi', 'Siqiladi', 'Markazga tushadi'], ans: 0 },
+    { q: 'CSS da gap xususiyati nima uchun?', opts: ['Grid/Flex oralig\'i', 'Matn oralig\'i', 'Chegara', 'Margin'], ans: 0 },
+    { q: 'CSS da display: none va visibility: hidden farqi?', opts: ['None joy egallaydi, hidden egallaydi lekin ko\'rinmaydi', 'Bir xil', 'Hidden joy egallamaydi', 'None animatsiya qiladi'], ans: 0 },
+    { q: 'CSS da text-align: justify nima?', opts: ['Ikkala tomondan tekis', 'Markazga', 'O\'ngga', 'Chapga'], ans: 0 },
+    { q: 'CSS Filter: blur(5px) nima qiladi?', opts: ['Elementni xiralashtiryadi', 'Rangtini o\'zgartiradi', 'Yashiradi', 'Kesadi'], ans: 0 },
+    { q: 'CSS da mix-blend-mode nima uchun?', opts: ['Qatlamlarni aralashtirishda', 'Rasm qo\'shishda', 'Gradient yaratishda', 'Animatsiyada'], ans: 0 },
+    { q: 'CSS custom property (var) qayerda e\'lon qilinadi?', opts: [':root da', 'body da', 'html da', 'head da'], ans: 0 },
+    { q: 'CSS da pointer-events: none nima?', opts: ['Klik va hover o\'chadi', 'Kursorni o\'zgartiradi', 'Elementni yashiradi', 'Rangni o\'zgartiradi'], ans: 0 },
+    { q: 'will-change xususiyati nima uchun?', opts: ['Brauzerga optimallashtirish uchun ishora', 'O\'zgartirish', 'Animatsiya', 'Transformatsiya'], ans: 0 },
+    { q: 'CSS da aspect-ratio nima?', opts: ['Kenglik va balandlik nisbati', 'Rasm sifati', 'Zoom', 'Pixel zichligi'], ans: 0 },
+    { q: 'CSS container query nima?', opts: ['Ota konteyner o\'lchamiga qarab stil', 'Global stil', 'Media query', 'Print stil'], ans: 0 },
+    { q: 'CSS da clamp() funksiyasi?', opts: ['Min, pref, max qiymat', 'Faqat maksimal', 'Faqat minimal', 'O\'rta qiymat'], ans: 0 },
+    { q: 'backdrop-filter nima?', opts: ['Element orqasidagi filtr', 'Matn filtri', 'Rasm filtri', 'Animatsiya filtri'], ans: 0 },
+    { q: 'CSS da writing-mode nima uchun?', opts: ['Matn yo\'nalishi (gorizontal/vertikal)', 'Shrift', 'Rang', 'O\'lcham'], ans: 0 },
+    { q: 'CSS scroll-behavior: smooth nima?', opts: ['Silliq skrollash', 'Tez skrollash', 'Skrollni bloklash', 'Animatsiya'], ans: 0 },
+    { q: 'CSS :is() pseudo-klass nima?', opts: ['Bir nechta selectorni guruhlaydi', 'Mavjudligini tekshiradi', 'Yo\'qligini tekshiradi', 'Ota elementni tanlaydi'], ans: 0 },
+    { q: 'CSS da subgrid nima?', opts: ['Ota grid treklarini meros olish', 'Mini grid', 'Flex ichida grid', 'Nested grid'], ans: 0 },
+    { q: 'CSS cascade nima?', opts: ['Stil qoidalari ustuvorligi', 'Animatsiya ketma-ketligi', 'DOM tartibi', 'Event tartibi'], ans: 0 },
+    { q: 'CSS specificity hisoblashda 0,1,0 nima?', opts: ['1 ta class selectorli', '1 ta element', '1 ta ID', '1 ta inline stil'], ans: 0 },
+    { q: 'CSS content: "" nima uchun ishlatiladi?', opts: ['::before/::after da matn/rasm qo\'shish', 'Matn o\'chirish', 'Rasm almashtirish', 'Stilni tozalash'], ans: 0 },
   ],
   js: [
     { q: 'O\'zgaruvchi e\'lon qilish uchun zamonaviy kalit so\'z?', opts: ['let', 'var', 'def', 'dim'], ans: 0 },
     { q: 'Massiv uzunligini olish?', opts: ['array.length', 'array.size', 'array.count', 'len(array)'], ans: 0 },
-    { q: 'console.log() nima qiladi?', opts: ['Konsolga chiqaradi', 'Xato tashiaydi', 'Alert ko\'rsatadi', 'DOM yangilaydi'], ans: 0 },
+    { q: 'console.log() nima qiladi?', opts: ['Konsolga chiqaradi', 'Xato tashiydi', 'Alert ko\'rsatadi', 'DOM yangilaydi'], ans: 0 },
     { q: 'Elementni ID orqali olish?', opts: ['getElementById', 'getElement', 'findById', 'querySelector'], ans: 0 },
     { q: 'Asinxron funksiya kalit so\'zi?', opts: ['async', 'await', 'promise', 'then'], ans: 0 },
     { q: 'JSON.parse() nima qiladi?', opts: ['JSON ni JS ga aylantiradi', 'JS ni JSON ga', 'Tekshiradi', 'Formatlab chiqaradi'], ans: 0 },
@@ -3089,6 +3199,46 @@ const QUIZ_QUESTIONS = {
     { q: 'Arrow function sintaksisi?', opts: ['() => {}', 'function() {}', 'def () {}', '=> function()'], ans: 0 },
     { q: 'typeof null natijasi?', opts: ['"object"', '"null"', '"undefined"', '"boolean"'], ans: 0 },
     { q: 'Strict tenglik operatori?', opts: ['===', '==', '=', '!=='], ans: 0 },
+    { q: 'Massivdan oxirgi elementni olib tashlash?', opts: ['pop()', 'remove()', 'delete()', 'splice()'], ans: 0 },
+    { q: 'String ni raqamga aylantirish?', opts: ['parseInt()', 'toNumber()', 'Number.from()', 'convert()'], ans: 0 },
+    { q: 'Object.keys() nima qaytaradi?', opts: ['Kalit (key) lar massivi', 'Qiymat (value) lar massivi', 'Juft massivi', 'Hech nima'], ans: 0 },
+    { q: 'Array.map() nima qiladi?', opts: ['Har elementni o\'zgartiradi', 'Filtrlaydi', 'Qisqartiradi', 'Saralaydi'], ans: 0 },
+    { q: 'Array.filter() nima qaytaradi?', opts: ['Shart to\'g\'ri elementlar', 'Bitta element', 'Raqam', 'Boolean'], ans: 0 },
+    { q: 'setTimeout() nima qiladi?', opts: ['Kechiktirib ishga tushiradi', 'Interval yaratadi', 'Darhol ishga tushiradi', 'To\'xtatadi'], ans: 0 },
+    { q: 'Event listener qo\'shish?', opts: ['addEventListener()', 'attachEvent()', 'onEvent()', 'bindEvent()'], ans: 0 },
+    { q: 'Destructuring assignment misoli?', opts: ['const {a, b} = obj', 'obj.a = b', 'a, b = obj', 'set {a,b} = obj'], ans: 0 },
+    { q: 'Spread operator (...) nima qiladi?', opts: ['Massiv/obj yoyadi', 'Bir narsani ko\'paytiradi', 'Yo\'q qiladi', 'Birlashtiradi'], ans: 0 },
+    { q: 'Promise.all() nima?', opts: ['Barcha promise lar tugashini kutadi', 'Birinchisi tugashini kutadi', 'Xatolarni ushlaydi', 'Promise yaratadi'], ans: 0 },
+    { q: 'localStorage.setItem() nima?', opts: ['Brauzer xotirasiga saqlaydi', 'Server ga saqlaydi', 'Cookie saqlaydi', 'Session saqlaydi'], ans: 0 },
+    { q: 'fetch() funksiyasi nima?', opts: ['HTTP so\'rov yuboradi', 'DOM oladi', 'Fayl o\'qiydi', 'DB ga murojaat qiladi'], ans: 0 },
+    { q: 'Array.reduce() nima qiladi?', opts: ['Massivni bitta qiymatga aylantiradi', 'Filtrlaydi', 'Tartiblaydi', 'Bo\'ladi'], ans: 0 },
+    { q: 'JS da hoisting nima?', opts: ['O\'zgaruvchi/funksiya ko\'tarilishi', 'Sahifa yuklanishi', 'Event bubbling', 'Scope zanjiri'], ans: 0 },
+    { q: 'Closure nima?', opts: ['Funksiya o\'z tashqi scope ni eslab qoladi', 'Yopish tugmasi', 'Loop tarmog\'i', 'Xato tuzi'], ans: 0 },
+    { q: 'Event bubbling nima?', opts: ['Event ota elementlarga tarqaladi', 'Event bekor qilinadi', 'Event qaytadi', 'Event ko\'payadi'], ans: 0 },
+    { q: 'JS da prototype nima?', opts: ['Meros ob\'ekti', 'Boshlang\'ich qiymat', 'Sinf turi', 'Modul'], ans: 0 },
+    { q: 'Array.find() va Array.filter() farqi?', opts: ['find() bitta, filter() massiv qaytaradi', 'Bir xil', 'filter() bitta qaytaradi', 'find() massiv qaytaradi'], ans: 0 },
+    { q: 'try/catch nima uchun?', opts: ['Xatolarni ushlash', 'Tsikl', 'Condition', 'Asinxron'], ans: 0 },
+    { q: 'Optional chaining (?.) nima?', opts: ['null/undefined da xato bermaydi', 'Shart tekshiradi', 'Qiymat o\'zgartiradi', 'Loop yaratadi'], ans: 0 },
+    { q: 'Nullish coalescing (??) nima?', opts: ['null/undefined bo\'lsa default qaytaradi', 'Null uchun xato', 'Tanlov operatori', 'Boolean'], ans: 0 },
+    { q: 'JS da "use strict" nima?', opts: ['Qattiq rejim, xatolarni ushlaydi', 'Ko\'rinishni o\'zgartiradi', 'Tezlashtiradi', 'Funksiya kalit so\'zi'], ans: 0 },
+    { q: 'WeakMap va Map farqi?', opts: ['WeakMap garbage collection qiladi', 'Bir xil', 'WeakMap kattaroq', 'Map tezroq'], ans: 0 },
+    { q: 'Symbol nima?', opts: ['Yagona identifikator', 'Matn turi', 'Raqam turi', 'Boolean turi'], ans: 0 },
+    { q: 'Generator funksiya qanday e\'lon qilinadi?', opts: ['function*', 'function gen', 'async function', 'gen function'], ans: 0 },
+    { q: 'JS da event delegation nima?', opts: ['Ota elementda event ushlash', 'Event o\'chirish', 'Event ko\'paytirish', 'Event tartibi'], ans: 0 },
+    { q: 'Array.some() nima qaytaradi?', opts: ['Kamida bir element shartga mos bo\'lsa true', 'Hammasi mos bo\'lsa true', 'Massiv', 'Raqam'], ans: 0 },
+    { q: 'Array.every() nima qaytaradi?', opts: ['Hammasi shartga mos bo\'lsa true', 'Bitta mos bo\'lsa true', 'Massiv', 'Hech nima'], ans: 0 },
+    { q: 'Object.assign() nima qiladi?', opts: ['Ob\'ektlarni birlashtiradi', 'Ob\'ektni nusxalaydi', 'Ob\'ektni tozalaydi', 'Ob\'ektni o\'chiradi'], ans: 0 },
+    { q: 'JS da Set nima?', opts: ['Takrorlanmas qiymatlar to\'plami', 'Saralangan massiv', 'Ob\'ekt turi', 'Map turi'], ans: 0 },
+    { q: 'queueMicrotask() va setTimeout() farqi?', opts: ['Microtask oldin, macro task keyin', 'Bir xil', 'setTimeout oldinroq', 'Har ikkalasi bir vaqtda'], ans: 0 },
+    { q: 'structuredClone() nima?', opts: ['Chuqur nusxa (deep clone)', 'Sayoz nusxa', 'Ob\'ektni o\'chiradi', 'Ob\'ektni tekshiradi'], ans: 0 },
+    { q: 'JS da Proxy nima?', opts: ['Ob\'ekt operatsiyalarini ushlab qolish', 'Tarmoq proksi', 'Cache', 'Observer'], ans: 0 },
+    { q: 'Array.flat() nima qiladi?', opts: ['Ichma-ich massivni yoyadi', 'Tekislaydi', 'Filtrlaydi', 'Tartiblaydi'], ans: 0 },
+    { q: 'Object.freeze() nima?', opts: ['Ob\'ektni o\'zgartirib bo\'lmaydi', 'Ob\'ektni muzlatadi', 'Ob\'ektni nusxalaydi', 'Ob\'ektni qulflaydi'], ans: 0 },
+    { q: 'JS da tagged template literals nima?', opts: ['Funksiya bilan template string', 'CSS tag', 'HTML teg', 'Event handler'], ans: 0 },
+    { q: 'AbortController nima uchun?', opts: ['fetch() so\'rovini bekor qilish', 'Controller yaratish', 'Event bekor qilish', 'Tsiklni to\'xtatish'], ans: 0 },
+    { q: 'JS da requestAnimationFrame nima?', opts: ['Brauzer ekrani yangilanishida chaqiradi', 'Animatsiya yaratadi', 'Timer', 'Interval'], ans: 0 },
+    { q: 'IntersectionObserver nima?', opts: ['Element viewport ga kirganda kuzatadi', 'DOM o\'zgarishini kuzatadi', 'Event kuzatadi', 'Tarmoq kuzatadi'], ans: 0 },
+    { q: 'JS da import() dinamik import nima?', opts: ['Runtime da modul yuklash', 'Static import', 'CSS yuklash', 'Rasm yuklash'], ans: 0 },
   ],
   python: [
     { q: 'Python da chiqarish funksiyasi?', opts: ['print()', 'echo()', 'log()', 'write()'], ans: 0 },
@@ -3097,10 +3247,50 @@ const QUIZ_QUESTIONS = {
     { q: 'Komentariy qo\'shish?', opts: ['#', '//', '/*', '--'], ans: 0 },
     { q: 'O\'zgaruvchi turini olish?', opts: ['type()', 'typeof()', 'gettype()', 'isinstance()'], ans: 0 },
     { q: 'For sikl yozish?', opts: ['for x in list:', 'for (x in list)', 'foreach x in list:', 'loop x in list:'], ans: 0 },
-    { q: 'if-else sintaksisi to\'g\'ri?', opts: ['if x: ... else: ...', 'if (x) {} else {}', 'if x then else', 'if x; else;'], ans: 0 },
     { q: 'pip nima?', opts: ['Paket menejeri', 'Python interpreter', 'Test framework', 'Debug vositasi'], ans: 0 },
     { q: 'Lambda funksiya qanday yoziladi?', opts: ['lambda x: x*2', 'lambda(x) => x*2', 'fn x: x*2', 'x => x*2'], ans: 0 },
     { q: 'Dictionary yaratish?', opts: ['{}', '[]', '()', 'dict[]'], ans: 0 },
+    { q: '"is" operatori nima tekshiradi?', opts: ['Identifikator bir xilmi', 'Qiymat tengmi', 'Tur tengmi', 'Mavjudmi'], ans: 0 },
+    { q: 'List comprehension misoli?', opts: ['[x*2 for x in lst]', 'lst.map(x*2)', 'for x in lst: x*2', 'lst.each(x*2)'], ans: 0 },
+    { q: 'Python da tuple nima?', opts: ['O\'zgarmas ketma-ketlik', 'O\'zgaruvchan ketma-ketlik', 'Kalit-qiymat juftligi', 'To\'plam'], ans: 0 },
+    { q: 'set() nima?', opts: ['Takrorlanmas elementlar', 'Tartiblangan list', 'Lug\'at', 'Tuple'], ans: 0 },
+    { q: 'Python da with statement nima?', opts: ['Kontekst menejer', 'Loop', 'Shart', 'Import'], ans: 0 },
+    { q: 'enumerate() nima qiladi?', opts: ['Index va qiymat juftini beradi', 'Sanaydi', 'Filtrlaydi', 'Tartiblaydi'], ans: 0 },
+    { q: 'zip() funksiyasi nima?', opts: ['Bir nechta iterableni birlashtiradi', 'Arxivlaydi', 'Filtrlaydi', 'Tartiblaydi'], ans: 0 },
+    { q: 'Python da *args nima?', opts: ['Istalgancha positional argument', 'Kalit so\'zli argument', 'Majburiy argument', 'Default argument'], ans: 0 },
+    { q: '**kwargs nima?', opts: ['Istalgancha keyword argument', 'Positional argument', 'Majburiy argument', 'Default argument'], ans: 0 },
+    { q: 'Python da decorator nima?', opts: ['Funksiyani o\'rash (wrapping)', 'Stilizatsiya', 'Izoh', 'Import'], ans: 0 },
+    { q: 'Generator nima?', opts: ['yield bilan qiymat beradigan funksiya', 'List turi', 'Dict turi', 'Modul'], ans: 0 },
+    { q: 'Python da __init__ nima?', opts: ['Konstruktor metod', 'Destruktor', 'Sinf nomi', 'Import'], ans: 0 },
+    { q: 'Inheritance (meros) sintaksisi?', opts: ['class Child(Parent):', 'class Child extends Parent:', 'Child inherit Parent', 'class Child: Parent'], ans: 0 },
+    { q: 'Python da try/except/finally?', opts: ['Xatolarni ushlash', 'Loop', 'Shart', 'Import'], ans: 0 },
+    { q: 'os modul nima uchun?', opts: ['Operatsion tizim bilan ishlash', 'Tarmoq', 'Ma\'lumotlar bazasi', 'Grafika'], ans: 0 },
+    { q: 'json modul nima uchun?', opts: ['JSON ma\'lumotlari bilan ishlash', 'Fayl o\'qish', 'DB bilan ishlash', 'Tarmoq'], ans: 0 },
+    { q: 'Python da f-string misoli?', opts: ['f"Salom {ism}"', '"Salom {ism}".format()', '"Salom" + ism', '`Salom ${ism}`'], ans: 0 },
+    { q: 'sorted() va list.sort() farqi?', opts: ['sorted yangi list qaytaradi', 'Bir xil', 'sort tezroq', 'sorted o\'rinida o\'zgartiradi'], ans: 0 },
+    { q: 'Python da map() funksiyasi?', opts: ['Har elementga funksiya qo\'llaydi', 'Filtrlaydi', 'Tartiblaydi', 'Qisqartiradi'], ans: 0 },
+    { q: 'filter() funksiyasi nima?', opts: ['Shart bo\'yicha filtrlaydi', 'Har elementni o\'zgartiradi', 'Qisqartiradi', 'Birlashtiradi'], ans: 0 },
+    { q: 'reduce() qaysi modulda?', opts: ['functools', 'itertools', 'operator', 'builtins'], ans: 0 },
+    { q: 'Python da None nima?', opts: ['Qiymat yo\'qligi', '0 qiymati', 'Bo\'sh satr', 'Yolg\'on'], ans: 0 },
+    { q: 'isinstance() nima tekshiradi?', opts: ['Ob\'ekt tur ga tegishliligini', 'Qiymat tengligini', 'Identifikatorni', 'Mavjudlikni'], ans: 0 },
+    { q: 'Python da super() nima?', opts: ['Ota sinfni chaqirish', 'Yaxshilash', 'Import', 'Debug'], ans: 0 },
+    { q: 'dataclass decorator nima?', opts: ['Avtomatik __init__, __repr__ yaratadi', 'Ma\'lumot sinfi yaratadi', 'Klass dekoratsiyasi', 'Metod qo\'shadi'], ans: 0 },
+    { q: 'Python da walrus operatori (:=)?', opts: ['Tayinlash va qaytarish', 'Tenglik', 'Kichik yoki teng', 'Mantiqiy VA'], ans: 0 },
+    { q: 'pathlib nima uchun?', opts: ['Fayl yo\'llari bilan ishlash', 'Tarmoq', 'DB', 'Grafika'], ans: 0 },
+    { q: 'asyncio nima?', opts: ['Asinxron dasturlash kutubxonasi', 'Async IO operatsiyalari', 'Thread boshqaruvi', 'Event loop'], ans: 0 },
+    { q: 'Python da GIL nima?', opts: ['Global Interpreter Lock', 'Global Import Layer', 'Generic Interface Layer', 'GPU Interface Layer'], ans: 0 },
+    { q: '__slots__ nima uchun?', opts: ['Xotira tejash uchun', 'Metod qo\'shish', 'Meros olish', 'Import'], ans: 0 },
+    { q: 'Python da match/case nima (3.10+)?', opts: ['Pattern matching', 'Switch-case', 'If-elif', 'Loop'], ans: 0 },
+    { q: 'TypeVar nima uchun?', opts: ['Generic type annotation', 'O\'zgaruvchi turi', 'Type casting', 'Type checking'], ans: 0 },
+    { q: '__enter__ va __exit__ nima uchun?', opts: ['Context manager protokoli', 'Konstruktor/destruktor', 'Import/export', 'Open/close'], ans: 0 },
+    { q: 'abc modul nima uchun?', opts: ['Abstract Base Classes', 'Alphabet', 'Archive Base Class', 'Async Base Class'], ans: 0 },
+    { q: 'Python da @property nima?', opts: ['Getter yaratadi', 'Setter yaratadi', 'Deleter yaratadi', 'Klass metodi'], ans: 0 },
+    { q: 'copy.deepcopy() vs copy.copy() farqi?', opts: ['deepcopy to\'liq nusxa, copy sayoz', 'Bir xil', 'copy tezroq', 'deepcopy sayoz'], ans: 0 },
+    { q: 'Python da __str__ vs __repr__ farqi?', opts: ['str foydalanuvchi uchun, repr debug uchun', 'Bir xil', 'repr foydalanuvchi uchun', 'str debug uchun'], ans: 0 },
+    { q: 'itertools.chain() nima?', opts: ['Iterablelarni birlashtiradi', 'Filtr qiladi', 'Tartiblaydi', 'Gruppa qiladi'], ans: 0 },
+    { q: 'collections.defaultdict nima?', opts: ['Mavjud bo\'lmagan kalit uchun default', 'Tartiblangan dict', 'Sonlaydigan dict', 'Counter'], ans: 0 },
+    { q: 'Python da __all__ nima uchun?', opts: ['Public API ni belgilaydi', 'Barcha atributlar', 'Import ro\'yxati', 'Export'], ans: 0 },
+    { q: 'Pydantic nima?', opts: ['Ma\'lumot validatsiyasi kutubxonasi', 'Test framework', 'ORM', 'HTTP kutubxonasi'], ans: 0 },
   ],
   react: [
     { q: 'React component qanday yaratiladi?', opts: ['function MyComp() {}', 'class MyComp {}', 'component MyComp {}', 'make MyComp()'], ans: 0 },
@@ -3113,6 +3303,47 @@ const QUIZ_QUESTIONS = {
     { q: 'Context API nima uchun?', opts: ['Global state boshqaruvi', 'HTTP so\'rovlar', 'Animatsiya', 'Routing'], ans: 0 },
     { q: 'Virtual DOM nima?', opts: ['Real DOM ning xotira nusxasi', 'Virtual server', 'CSS framework', 'Test kutubxonasi'], ans: 0 },
     { q: 'React fragment nima?', opts: ['<></>', '<div>', '<span>', '<template>'], ans: 0 },
+    { q: 'useCallback nima uchun?', opts: ['Funksiyani memoize qilish', 'State yangilash', 'Ref olish', 'Effect qo\'llash'], ans: 0 },
+    { q: 'useMemo nima uchun?', opts: ['Qiymatni memoize qilish', 'Funksiyani memoize qilish', 'Ref yaratish', 'Context olish'], ans: 0 },
+    { q: 'useRef nima?', opts: ['DOM elementga murojaat', 'State yaratish', 'Context olish', 'Effect yaratish'], ans: 0 },
+    { q: 'React.memo nima?', opts: ['Props o\'zgarmasa qayta render qilmaydi', 'State eslab qoladi', 'Komponentni klonlaydi', 'Hook yaratadi'], ans: 0 },
+    { q: 'useReducer useState dan qachon yaxshiroq?', opts: ['Murakkab state logikasida', 'Oddiy state uchun', 'Har doim', 'Hech qachon'], ans: 0 },
+    { q: 'React da controlled component nima?', opts: ['State boshqaradigan form element', 'DOM boshqaradigan', 'Ref boshqaradigan', 'Effect boshqaradigan'], ans: 0 },
+    { q: 'Prop drilling nima?', opts: ['Props ni chuqur pastga uzatish', 'Props nusxalash', 'Props tekshirish', 'Props o\'chirish'], ans: 0 },
+    { q: 'Custom hook nima?', opts: ['use bilan boshlangan qayta ishlatiladigan logika', 'Maxsus lifecycle', 'State fabriki', 'Context yaratuvchi'], ans: 0 },
+    { q: 'useLayoutEffect vs useEffect farqi?', opts: ['useLayout DOM dan keyin sinxron', 'Bir xil', 'useEffect oldinroq', 'useLayout asinxron'], ans: 0 },
+    { q: 'React da reconciliation nima?', opts: ['Virtual DOM ni real DOM bilan solishtirish', 'Component render', 'Props yangilash', 'State reset'], ans: 0 },
+    { q: 'Lazy loading React da qanday?', opts: ['React.lazy() + Suspense', 'import() + defer', 'dynamic import', 'chunk()'], ans: 0 },
+    { q: 'ErrorBoundary nima?', opts: ['Xatolarni ushlovchi component', 'Error state', 'Try/catch', 'Error hook'], ans: 0 },
+    { q: 'React da forwardRef nima?', opts: ['Ref ni ota komponentga uzatish', 'Ref yaratish', 'Ref nusxalash', 'Ref o\'chirish'], ans: 0 },
+    { q: 'useImperativeHandle nima?', opts: ['Ref orqali ko\'rinadigan metodlarni belgilaydi', 'Imperativ kod', 'Ref boshqaruvi', 'DOM manipulyatsiyasi'], ans: 0 },
+    { q: 'React Suspense nima?', opts: ['Yüklanayotganda fallback ko\'rsatadi', 'Error ushlab qoladi', 'State boshqaradi', 'Props kutadi'], ans: 0 },
+    { q: 'React da key={index} nima uchun yomon?', opts: ['Qayta tartibda muammolar', 'Tezligi past', 'Xato beradi', 'Props buziladi'], ans: 0 },
+    { q: 'useContext nima uchun?', opts: ['Context qiymatini olish', 'Context yaratish', 'Context o\'zgartirish', 'Context o\'chirish'], ans: 0 },
+    { q: 'React.StrictMode nima?', opts: ['Potensial muammolarni aniqlaydi', 'Performance optimallashtiradi', 'Test rejimi', 'Xatolarni yashiradi'], ans: 0 },
+    { q: 'Batching React da nima?', opts: ['State yangilanishlarini birlashtiradi', 'Array batcha', 'Parallel render', 'Async render'], ans: 0 },
+    { q: 'React Server Components nima?', opts: ['Serverda render bo\'ladigan komponentlar', 'Static komponentlar', 'No-JS komponentlar', 'SSR komponentlar'], ans: 0 },
+    { q: 'React 18 da concurrent mode nima?', opts: ['Render ni to\'xtatib bo\'ladi', 'Parallel thread', 'Asinxron state', 'Lazy render'], ans: 0 },
+    { q: 'startTransition nima uchun?', opts: ['Urgent bo\'lmagan yangilanish belgilash', 'Animatsiya boshlash', 'Effect boshlash', 'Render boshlash'], ans: 0 },
+    { q: 'useDeferredValue nima?', opts: ['Qiymatni keyinga qoldiradi', 'Qiymatni eslaydi', 'Qiymatni keshlayd', 'Qiymatni kuzatadi'], ans: 0 },
+    { q: 'React da portals nima?', opts: ['DOM ierarxiyasidan tashqari render', 'Ko\'prik', 'API chaqiruvi', 'Modal pattern'], ans: 0 },
+    { q: 'Compound components pattern nima?', opts: ['Birgalikda ishlaydigan komponentlar', 'Nested komponentlar', 'HOC', 'Render props'], ans: 0 },
+    { q: 'Render props pattern nima?', opts: ['Render uchun funksiya prop uzatish', 'Props render qilish', 'Conditional render', 'List render'], ans: 0 },
+    { q: 'Higher Order Component (HOC) nima?', opts: ['Component qabul qilib component qaytaradi', 'Katta component', 'Wrapper', 'Mixin'], ans: 0 },
+    { q: 'React da hydration nima?', opts: ['SSR HTML ga JS qo\'shish', 'State yuklash', 'Data fetching', 'Props initialization'], ans: 0 },
+    { q: 'Zustand vs Redux farqi?', opts: ['Zustand sodda, Redux murakkab', 'Bir xil', 'Redux sodda', 'Zustand kuchliroq'], ans: 0 },
+    { q: 'React Query nima?', opts: ['Server state boshqaruvi', 'Client state', 'Router', 'Form kutubxonasi'], ans: 0 },
+    { q: 'React Hook Form nima?', opts: ['Formani boshqarish kutubxonasi', 'Custom hook yaratish', 'Form validation', 'Form state'], ans: 0 },
+    { q: 'Next.js React dan farqi?', opts: ['SSR, routing, optimizatsiya qo\'shilgan', 'Server framework', 'CSS framework', 'Test framework'], ans: 0 },
+    { q: 'React da code splitting nima?', opts: ['Kodni bo\'laklarga bo\'lish', 'Kodni minify qilish', 'Kodni compress qilish', 'Kodni cache qilish'], ans: 0 },
+    { q: 'React.createContext() nima?', opts: ['Context ob\'ekti yaratadi', 'Context qiymatini oladi', 'Context o\'chiradi', 'Context yangilaydi'], ans: 0 },
+    { q: 'React da defaultProps nima?', opts: ['Props uchun standart qiymatlar', 'Props turi', 'Props validatsiya', 'Props memoization'], ans: 0 },
+    { q: 'React da getDerivedStateFromProps nima?', opts: ['Props dan state hisoblash', 'Props yangilash', 'State reset', 'Lifecycle metod'], ans: 0 },
+    { q: 'React da componentDidMount nima?', opts: ['Komponent mount bo\'lganda chaqiriladi', 'Unmount da', 'Update da', 'Render da'], ans: 0 },
+    { q: 'Pure component nima?', opts: ['Shallow comparison bilan re-render oldini oladi', 'Functional component', 'Memoized component', 'Static component'], ans: 0 },
+    { q: 'React da shouldComponentUpdate nima?', opts: ['Re-render kerakmi degan qaror', 'Component yangilash', 'Forceful update', 'Lifecycle'], ans: 0 },
+    { q: 'React da getSnapshotBeforeUpdate nima?', opts: ['DOM o\'zgarishidan oldin ma\'lumot olish', 'Snapshot yaratish', 'State snapshot', 'Props snapshot'], ans: 0 },
+    { q: 'React da componentWillUnmount nima?', opts: ['Komponent o\'chirilishidan oldin tozalash', 'Mount bosqichi', 'Update bosqichi', 'Error bosqichi'], ans: 0 },
   ],
 };
 const QUIZ_CATS = { html:'HTML', css:'CSS', js:'JavaScript', python:'Python', react:'React' };

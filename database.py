@@ -1541,29 +1541,63 @@ class DatabaseService:
                 await session.delete(s)
                 await session.commit()
 
-    # ── GAME PLAY COUNTS ────────────────────────────────────────────────────────
+    # ── GAME PLAY COUNTS (12-soatlik oyna) ──────────────────────────────────────
+    #
+    #   date_str maydoni endi "oyna kaliti" sifatida ishlatiladi:
+    #   window_key = str(int(time.time() // 43200))   (har 12 soatda yangilanadi)
+    #   Shu tufayli migratsiya kerak emas — eski "YYYY-MM-DD" qatorlar avtomatik
+    #   e'tiborga olinmaydi (current window_key mos kelmaydi).
+    #
+    _PLAY_WINDOW = 43200          # 12 soat (soniyalarda)
+    _PLAY_LIMIT  = 3
 
-    async def get_or_create_play_count(self, user_id: int, game_type: str, date_str: str) -> int:
-        """Bugungi o'ynash sonini qaytaradi (mavjud bo'lmasa 0)."""
+    @staticmethod
+    def _window_key() -> str:
+        """Joriy 12-soatlik oyna kaliti."""
+        import time as _time
+        return str(int(_time.time() // 43200))
+
+    @staticmethod
+    def _window_seconds_left() -> int:
+        """Joriy 12-soatlik oyna tugashigacha qolgan soniya."""
+        import time as _time
+        now_ts = _time.time()
+        wk = int(now_ts // 43200)
+        expires_at = (wk + 1) * 43200
+        return max(0, int(expires_at - now_ts))
+
+    async def get_play_window(self, user_id: int, game_type: str) -> dict:
+        """12 soatlik oynada o'ynash ma'lumotlari.
+        Qaytaradi: {count, blocked, seconds_left, plays_left}"""
+        wk = self._window_key()
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GamePlayCount).where(
                     GamePlayCount.user_id   == user_id,
                     GamePlayCount.game_type == game_type,
-                    GamePlayCount.date_str  == date_str,
+                    GamePlayCount.date_str  == wk,
                 )
             )
             rec = result.scalar_one_or_none()
-            return rec.play_count if rec else 0
+            count = rec.play_count if rec else 0
+        secs = self._window_seconds_left()
+        blocked = count >= self._PLAY_LIMIT
+        return {
+            "count":       count,
+            "blocked":     blocked,
+            "seconds_left": secs if blocked else secs,
+            "plays_left":  max(0, self._PLAY_LIMIT - count),
+        }
 
-    async def increment_play_count(self, user_id: int, game_type: str, date_str: str) -> int:
-        """O'ynash sonini 1 ga oshiradi va yangi qiymatni qaytaradi."""
+    async def increment_play_in_window(self, user_id: int, game_type: str) -> dict:
+        """O'ynash sonini 1 ga oshiradi va window ma'lumotlarini qaytaradi."""
+        wk = self._window_key()
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GamePlayCount).where(
                     GamePlayCount.user_id   == user_id,
                     GamePlayCount.game_type == game_type,
-                    GamePlayCount.date_str  == date_str,
+                    GamePlayCount.date_str  == wk,
                 )
             )
             rec = result.scalar_one_or_none()
@@ -1572,23 +1606,56 @@ class DatabaseService:
             else:
                 rec = GamePlayCount(
                     user_id=user_id, game_type=game_type,
-                    date_str=date_str, play_count=1,
+                    date_str=wk, play_count=1,
                 )
                 session.add(rec)
             await session.commit()
-            return rec.play_count
+            count = rec.play_count
+        secs = self._window_seconds_left()
+        blocked = count >= self._PLAY_LIMIT
+        return {
+            "count":       count,
+            "blocked":     blocked,
+            "seconds_left": secs,
+            "plays_left":  max(0, self._PLAY_LIMIT - count),
+        }
 
-    async def get_all_play_counts_today(self, user_id: int, date_str: str) -> dict:
-        """Berilgan kun uchun barcha o'yinlar bo'yicha o'ynash sonini qaytaradi."""
+    async def get_all_play_windows(self, user_id: int) -> dict:
+        """Joriy 12-soatlik oyna uchun barcha o'yinlar bo'yicha ma'lumot."""
+        wk = self._window_key()
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GamePlayCount).where(
                     GamePlayCount.user_id  == user_id,
-                    GamePlayCount.date_str == date_str,
+                    GamePlayCount.date_str == wk,
                 )
             )
             recs = result.scalars().all()
-            return {r.game_type: r.play_count for r in recs}
+        secs = self._window_seconds_left()
+        out = {}
+        for r in recs:
+            count   = r.play_count
+            blocked = count >= self._PLAY_LIMIT
+            out[r.game_type] = {
+                "count":       count,
+                "blocked":     blocked,
+                "seconds_left": secs,
+                "plays_left":  max(0, self._PLAY_LIMIT - count),
+            }
+        return out
+
+    # Orqaga moslik uchun (eski API lar ishlashi uchun)
+    async def get_or_create_play_count(self, user_id: int, game_type: str, date_str: str) -> int:
+        d = await self.get_play_window(user_id, game_type)
+        return d["count"]
+
+    async def increment_play_count(self, user_id: int, game_type: str, date_str: str) -> int:
+        d = await self.increment_play_in_window(user_id, game_type)
+        return d["count"]
+
+    async def get_all_play_counts_today(self, user_id: int, date_str: str) -> dict:
+        d = await self.get_all_play_windows(user_id)
+        return {gt: v["count"] for gt, v in d.items()}
 
     # ── REFERRAL ────────────────────────────────────────────────────────────────
 

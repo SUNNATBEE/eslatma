@@ -567,8 +567,16 @@ function toggleSound() {
 }
 
 // ── Daily Game Limits ────────────────────────────────────────────────────────
-let _playsToday = {};
-const DAILY_LIMIT = 3;
+let _playsToday = {}; // {gameType: {count, blocked, seconds_left, plays_left}}
+const PLAY_LIMIT = 3;
+let _badgeTimers = {}; // countdown interval refs per game
+
+function _fmtCountdown(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h > 0) return h + ' soat ' + m + ' daqiqa';
+  return m + ' daqiqa';
+}
 
 async function loadPlaysToday() {
   try {
@@ -587,26 +595,55 @@ async function recordPlay(gameType) {
     body: JSON.stringify({game_type: gameType})
   });
   const data = await r.json();
-  _playsToday[gameType] = data.play_count || (_playsToday[gameType] || 0) + 1;
+  _playsToday[gameType] = {
+    count:       data.play_count || 0,
+    blocked:     data.blocked || false,
+    seconds_left: data.seconds_left || 0,
+    plays_left:  data.plays_left || 0,
+  };
+  updateGameCardBadges();
   return data;
 }
 
 function checkDailyLimit(gameType) {
-  return (_playsToday[gameType] || 0) >= DAILY_LIMIT;
+  return _playsToday[gameType]?.blocked === true;
 }
 
 function showLimitModal(gameType) {
-  alert(`⏳ ${gameType} uchun kunlik limit tugadi! (${DAILY_LIMIT}/${DAILY_LIMIT})\nErtaga yana o'ynashingiz mumkin.`);
+  const secs = _playsToday[gameType]?.seconds_left || 0;
+  const timeStr = _fmtCountdown(secs);
+  alert(`⏳ ${gameType} uchun limit tugadi!\n\n3/3 o'yinni o'ynab bo'ldingiz.\n${timeStr}dan keyin yana ochiladi.`);
 }
 
 function updateGameCardBadges() {
   const gameTypes = ['typing', 'quiz', 'chess', '2048', 'memory', 'block_blast'];
+  // Clear old timers
+  Object.values(_badgeTimers).forEach(t => clearInterval(t));
+  _badgeTimers = {};
+
   gameTypes.forEach(gt => {
     const badge = document.getElementById('badge_' + gt);
-    if (badge) {
-      const plays = _playsToday[gt] || 0;
-      const left = Math.max(0, DAILY_LIMIT - plays);
-      badge.textContent = left + '/' + DAILY_LIMIT + ' qoldi';
+    if (!badge) return;
+    const info = _playsToday[gt];
+    if (info?.blocked) {
+      let secsLeft = info.seconds_left || 0;
+      function updateBadge() {
+        if (secsLeft <= 0) {
+          badge.textContent = PLAY_LIMIT + '/' + PLAY_LIMIT + ' qoldi';
+          badge.style.color = '#4CAF50';
+          clearInterval(_badgeTimers[gt]);
+          loadPlaysToday(); // Auto-refresh when unlocked
+          return;
+        }
+        badge.textContent = '🔒 ' + _fmtCountdown(secsLeft);
+        badge.style.color = '#f44336';
+        secsLeft--;
+      }
+      updateBadge();
+      _badgeTimers[gt] = setInterval(updateBadge, 1000);
+    } else {
+      const left = info?.plays_left ?? PLAY_LIMIT;
+      badge.textContent = left + '/' + PLAY_LIMIT + ' qoldi';
       badge.style.color = left === 0 ? '#f44336' : left === 1 ? '#FF9800' : '#4CAF50';
     }
   });
@@ -698,11 +735,11 @@ function goPage(name) {
   const content = document.getElementById('content');
   content.scrollTop = 0;
   if (name === 'home')   { loadPlaysToday(); loadGameLeaderboard(_currentGameLb || 'typing'); }
-  if (name === 'typing') startTyping();
-  if (name === 'quiz')   startQuiz();
-  if (name === 'g2048')  init2048();
-  if (name === 'memory') initMemory();
-  if (name === 'chess')  initChess();
+  if (name === 'typing') { if (checkDailyLimit('typing')) { showLimitModal('Typing'); goPage('home'); } else startTyping(); }
+  if (name === 'quiz')   { if (checkDailyLimit('quiz'))   { showLimitModal('Quiz');   goPage('home'); } else startQuiz(); }
+  if (name === 'g2048')  { if (checkDailyLimit('2048'))   { showLimitModal('2048');   goPage('home'); } else init2048(); }
+  if (name === 'memory') { if (checkDailyLimit('memory')) { showLimitModal('Memory'); goPage('home'); } else initMemory(); }
+  if (name === 'chess')  { if (checkDailyLimit('chess'))  { showLimitModal('Chess');  goPage('home'); } else initChess(); }
   if (name === 'multi')  { loadRooms(); showMultiLobby(); }
 }
 
@@ -828,6 +865,7 @@ const TYPING_TEXTS = TYPING_TEXTS_UZ; // legacy alias
 let typTimer=null, typStart=null, typTimeLeft=60, typWords=[], typIdx=0, typFinished=false;
 
 function startTyping() {
+  recordPlay('typing').catch(()=>{});
   clearInterval(typTimer);
   typFinished = false;
   typTimeLeft = 60;
@@ -935,27 +973,68 @@ async function finishTyping(completed) {
    CODE QUIZ
 ══════════════════════════════════════════════════════════════════════ */
 const QUIZ_QUESTIONS = [
-  { q:"Python da ro'yxat (list) yaratish uchun qaysi belgi ishlatiladi?", opts:["[]","{}","()","<>"], ans:0 },
-  { q:"Dasturlashda 'bug' nima?", opts:["Yangi funksiya","Xato/nosozlik","Kutubxona","O'zgaruvchi"], ans:1 },
+  // HTML
   { q:"HTML ning to'liq nomi nima?", opts:["HyperText Markup Language","High Text Machine Language","Hyper Transfer Mode Language","HyperText Machine Learner"], ans:0 },
-  { q:"Python da funksiya e'lon qilish uchun qaysi kalit so'z ishlatiladi?", opts:["function","fun","def","func"], ans:2 },
-  { q:"Boolean qiymatlari qanday?", opts:["0 va 1","True va False","Yes va No","On va Off"], ans:1 },
-  { q:"Tsikl ichida keyingi iteratsiyaga o'tish uchun qaysi operator?", opts:["break","skip","continue","next"], ans:2 },
-  { q:"Python da izoh (comment) qanday boshlanadi?", opts:["//","--","#","/* */"], ans:2 },
-  { q:"'for i in range(5)' necha marta ishlaydi?", opts:["4","5","6","10"], ans:1 },
-  { q:"CSS da matn rangini o'zgartirish uchun qaysi xususiyat?", opts:["text-color","font-color","color","style-color"], ans:2 },
-  { q:"Git da o'zgarishlarni saqlash uchun qaysi buyruq?", opts:["git save","git commit","git push","git store"], ans:1 },
-  { q:"API qisqartmasi nima?", opts:["App Programming Interface","Application Programming Interface","Advanced Program Interface","Automatic Protocol Interface"], ans:1 },
-  { q:"Python da 'None' qanday ma'no anglatadi?", opts:["0 qiymati","Bo'sh satr","Qiymat yo'q","Yolg'on"], ans:2 },
-  { q:"Rekursiya nima?", opts:["Tsikl turi","O'z-o'zini chaqiruvchi funksiya","Ma'lumotlar turi","Xatolik turi"], ans:1 },
-  { q:"JSON nimaning qisqartmasi?", opts:["Java Standard Object Node","JavaScript Object Notation","Joint Standard Open Network","Java Script Option Node"], ans:1 },
-  { q:"O(n) — bu nima?", opts:["Dastur tezligi","Xotira hajmi","Algoritmik murakkablik","Kodni sifati"], ans:2 },
+  { q:"HTML da rasm qo'shish uchun qaysi teg?", opts:["<img>","<pic>","<image>","<photo>"], ans:0 },
+  { q:"HTML da eng katta sarlavha tegi?", opts:["<h1>","<h6>","<head>","<title>"], ans:0 },
+  { q:"HTML da havola (link) uchun teg?", opts:["<a>","<link>","<href>","<url>"], ans:0 },
+  { q:"HTML da tartibsiz ro'yxat uchun teg?", opts:["<ul>","<ol>","<li>","<list>"], ans:0 },
+  { q:"HTML forma elementi uchun qaysi teg?", opts:["<form>","<input>","<field>","<data>"], ans:0 },
+  { q:"<br> tegi nima qiladi?", opts:["Yangi qator boshlaydi","Gorizontal chiziq chizadi","Bo'sh joy qo'shadi","Kursivga o'tkazadi"], ans:0 },
+  { q:"HTML da jadval qatori uchun teg?", opts:["<tr>","<td>","<th>","<table>"], ans:0 },
+  { q:"HTML da DOCTYPE nima uchun?", opts:["Hujjat turini belgilaydi","CSS ni ulaydi","JS ni ulaydi","Sarlavha beradi"], ans:0 },
+  { q:"class atributi nima uchun ishlatiladi?", opts:["CSS bilan ulanish uchun","ID berish uchun","Havola yaratish uchun","Rasm qo'shish uchun"], ans:0 },
+  // CSS
+  { q:"CSS da matn rangini o'zgartirish xususiyati?", opts:["color","font-color","text-color","background"], ans:0 },
+  { q:"CSS da elementni markazga joylashtirish?", opts:["margin: auto","align: center","center: true","float: center"], ans:0 },
+  { q:"Flexbox konteyner yaratish uchun?", opts:["display: flex","flex: true","layout: flex","mode: flex"], ans:0 },
+  { q:"CSS da border yumaloqlash xususiyati?", opts:["border-radius","border-round","round-border","corner-radius"], ans:0 },
+  { q:"CSS da shrift o'lchamini o'zgartirish?", opts:["font-size","text-size","font-weight","text-font"], ans:0 },
+  { q:"CSS da z-index nima qiladi?", opts:["Qatlam tartibini belgilaydi","Zoom darajasini beradi","Zichlikni o'zgartiradi","Chegarani belgilaydi"], ans:0 },
+  { q:"CSS da hover effekti uchun qaysi pseudo-klass?", opts:[":hover",":focus",":active",":visited"], ans:0 },
+  { q:"CSS da animatsiya kadr bloki uchun?", opts:["@keyframes","@animation","@frames","@motion"], ans:0 },
+  { q:"CSS Grid qo'llash uchun?", opts:["display: grid","grid: true","layout: grid","type: grid"], ans:0 },
+  { q:"CSS da o'zgaruvchi (variable) yaratish?", opts:["--myVar: value","var: value","$myVar: value","#myVar: value"], ans:0 },
+  // JavaScript
+  { q:"JavaScript da o'zgaruvchi e'lon qilish uchun zamonaviy kalit so'z?", opts:["let","var","def","dim"], ans:0 },
+  { q:"Massiv uzunligini olish?", opts:["array.length","array.size","array.count","len(array)"], ans:0 },
+  { q:"console.log() nima qiladi?", opts:["Konsolga chiqaradi","Xato tashiydi","Alert ko'rsatadi","DOM yangilaydi"], ans:0 },
+  { q:"Elementni ID orqali topish?", opts:["getElementById()","getElement()","findById()","querySelector()"], ans:0 },
+  { q:"Asinxron funksiya kalit so'zi?", opts:["async","await","promise","then"], ans:0 },
+  { q:"JSON.parse() nima qiladi?", opts:["JSON ni JS ga aylantiradi","JS ni JSON ga aylantiradi","Tekshiradi","Formatlab chiqaradi"], ans:0 },
+  { q:"Massivga element qo'shish (oxiriga)?", opts:["push()","add()","append()","insert()"], ans:0 },
+  { q:"Arrow function sintaksisi?", opts:["() => {}","function() {}","def () {}","=> function()"], ans:0 },
+  { q:"typeof null natijasi?", opts:['"object"','"null"','"undefined"','"boolean"'], ans:0 },
+  { q:"Qat'iy tenglik operatori (strict equality)?", opts:["===","==","=","!=="], ans:0 },
+  // Python
+  { q:"Python da chiqarish funksiyasi?", opts:["print()","echo()","log()","write()"], ans:0 },
+  { q:"Python da ro'yxat (list) yaratish?", opts:["[]","{}","()","<>"], ans:0 },
+  { q:"Python da funksiya e'lon qilish?", opts:["def","function","func","fn"], ans:0 },
+  { q:"Python da izoh (comment) qo'shish?", opts:["#","//","/*","--"], ans:0 },
+  { q:"Python da o'zgaruvchi turini olish?", opts:["type()","typeof()","gettype()","isinstance()"], ans:0 },
+  { q:"Python da for sikl sintaksisi?", opts:["for x in list:","for (x in list)","foreach x:","loop x:"], ans:0 },
+  { q:"Python da pip nima?", opts:["Paket menejeri","Python interpreter","Test framework","Debug vositasi"], ans:0 },
+  { q:"Python da lambda funksiya?", opts:["lambda x: x*2","lambda(x) => x*2","fn x: x*2","x => x*2"], ans:0 },
+  { q:"Python da dictionary yaratish?", opts:["{}","[]","()","dict[]"], ans:0 },
+  { q:"Python da 'is' operatori nima tekshiradi?", opts:["Ob'ekt identifikatori","Qiymat tengligini","Tur tengligini","Mavjudligini"], ans:0 },
+  // Git & Umumiy
+  { q:"Git da o'zgarishlarni saqlash uchun?", opts:["git commit","git save","git push","git store"], ans:0 },
+  { q:"Git da yangi branch yaratish?", opts:["git branch name","git new name","git create name","git add branch"], ans:0 },
+  { q:"API nimaning qisqartmasi?", opts:["Application Programming Interface","App Protocol Interface","Advanced Program Interface","Automated Protocol Interface"], ans:0 },
+  { q:"JSON nimaning qisqartmasi?", opts:["JavaScript Object Notation","Java Standard Object Node","Joint Standard Open Network","Java Script Option Node"], ans:0 },
+  { q:"Rekursiya nima?", opts:["O'z-o'zini chaqiruvchi funksiya","Tsikl turi","Ma'lumotlar turi","Xatolik turi"], ans:0 },
+  { q:"O(n) algoritmik murakkablik nima anglatadi?", opts:["Kirish hajmiga chiziqli bog'liq","Doimo tez","Doimo sekin","Kvadratik bog'liq"], ans:0 },
+  { q:"Dasturlashda 'bug' nima?", opts:["Kod xatosi","Yangi funksiya","Kutubxona","O'zgaruvchi"], ans:0 },
+  { q:"HTTP GET va POST farqi?", opts:["GET ma'lumot oladi, POST yuboradi","GET yuboradi, POST oladi","Ikkalasi bir xil","GET tezroq"], ans:0 },
+  { q:"Boolean qiymatlar nechta?", opts:["2 (true/false)","1","3","4"], ans:0 },
+  { q:"'for i in range(5)' necha marta ishlaydi?", opts:["5","4","6","10"], ans:0 },
 ];
 
 let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false;
 let quizResults=[];
 
 function startQuiz() {
+  recordPlay('quiz').catch(()=>{});
   quizResults = [];
   quizScore = 0;
   quizIdx   = 0;
@@ -1041,6 +1120,7 @@ let board2048=[], score2048=0, best2048=0, g2048Over=false;
 let t2048X0=0, t2048Y0=0;
 
 function init2048() {
+  recordPlay('2048').catch(()=>{});
   g2048Over = false; score2048 = 0;
   board2048 = Array(4).fill(null).map(() => Array(4).fill(0));
   document.getElementById('g2048Overlay').style.display = 'none';
@@ -1140,6 +1220,7 @@ const MEM_EMOJIS = ['🐍','🌐','💾','🔧','⚡','🎯','🔍','🛡'];
 let memCards=[], memFlipped=[], memMatched=0, memMoves=0, memTimerInt=null, memSecs=0, memLocked=false;
 
 function initMemory() {
+  recordPlay('memory').catch(()=>{});
   clearInterval(memTimerInt);
   memFlipped=[]; memMatched=0; memMoves=0; memSecs=0; memLocked=false;
   const pairs = [...MEM_EMOJIS, ...MEM_EMOJIS].sort(() => Math.random()-.5);
@@ -1199,6 +1280,7 @@ async function flipCard(idx) {
 let chess=null, chessSelected=null, chessMoveCount=0, chessGameOver=false, chessFirstMove=true;
 
 function initChess() {
+  recordPlay('chess').catch(()=>{});
   chess = new Chess();
   chessSelected  = null;
   chessMoveCount = 0;

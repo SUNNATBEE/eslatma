@@ -210,6 +210,8 @@ async def send_daily_reminder_to_group(
             text=f"🧪 <b>TEST</b>\n\n{text}",
             parse_mode="HTML",
         )
+        # Xabar ID sini saqlaymiz (keyinchalik o'chirish uchun)
+        await db.save_message_id(group.chat_id, sent.message_id)
         logger.info(
             f"TEST SEND: '{group_name}' ({group.chat_id}) → msg_id={sent.message_id}"
         )

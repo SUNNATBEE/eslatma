@@ -30,7 +30,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
 import pytz
 
-from config import ADMIN_IDS, BOT_TOKEN, DATABASE_URL, PORT, TIMEZONE, WEBAPP_URL
+import secrets
+from config import ADMIN_IDS, MINI_ADMIN_IDS, MINI_ADMIN_LOGINS, BOT_TOKEN, DATABASE_URL, PORT, TIMEZONE, WEBAPP_URL
 from curator_credentials import CURATORS
 from database import DatabaseService, GroupType
 from handlers import (
@@ -430,20 +431,82 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         result.sort(key=lambda x: (x["group_name"], x["full_name"]))
         return web.json_response({"students": result})
 
+    # ── Mini Admin Session (parol orqali login) ───────────────────────────────
+    # token → {"username": str, "expires": datetime}
+    _mini_sessions: dict[str, dict] = {}
+
+    def _check_mini_session(request: web.Request) -> str | None:
+        """Authorization: Bearer <token> headeridan username qaytaradi."""
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return None
+        token = auth[7:].strip()
+        sess  = _mini_sessions.get(token)
+        if not sess:
+            return None
+        if datetime.utcnow() > sess["expires"]:
+            del _mini_sessions[token]
+            return None
+        return sess["username"]
+
+    async def api_mini_admin_login(request: web.Request) -> web.Response:
+        """Mini admin parol bilan login. {username, password} → {token, expires_in}"""
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        username = (body.get("username") or "").strip()
+        password = (body.get("password") or "").strip()
+        expected = MINI_ADMIN_LOGINS.get(username)
+        if not expected or expected != password:
+            return web.json_response({"error": "Login yoki parol noto'g'ri"}, status=401)
+        token   = secrets.token_hex(32)
+        expires = datetime.utcnow() + timedelta(days=30)
+        _mini_sessions[token] = {"username": username, "expires": expires}
+        return web.json_response({"ok": True, "token": token, "username": username})
+
+    async def api_mini_admin_verify(request: web.Request) -> web.Response:
+        """Token hali amal qiladimi?"""
+        username = _check_mini_session(request)
+        if username:
+            return web.json_response({"ok": True, "username": username})
+        return web.json_response({"ok": False}, status=401)
+
+    async def api_mini_admin_logout(request: web.Request) -> web.Response:
+        """Token o'chiriladi."""
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:].strip()
+            _mini_sessions.pop(token, None)
+        return web.json_response({"ok": True})
+
     # ── Admin API ─────────────────────────────────────────────────────────────
 
     def _admin_auth(request: web.Request) -> int | None:
+        """To'liq admin: faqat ADMIN_IDS (asosiy adminlar)."""
         uid = _auth(request)
         return uid if uid and uid in ADMIN_IDS else None
 
+    def _mini_admin_auth(request: web.Request) -> int | None:
+        """Mini admin: ADMIN_IDS + MINI_ADMIN_IDS yoki parol sessiyasi."""
+        # 1. Telegram initData orqali
+        uid = _auth(request)
+        if uid and uid in MINI_ADMIN_IDS:
+            return uid
+        # 2. Parol sessiyasi orqali (username asosida fake ID: -1)
+        username = _check_mini_session(request)
+        if username:
+            return -1  # Parol bilan kirgan mini-admin uchun placeholder ID
+        return None
+
     async def api_admin_me(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         return web.json_response({"ok": True, "user_id": user_id})
 
     async def api_admin_stats(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
 
@@ -466,7 +529,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         })
 
     async def api_admin_students(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
 
@@ -492,7 +555,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         })
 
     async def api_admin_attendance(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
 
@@ -524,7 +587,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
 
     async def api_admin_all_students(request: web.Request) -> web.Response:
         """MARS_CREDENTIALS dagi barcha o'quvchilar (ro'yxatdan o'tgan + o'tmagan) — admin uchun."""
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
 
@@ -556,7 +619,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         return web.json_response({"students": result})
 
     async def api_admin_groups(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
 
@@ -576,7 +639,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         })
 
     async def api_admin_groups_detail(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
 
@@ -615,7 +678,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         return web.json_response({"groups": result})
 
     async def api_admin_toggle_group(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         try:
@@ -664,7 +727,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         })
 
     async def api_admin_broadcast(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         try:
@@ -820,7 +883,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         return web.json_response({"ok": True})
 
     async def api_admin_reminder_get(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         h = await db.get_setting("SEND_HOUR",   str(SEND_HOUR))
@@ -828,7 +891,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         return web.json_response({"hour": int(h), "minute": int(m)})
 
     async def api_admin_reminder_set(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         try:
@@ -951,7 +1014,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
 
     async def api_admin_curator_stats(request: web.Request) -> web.Response:
         """Admin: kuratorlar ro'yxati va aktivlik statistikasi."""
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         from curator_credentials import CURATORS
@@ -1400,6 +1463,43 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         confirmed = await db.is_hw_confirmed(user_id, date_str)
         return web.json_response({"confirmed": confirmed})
 
+    async def api_student_profile(request: web.Request) -> web.Response:
+        """Boshqa o'quvchining ommaviy profilini qaytaradi."""
+        viewer_id = _auth(request)
+        if not viewer_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        # Viewer ro'yxatdan o'tganmi?
+        viewer = await db.get_student(viewer_id)
+        if not viewer:
+            return web.json_response({"error": "Not registered"}, status=404)
+        try:
+            target_id = int(request.match_info["user_id"])
+        except Exception:
+            return web.json_response({"error": "Invalid user_id"}, status=400)
+        target = await db.get_student(target_id)
+        if not target:
+            return web.json_response({"error": "Student not found"}, status=404)
+        from database import _level_name
+        attend_count  = await db.get_attend_yes_count(target_id)
+        hw_conf_count = await db.get_hw_confirm_count(target_id)
+        rank          = await db.get_student_rank(target_id, target.group_name)
+        best_scores   = await db.get_game_best_scores(target_id)
+        return web.json_response({
+            "user_id":     target.user_id,
+            "full_name":   target.full_name,
+            "group_name":  target.group_name,
+            "avatar_emoji": target.avatar_emoji or "",
+            "xp":          target.xp or 0,
+            "level":       target.level or 1,
+            "level_name":  _level_name(target.level or 1),
+            "streak_days": target.streak_days or 0,
+            "attend_count": attend_count,
+            "hw_conf_count": hw_conf_count,
+            "rank":        rank,
+            "game_best":   best_scores,
+            "is_me":       target_id == viewer_id,
+        })
+
     async def api_student_logout(request: web.Request) -> web.Response:
         """O'quvchi profilini o'chiradi (unregister). Admin ga xabar yuboradi."""
         user_id = _auth(request)
@@ -1437,6 +1537,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         for i, s in enumerate(leaders):
             result.append({
                 "rank":       i + 1,
+                "user_id":    s.user_id,
                 "full_name":  s.full_name,
                 "group_name": s.group_name,
                 "xp":         s.xp or 0,
@@ -1674,6 +1775,419 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         rows = await db.get_game_global_scores(game_type, limit=10)
         return web.json_response({"leaders": rows})
 
+    # ── Game Play Count API ───────────────────────────────────────────────────
+
+    async def api_game_plays_today(request: web.Request) -> web.Response:
+        """Bugungi o'yinlar uchun o'ynash soni."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        counts = await db.get_all_play_counts_today(user_id, today)
+        return web.json_response(counts)
+
+    async def api_game_record_play(request: web.Request) -> web.Response:
+        """O'yin boshlanishida o'ynash sonini oshiradi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        game_type = (body.get("game_type") or "").strip()
+        if not game_type:
+            return web.json_response({"error": "game_type kerak"}, status=400)
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        current = await db.get_or_create_play_count(user_id, game_type, today)
+        if current >= 3:
+            return web.json_response({"blocked": True, "plays_left": 0, "play_count": current})
+        new_count = await db.increment_play_count(user_id, game_type, today)
+        return web.json_response({"blocked": False, "plays_left": 3 - new_count, "play_count": new_count})
+
+    # ── Referral API ──────────────────────────────────────────────────────────
+
+    async def api_student_referral(request: web.Request) -> web.Response:
+        """O'quvchining referal linki va statistikasi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        bot_info = await bot.get_me()
+        bot_name = bot_info.username
+        code     = str(user_id)
+        link     = f"https://t.me/{bot_name}?start=ref_{user_id}"
+        invited  = await db.get_my_referrals(user_id)
+        xp_total = sum(500 for r in invited if r.xp_awarded)
+        return web.json_response({
+            "code":            code,
+            "link":            link,
+            "invited_count":   len(invited),
+            "xp_earned_total": xp_total,
+        })
+
+    async def api_student_referral_invited(request: web.Request) -> web.Response:
+        """O'quvchi taklif qilgan do'stlar ro'yxati."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        invited = await db.get_my_referrals(user_id)
+        return web.json_response({
+            "invited": [
+                {
+                    "name":     r.full_name,
+                    "status":   r.status,
+                    "joined_at": r.created_at.strftime("%d.%m.%Y") if r.created_at else "",
+                }
+                for r in invited
+            ]
+        })
+
+    async def api_referral_register(request: web.Request) -> web.Response:
+        """Referal orqali yangi o'quvchi ro'yxatdan o'tadi."""
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+
+        ref_code         = (body.get("ref_code") or "").strip()
+        full_name        = (body.get("full_name") or "").strip()
+        age              = (body.get("age") or "").strip()
+        location         = (body.get("location") or "").strip()
+        interests        = (body.get("interests") or "").strip()
+        phone            = (body.get("phone") or "").strip()
+        telegram_user_id = body.get("telegram_user_id")
+
+        if not all([ref_code, full_name, age, location, interests, phone]):
+            return web.json_response({"error": "Barcha maydonlarni to'ldiring"}, status=400)
+
+        try:
+            referrer_user_id = int(ref_code)
+        except ValueError:
+            return web.json_response({"error": "Noto'g'ri referal kod"}, status=400)
+
+        rs = await db.create_referral_student({
+            "referrer_user_id": referrer_user_id,
+            "telegram_user_id": int(telegram_user_id) if telegram_user_id else None,
+            "full_name":        full_name,
+            "age":              age,
+            "location":         location,
+            "interests":        interests,
+            "phone":            phone,
+        })
+
+        # Admin ga bildirishnoma
+        notif = (
+            f"🔗 <b>Yangi referal o'quvchi</b>\n\n"
+            f"👤 {full_name} | Yosh: {age}\n"
+            f"📍 Joylashuv: {location}\n"
+            f"💡 Qiziqishlari: {interests}\n"
+            f"📱 Telefon: {phone}\n"
+            f"🆔 Taklif qilgan: <code>{referrer_user_id}</code>\n"
+            f"✅ Admin Mini App da tasdiqlang (Referal tab)"
+        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, notif, parse_mode="HTML")
+            except Exception:
+                pass
+
+        return web.json_response({"ok": True, "id": rs.id})
+
+    async def api_admin_referral_students(request: web.Request) -> web.Response:
+        """Admin: referal o'quvchilar ro'yxati."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        status_filter = request.rel_url.query.get("status")
+        items = await db.get_referral_students(status=status_filter or None)
+        return web.json_response({
+            "referrals": [
+                {
+                    "id":                r.id,
+                    "referrer_user_id":  r.referrer_user_id,
+                    "telegram_user_id":  r.telegram_user_id,
+                    "full_name":         r.full_name,
+                    "age":               r.age,
+                    "location":          r.location,
+                    "interests":         r.interests,
+                    "phone":             r.phone,
+                    "status":            r.status,
+                    "group_name":        r.group_name,
+                    "xp_awarded":        r.xp_awarded,
+                    "mars_id":           getattr(r, "mars_id", None),
+                    "reject_reason":     getattr(r, "reject_reason", None),
+                    "registration_type": getattr(r, "registration_type", "referral"),
+                    "has_group":         getattr(r, "has_group", False),
+                    "group_time":        getattr(r, "group_time", None),
+                    "group_day_type":    getattr(r, "group_day_type", None),
+                    "teacher_name":      getattr(r, "teacher_name", None),
+                    "created_at":        r.created_at.strftime("%d.%m.%Y %H:%M") if r.created_at else "",
+                }
+                for r in items
+            ]
+        })
+
+    async def api_admin_referral_approve(request: web.Request) -> web.Response:
+        """Admin: referal/direct o'quvchini tasdiqlaydi, ro'yxatdan o'tkazadi, xabar yuboradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            rs_id = int(request.match_info["id"])
+        except Exception:
+            return web.json_response({"error": "Invalid id"}, status=400)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        group_name = (body.get("group_name") or "").strip()
+        if not group_name:
+            return web.json_response({"error": "group_name kerak"}, status=400)
+        # approve_and_register: tasdiqlaydi + students jadvaliga qo'shadi (agar telegram_user_id bor bo'lsa)
+        rs = await db.approve_and_register(rs_id, group_name)
+        if not rs:
+            return web.json_response({"error": "Topilmadi"}, status=404)
+        # Taklif qilganga bildirishnoma (referal uchun)
+        if rs.referrer_user_id and rs.referrer_user_id != 0:
+            await db.award_referral_xp(rs.referrer_user_id, rs_id)
+            try:
+                await bot.send_message(
+                    rs.referrer_user_id,
+                    f"🎉 <b>Siz taklif qilgan do'st qabul qilindi!</b>\n\n"
+                    f"👤 {rs.full_name}\n📚 Guruh: {group_name}\n\n"
+                    f"💰 <b>+500 XP</b> hisobingizga qo'shildi!",
+                    parse_mode="HTML",
+                )
+            except Exception:
+                pass
+        # To'g'ridan-to'g'ri ro'yxatdan o'tganga tasdiqlash xabari + Mini App tugmasi
+        if rs.telegram_user_id:
+            bot_info = await bot.get_me()
+            wa_url = WEBAPP_URL.rstrip("/") + "/webapp/student.html" if WEBAPP_URL else None
+            try:
+                msg_text = (
+                    f"✅ <b>Arizangiz tasdiqlandi!</b>\n\n"
+                    f"📚 Guruh: <b>{group_name}</b>\n"
+                    f"🆔 Mars ID: <b>{rs.mars_id or '—'}</b>\n\n"
+                    f"Endi Mini App orqali kiring va o'qishni boshlang!"
+                )
+                if wa_url:
+                    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+                    kb = InlineKeyboardMarkup(inline_keyboard=[[
+                        InlineKeyboardButton(
+                            text="📱 Mini App ni ochish",
+                            web_app=WebAppInfo(url=wa_url),
+                        )
+                    ]])
+                    await bot.send_message(rs.telegram_user_id, msg_text, parse_mode="HTML", reply_markup=kb)
+                else:
+                    await bot.send_message(rs.telegram_user_id, msg_text, parse_mode="HTML")
+            except Exception:
+                pass
+        return web.json_response({"ok": True, "mars_id": rs.mars_id})
+
+    async def api_admin_referral_reject(request: web.Request) -> web.Response:
+        """Admin: arizani rad etadi (sabab bilan), o'quvchiga xabar yuboradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            rs_id = int(request.match_info["id"])
+        except Exception:
+            return web.json_response({"error": "Invalid id"}, status=400)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        reason = (body.get("reason") or "").strip()
+        if not reason:
+            return web.json_response({"error": "Rad etish sababini kiriting"}, status=400)
+        rs = await db.reject_referral_with_reason(rs_id, reason)
+        if not rs:
+            return web.json_response({"error": "Topilmadi"}, status=404)
+        # O'quvchiga sabab bilan xabar yuborish
+        if rs.telegram_user_id:
+            try:
+                await bot.send_message(
+                    rs.telegram_user_id,
+                    f"❌ <b>Arizangiz rad etildi</b>\n\n"
+                    f"📋 Sabab: {reason}\n\n"
+                    f"Savollar bo'lsa, markaz bilan bog'laning.",
+                    parse_mode="HTML",
+                )
+            except Exception:
+                pass
+        return web.json_response({"ok": True})
+
+    # ── To'g'ridan-to'g'ri (referalsiz) ro'yxatdan o'tish ────────────────────
+
+    async def api_student_pending_register(request: web.Request) -> web.Response:
+        """Yangi o'quvchi referalsiz ro'yxatdan o'tadi (admin tasdiqlashini kutadi)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+
+        full_name        = (body.get("full_name") or "").strip()
+        age              = (body.get("age") or "").strip()
+        location         = (body.get("location") or "").strip()
+        interests        = (body.get("interests") or "").strip()
+        phone            = (body.get("phone") or "").strip()
+        telegram_user_id = body.get("telegram_user_id")
+        has_group        = bool(body.get("has_group", False))
+        group_time       = (body.get("group_time") or "").strip() or None
+        group_day_type   = (body.get("group_day_type") or "").strip() or None
+        teacher_name     = (body.get("teacher_name") or "").strip() or None
+
+        if not all([full_name, age, location, interests, phone]):
+            return web.json_response({"error": "Barcha majburiy maydonlarni to'ldiring"}, status=400)
+        if has_group and not all([group_time, group_day_type, teacher_name]):
+            return web.json_response({"error": "Guruh ma'lumotlarini to'liq kiriting"}, status=400)
+
+        tg_id = int(telegram_user_id) if telegram_user_id else None
+
+        # Agar avval ariza topshirgan bo'lsa, takroran qo'shmaymiz
+        if tg_id:
+            existing = await db.get_pending_registration_by_user(tg_id)
+            if existing:
+                return web.json_response({"ok": True, "id": existing.id, "status": existing.status, "already": True})
+
+        rs = await db.create_direct_registration({
+            "telegram_user_id": tg_id,
+            "full_name":        full_name,
+            "age":              age,
+            "location":         location,
+            "interests":        interests,
+            "phone":            phone,
+            "has_group":        has_group,
+            "group_time":       group_time,
+            "group_day_type":   group_day_type,
+            "teacher_name":     teacher_name,
+        })
+
+        # Admin ga bildirishnoma
+        group_info = ""
+        if has_group:
+            day_label = "Toq kunlar" if group_day_type == "ODD" else "Juft kunlar" if group_day_type == "EVEN" else group_day_type
+            group_info = (
+                f"\n🏫 Guruh vaqti: {group_time}\n"
+                f"📅 Kun turi: {day_label}\n"
+                f"👨‍🏫 O'qituvchi: {teacher_name}"
+            )
+        notif = (
+            f"📝 <b>Yangi ariza (to'g'ridan-to'g'ri)</b>\n\n"
+            f"👤 {full_name} | Yosh: {age}\n"
+            f"📍 Joylashuv: {location}\n"
+            f"💡 Qiziqishlari: {interests}\n"
+            f"📱 Telefon: {phone}"
+            f"{group_info}\n\n"
+            f"✅ Admin Mini App da tasdiqlang (Ariza tab)"
+        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, notif, parse_mode="HTML")
+            except Exception:
+                pass
+
+        return web.json_response({"ok": True, "id": rs.id, "status": rs.status})
+
+    async def api_student_pending_status(request: web.Request) -> web.Response:
+        """O'quvchining ariza holati — token kerak emas, faqat telegram_user_id."""
+        tg_id_str = request.rel_url.query.get("telegram_user_id", "")
+        try:
+            tg_id = int(tg_id_str)
+        except ValueError:
+            return web.json_response({"error": "telegram_user_id kerak"}, status=400)
+        rs = await db.get_pending_registration_by_user(tg_id)
+        if not rs:
+            return web.json_response({"found": False})
+        return web.json_response({
+            "found":             True,
+            "id":                rs.id,
+            "status":            rs.status,
+            "full_name":         rs.full_name,
+            "group_name":        rs.group_name,
+            "mars_id":           getattr(rs, "mars_id", None),
+            "reject_reason":     getattr(rs, "reject_reason", None),
+            "registration_type": getattr(rs, "registration_type", "direct"),
+        })
+
+    # ── Admin Messaging API ───────────────────────────────────────────────────
+
+    async def api_admin_message_student(request: web.Request) -> web.Response:
+        """Admin: o'quvchiga shaxsiy xabar yuboradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        target_id = body.get("user_id")
+        text      = (body.get("text") or "").strip()
+        if not target_id or not text:
+            return web.json_response({"error": "user_id va text kerak"}, status=400)
+        try:
+            await bot.send_message(int(target_id), f"📢 <b>Admin xabari:</b>\n\n{text}", parse_mode="HTML")
+            return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def api_admin_message_group(request: web.Request) -> web.Response:
+        """Admin: guruh chatiga xabar yuboradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        chat_id = body.get("chat_id")
+        text    = (body.get("text") or "").strip()
+        if not chat_id or not text:
+            return web.json_response({"error": "chat_id va text kerak"}, status=400)
+        try:
+            await bot.send_message(int(chat_id), text)
+            return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    # ── Admin Profile API ─────────────────────────────────────────────────────
+
+    async def api_admin_profile_get(request: web.Request) -> web.Response:
+        """Admin profilini va umumiy statistikani qaytaradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        ap = await db.get_admin_profile(user_id)
+        if not ap:
+            ap = await db.upsert_admin_profile(user_id, {"display_name": f"Admin {user_id}"})
+        today    = datetime.now(tz).strftime("%Y-%m-%d")
+        att_recs = await db.get_attendance_by_date(today)
+        students = await db.get_all_students()
+        pending  = await db.get_referral_students(status="pending")
+        return web.json_response({
+            "telegram_id":    ap.telegram_id,
+            "display_name":   ap.display_name,
+            "avatar_emoji":   ap.avatar_emoji,
+            "total_students": len(students),
+            "today_present":  sum(1 for r in att_recs if r.status == "yes"),
+            "today_absent":   sum(1 for r in att_recs if r.status == "no"),
+            "referral_pending": len(pending),
+        })
+
+    async def api_admin_profile_set(request: web.Request) -> web.Response:
+        """Admin profilini yangilaydi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        ap = await db.upsert_admin_profile(user_id, body)
+        return web.json_response({"ok": True, "display_name": ap.display_name, "avatar_emoji": ap.avatar_emoji})
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -1694,6 +2208,9 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/hw-history",       api_hw_history)
     app.router.add_post("/api/attendance",      api_attendance)
     app.router.add_get("/api/attendance",       api_attendance_today)
+    app.router.add_post("/api/mini-admin/login",   api_mini_admin_login)
+    app.router.add_get("/api/mini-admin/verify",   api_mini_admin_verify)
+    app.router.add_post("/api/mini-admin/logout",  api_mini_admin_logout)
     app.router.add_get("/api/admin/me",           api_admin_me)
     app.router.add_get("/api/admin/stats",        api_admin_stats)
     app.router.add_get("/api/admin/students",         api_admin_students)
@@ -1736,6 +2253,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/student/hw-confirm-status",   api_student_hw_confirm_status)
     app.router.add_post("/api/student/logout",             api_student_logout)
     app.router.add_get("/api/student/leaderboard/global",  api_student_leaderboard_global)
+    app.router.add_get("/api/student/profile/{user_id}",   api_student_profile)
     app.router.add_post("/api/student/avatar",             api_student_avatar)
     app.router.add_get("/api/chat",                        api_chat_get)
     app.router.add_post("/api/chat",                       api_chat_post)
@@ -1747,11 +2265,29 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/game/rooms/{room_id}/join",  api_game_room_join)
     app.router.add_post("/api/game/rooms/{room_id}/progress", api_game_room_progress)
     app.router.add_get("/api/game/leaderboard",            api_game_leaderboard)
+    # Game play counts
+    app.router.add_get("/api/game/plays-today",            api_game_plays_today)
+    app.router.add_post("/api/game/record-play",           api_game_record_play)
+    # Referral
+    app.router.add_get("/api/student/referral",            api_student_referral)
+    app.router.add_get("/api/student/referral/invited",    api_student_referral_invited)
+    app.router.add_post("/api/referral/register",          api_referral_register)
+    app.router.add_post("/api/student/pending-register",   api_student_pending_register)
+    app.router.add_get("/api/student/pending-status",      api_student_pending_status)
+    app.router.add_get("/api/admin/referral-students",             api_admin_referral_students)
+    app.router.add_post("/api/admin/referral-students/{id}/approve", api_admin_referral_approve)
+    app.router.add_post("/api/admin/referral-students/{id}/reject",  api_admin_referral_reject)
+    # Admin messaging
+    app.router.add_post("/api/admin/message/student",      api_admin_message_student)
+    app.router.add_post("/api/admin/message/group",        api_admin_message_group)
+    # Admin profile
+    app.router.add_get("/api/admin/profile",               api_admin_profile_get)
+    app.router.add_post("/api/admin/profile",              api_admin_profile_set)
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)
         # Root path dan ham ochilsin: /student.html, /admin.html va h.k.
-        for _fname in ["student.html", "admin.html", "curator.html", "guide.html", "games.html"]:
+        for _fname in ["student.html", "admin.html", "admin-mini.html", "curator.html", "guide.html", "games.html"]:
             _fpath = os.path.join(webapp_dir, _fname)
             if os.path.isfile(_fpath):
                 app.router.add_get(f"/{_fname}", lambda r, p=_fpath: web.FileResponse(p))

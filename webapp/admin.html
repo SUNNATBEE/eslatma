@@ -1944,13 +1944,19 @@ async function doDeleteTestMsg() {
 }
 
 async function doDeleteAllTestMessages() {
-  if (!confirm('Barcha guruhlardagi oxirgi test xabarlarni o\'chirish?')) return;
-  try {
-    const data = await api('/admin/delete-test-messages', { method: 'POST', body: '{}' });
-    toast(`🗑 ${data.deleted} ta xabar o'chirildi${data.errors ? ', ' + data.errors + ' xato' : ''}`);
-    tg?.HapticFeedback?.notificationOccurred('success');
-  } catch (e) {
-    toast('⚠️ ' + e.message);
+  const doDelete = async () => {
+    try {
+      const data = await api('/admin/delete-test-messages', { method: 'POST', body: '{}' });
+      toast(`🗑 ${data.deleted} ta xabar o'chirildi${data.errors ? ', ' + data.errors + ' xato' : ''}`);
+      tg?.HapticFeedback?.notificationOccurred('success');
+    } catch (e) {
+      toast('⚠️ ' + e.message);
+    }
+  };
+  if (tg?.showConfirm) {
+    tg.showConfirm("Barcha guruhlardagi oxirgi test xabarlarni o'chirish?", (ok) => { if (ok) doDelete(); });
+  } else {
+    doDelete();
   }
 }
 

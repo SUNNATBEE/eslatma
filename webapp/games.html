@@ -138,6 +138,20 @@
     .g2048-cell[data-val="1024"]{background:#edc53f;color:#fff;font-size:11px;}
     .g2048-cell[data-val="2048"]{background:#edc22e;color:#fff;font-size:11px;}
 
+    /* 2048 game-over overlay */
+    .g2048-wrap{position:relative;}
+    .g2048-overlay{position:absolute;inset:0;background:rgba(0,0,0,.82);border-radius:12px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;gap:8px;}
+    .g2048-overlay-icon{font-size:52px;}
+    .g2048-overlay-title{font-size:26px;font-weight:900;color:#fff;}
+    .g2048-overlay-sub{font-size:14px;color:rgba(255,255,255,.65);}
+    .g2048-overlay-score{font-size:22px;font-weight:800;color:var(--gold);}
+    /* Typing lang selector */
+    .typ-lang-row{display:flex;gap:6px;margin-bottom:10px;}
+    .typ-lang-btn{flex:1;padding:7px 4px;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;
+      background:rgba(255,255,255,.05);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;
+      -webkit-tap-highlight-color:transparent;transition:all .15s;}
+    .typ-lang-btn.active{border-color:var(--accent);background:rgba(82,136,193,.18);color:var(--accent);}
     /* ═══════════════ MEMORY MATCH ═════════════════════════════════════ */
     .memory-board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
     .mem-card{aspect-ratio:1;border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;
@@ -163,12 +177,39 @@
     .chess-cell.selected{background:#7fc97f !important;}
     .chess-cell.possible{background:#7fc9c9 !important;}
     .chess-cell.last-move{background:#cdd16f !important;}
+    /* Dona ranglari: oq va qora */
+    .cp-w{color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,.9);font-weight:900;}
+    .cp-b{color:#111;text-shadow:0 0 2px rgba(255,255,255,.4),0 1px 2px rgba(0,0,0,.3);font-weight:900;}
+    .chess-cell.light .cp-w{color:#fff;text-shadow:0 0 3px #333,0 1px 4px rgba(0,0,0,.9);}
+    .chess-cell.dark  .cp-w{color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,.9);}
+    .chess-cell.light .cp-b{color:#1a1a1a;text-shadow:0 0 2px rgba(0,0,0,.2);}
+    .chess-cell.dark  .cp-b{color:#111;text-shadow:0 0 1px rgba(255,255,255,.2);}
+    .chess-ai-thinking{font-size:12px;color:var(--warn);text-align:center;padding:4px;animation:pulse .8s ease infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
     .chess-info{display:flex;gap:8px;margin-bottom:10px;}
     .chess-stat{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
     .chess-stat-val{font-size:16px;font-weight:800;}
     .chess-stat-lbl{font-size:10px;color:var(--sub);}
     .chess-msg{text-align:center;font-size:14px;font-weight:700;padding:10px;
       border-radius:10px;margin-bottom:10px;background:rgba(255,255,255,.07);}
+
+    /* ═══════════════ PROFILE MODAL ════════════════════════════════════ */
+    .profile-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
+      display:flex;align-items:flex-end;justify-content:center;}
+    .profile-modal{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:480px;
+      padding:20px 20px 32px;max-height:85vh;overflow-y:auto;}
+    .profile-modal-drag{width:36px;height:4px;background:rgba(255,255,255,.15);
+      border-radius:2px;margin:0 auto 16px;}
+    .profile-avatar{font-size:52px;text-align:center;margin-bottom:8px;}
+    .profile-name{font-size:20px;font-weight:900;text-align:center;}
+    .profile-group{font-size:13px;color:var(--sub);text-align:center;margin-bottom:16px;}
+    .profile-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+    .profile-stat{background:var(--bg2);border-radius:10px;padding:10px;text-align:center;}
+    .profile-stat-val{font-size:20px;font-weight:900;color:var(--accent);}
+    .profile-stat-lbl{font-size:10px;color:var(--sub);margin-top:2px;}
+    .profile-games{background:var(--bg2);border-radius:10px;padding:12px;}
+    /* ═══════════════ BLOCK BLAST (BB) ════════════════════════════════ */
+    /* (Canvas-based, full-page overlay — see #blockBlastPage) */
 
     /* ═══════════════ MULTIPLAYER ═══════════════════════════════════════ */
     .room-card{background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:8px;
@@ -187,6 +228,16 @@
     .race-bar-fill{height:100%;border-radius:6px;transition:width .3s;}
     .race-p1 .race-bar-fill{background:var(--accent);}
     .race-p2 .race-bar-fill{background:var(--warn);}
+
+    /* ═══════════════ XP MODAL ══════════════════════════════════════════ */
+    @keyframes xpPop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+
+    /* ═══════════════ QUIZ FIX ══════════════════════════════════════════ */
+    .quiz-opt { display: block !important; width: 100%; }
+
+    /* ═══════════════ GAME LEADERBOARD BUTTONS ══════════════════════════ */
+    .game-lb-btn { background:#1e2a3a; color:#aaa; border:1px solid #2a3a4a; border-radius:20px; padding:6px 14px; font-size:12px; cursor:pointer; white-space:nowrap; }
+    .game-lb-btn.active { background:#2196F3; color:#fff; border-color:#2196F3; }
   </style>
 </head>
 <body>
@@ -195,66 +246,95 @@
     <div class="header-title">🕹 O'yinlar</div>
     <div class="xp-badge" id="hdrXp">0 XP</div>
     <div style="font-size:11px;color:var(--sub);margin-left:4px" id="hdrLvl">Lv.1</div>
+    <button id="soundBtn" onclick="toggleSound()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;">🔊</button>
+    <button onclick="refreshGames()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;" title="Yangilash">🔄</button>
+    <button id="gLangUz" onclick="setGameLang('uz')" style="border:none;background:rgba(255,255,255,.08);border-radius:6px;padding:3px 7px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text)" class="active">🇺🇿</button>
+    <button id="gLangRu" onclick="setGameLang('ru')" style="border:none;background:rgba(255,255,255,.08);border-radius:6px;padding:3px 7px;font-size:11px;font-weight:700;cursor:pointer;color:var(--sub)">🇷🇺</button>
   </div>
 
   <div class="content" id="content">
 
     <!-- HOME -->
     <div class="page active" id="page-home">
-      <p class="section-title">O'yinni tanlang</p>
+      <p class="section-title" data-tsec="choose_game">O'yinni tanlang</p>
       <div class="game-grid">
         <div class="game-card featured" onclick="goPage('typing')">
           <div class="game-card-icon">⌨️</div>
           <div>
-            <div class="game-card-name">Typing Speed</div>
-            <div class="game-card-desc">Yozish tezligini o'lchaymiz — WPM</div>
+            <div class="game-card-name" id="game-card-typing-name">Typing Speed</div>
+            <div class="game-card-desc" id="game-card-typing-desc">Yozish tezligini o'lchaymiz — WPM</div>
             <div class="game-card-xp">+5…25 XP</div>
           </div>
         </div>
         <div class="game-card" onclick="goPage('quiz')">
           <div class="game-card-icon">🧠</div>
-          <div class="game-card-name">Code Quiz</div>
-          <div class="game-card-desc">Dasturlash savollari</div>
+          <div class="game-card-name" id="game-card-quiz-name">Code Quiz</div>
+          <div class="game-card-desc" id="game-card-quiz-desc">Dasturlash savollari</div>
           <div class="game-card-xp">+5 XP/savol</div>
         </div>
         <div class="game-card" onclick="goPage('g2048')">
           <div class="game-card-icon">🔢</div>
-          <div class="game-card-name">2048</div>
-          <div class="game-card-desc">Klassik raqamlar o'yini</div>
+          <div class="game-card-name" id="game-card-2048-name">2048</div>
+          <div class="game-card-desc" id="game-card-2048-desc">Klassik raqamlar o'yini</div>
           <div class="game-card-xp">+10…30 XP</div>
         </div>
         <div class="game-card" onclick="goPage('memory')">
           <div class="game-card-icon">🃏</div>
-          <div class="game-card-name">Memory</div>
-          <div class="game-card-desc">Karta juftlashtir</div>
+          <div class="game-card-name" id="game-card-mem-name">Memory</div>
+          <div class="game-card-desc" id="game-card-mem-desc">Karta juftlashtir</div>
           <div class="game-card-xp">+15 XP</div>
         </div>
         <div class="game-card" onclick="goPage('chess')">
           <div class="game-card-icon">♟</div>
-          <div class="game-card-name">Shaxmat</div>
-          <div class="game-card-desc">Bot bilan o'ynash</div>
+          <div class="game-card-name" id="game-card-chess-name">Shaxmat</div>
+          <div class="game-card-desc" id="game-card-chess-desc">Bot bilan o'ynash</div>
           <div class="game-card-xp">+20 XP (g'alaba)</div>
+        </div>
+        <div class="game-card" onclick="startBlockBlast()">
+          <div class="game-card-icon">🟥</div>
+          <div class="game-card-name">Block Blast</div>
+          <div class="game-card-desc">8×8 grid puzzle</div>
+          <div class="game-card-xp">+10…30 XP</div>
+          <div id="badge_block_blast" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
         </div>
         <div class="game-card featured" onclick="goPage('multi')" style="border-color:rgba(245,158,11,.3);">
           <div class="game-card-icon">🏁</div>
           <div>
-            <div class="game-card-name">Typing Race 🔥</div>
-            <div class="game-card-desc">2 o'yinchi — kim tez yozadi?</div>
-            <div class="game-card-xp">G'alaba: +20 XP · Yutqazish: +5 XP</div>
+            <div class="game-card-name" id="game-card-race-name">Typing Race 🔥</div>
+            <div class="game-card-desc" id="game-card-race-desc">2 o'yinchi — kim tez yozadi?</div>
+            <div class="game-card-xp" id="game-card-race-xp">G'alaba: +20 XP · Yutqazish: +5 XP</div>
           </div>
         </div>
       </div>
 
-      <p class="section-title">Mening rekordlarim</p>
+      <p class="section-title" data-tsec="my_records">Mening rekordlarim</p>
       <div class="card" id="myBestScores"><div class="spinner"></div></div>
+
+      <p class="section-title" id="topPlayersTitle">🏆 Top o'yinchilar</p>
+      <div class="card">
+        <div id="gameLeaderboardSelector" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0;margin-bottom:12px;">
+          <button class="game-lb-btn active" onclick="loadGameLeaderboard('typing')" data-game="typing">⌨️ Typing</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('quiz')" data-game="quiz">❓ Quiz</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('chess')" data-game="chess">♟ Chess</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('2048')" data-game="2048">🎲 2048</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('memory')" data-game="memory">🧠 Memory</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('block_blast')" data-game="block_blast">🟥 Block Blast</button>
+        </div>
+        <div id="gameLbList"><div class="spinner"></div></div>
+      </div>
     </div>
 
     <!-- TYPING -->
     <div class="page" id="page-typing">
+      <div class="typ-lang-row">
+        <button class="typ-lang-btn active" id="typLangUz" onclick="setTypingLang('uz')">🇺🇿 O'zbek</button>
+        <button class="typ-lang-btn" id="typLangRu" onclick="setTypingLang('ru')">🇷🇺 Русский</button>
+        <button class="typ-lang-btn" id="typLangEn" onclick="setTypingLang('en')">🇬🇧 English</button>
+      </div>
       <div class="typing-stats">
         <div class="typing-stat"><div class="typing-stat-val" id="typWpm">0</div><div class="typing-stat-lbl">WPM</div></div>
-        <div class="typing-stat"><div class="typing-stat-val" id="typAcc">100%</div><div class="typing-stat-lbl">Aniqlik</div></div>
-        <div class="typing-stat"><div class="typing-stat-val" id="typTimer">60</div><div class="typing-stat-lbl">Vaqt</div></div>
+        <div class="typing-stat"><div class="typing-stat-val" id="typAcc">100%</div><div class="typing-stat-lbl" data-t="accuracy">Aniqlik</div></div>
+        <div class="typing-stat"><div class="typing-stat-val" id="typTimer">60</div><div class="typing-stat-lbl" data-t="time">Vaqt</div></div>
       </div>
       <div class="typing-progress-bar"><div class="typing-progress-fill" id="typProg" style="width:0%"></div></div>
       <div class="typing-text-wrap" id="typText"></div>
@@ -262,10 +342,10 @@
       <div id="typResult" style="display:none">
         <div class="card" style="text-align:center;padding:20px">
           <div style="font-size:48px;font-weight:900;color:var(--gold)" id="typFinalWpm">0</div>
-          <div style="font-size:14px;color:var(--sub);margin-bottom:12px">WPM · <span id="typFinalAcc"></span> aniqlik</div>
+          <div style="font-size:14px;color:var(--sub);margin-bottom:12px">WPM · <span id="typFinalAcc"></span> <span data-t="accuracy">aniqlik</span></div>
           <div style="font-size:13px;color:var(--success);font-weight:700;margin-bottom:14px" id="typXpMsg"></div>
-          <button class="btn btn-primary" onclick="startTyping()">Qayta o'ynash</button>
-          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">← Orqaga</button>
+          <button class="btn btn-primary" onclick="startTyping()" data-t="play_again">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px" data-t="back">← Orqaga</button>
         </div>
       </div>
     </div>
@@ -285,7 +365,7 @@
       </div>
       <div id="quizResult" style="display:none">
         <div class="card" style="text-align:center;padding:20px 16px">
-          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Test yakunlandi!</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px" id="quizDoneTitle">Test yakunlandi!</div>
           <div class="quiz-score-big" id="quizFinalScore">0</div>
           <div style="font-size:13px;color:var(--sub);margin:6px 0 14px">ball · <span id="quizFinalXp"></span></div>
           <div id="quizResultRows"></div>
@@ -298,14 +378,23 @@
     <!-- 2048 -->
     <div class="page" id="page-g2048">
       <div class="g2048-info">
-        <div class="g2048-score-box"><div class="g2048-score-lbl">Ball</div><div class="g2048-score-val" id="s2048Score">0</div></div>
-        <div class="g2048-score-box"><div class="g2048-score-lbl">Rekord</div><div class="g2048-score-val" id="s2048Best">0</div></div>
-        <div class="g2048-score-box"><div class="g2048-score-lbl">Katak</div><div class="g2048-score-val" id="s2048Max">0</div></div>
+        <div class="g2048-score-box"><div class="g2048-score-lbl" data-t="ball">Ball</div><div class="g2048-score-val" id="s2048Score">0</div></div>
+        <div class="g2048-score-box"><div class="g2048-score-lbl" data-t="record">Rekord</div><div class="g2048-score-val" id="s2048Best">0</div></div>
+        <div class="g2048-score-box"><div class="g2048-score-lbl" data-t="max_tile">Katak</div><div class="g2048-score-val" id="s2048Max">0</div></div>
       </div>
-      <div class="g2048-board" id="board2048" ontouchstart="t2048Start(event)" ontouchend="t2048End(event)"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" onclick="init2048()" style="flex:1">Yangi o'yin</button>
-        <button class="btn btn-ghost" onclick="goPage('home')" style="flex:1">← Orqaga</button>
+      <div class="g2048-wrap">
+        <div class="g2048-board" id="board2048" ontouchstart="t2048Start(event)" ontouchend="t2048End(event)"></div>
+        <div class="g2048-overlay" id="g2048Overlay" style="display:none">
+          <div class="g2048-overlay-icon">😔</div>
+          <div class="g2048-overlay-title">Game Over!</div>
+          <div class="g2048-overlay-sub" id="g2048OverlaySub">Oyin tugadi</div>
+          <div class="g2048-overlay-score" id="g2048OverlayScore"></div>
+          <button onclick="init2048()" style="margin-top:8px;background:var(--accent);color:#fff;border:none;padding:11px 28px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer" data-t="new_game">Yangi o'yin</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost" onclick="init2048()" style="flex:1" data-t="new_game">Yangi o'yin</button>
+        <button class="btn btn-ghost" onclick="goPage('home')" style="flex:1" data-t="back">← Orqaga</button>
       </div>
     </div>
 
@@ -340,19 +429,19 @@
       <div id="multiLobby">
         <p class="section-title">Typing Race — Multiplayer</p>
         <button class="btn btn-primary" onclick="createRoom()" id="createRoomBtn">🎯 Xona yaratish</button>
-        <button class="btn btn-ghost" onclick="loadRooms()" style="margin-top:8px">🔄 Xonalarni yangilash</button>
+        <button class="btn btn-ghost" onclick="loadRooms()" style="margin-top:8px" id="refreshRoomsBtn">🔄 Xonalarni yangilash</button>
         <div style="margin-top:14px">
-          <p class="section-title">Ochiq xonalar</p>
+          <p class="section-title" data-tsec="open_rooms">Ochiq xonalar</p>
           <div id="roomsList"><div class="spinner"></div></div>
         </div>
       </div>
       <div id="multiWaiting" style="display:none">
         <div class="card" style="text-align:center;padding:20px">
           <div style="font-size:32px;margin-bottom:8px">⏳</div>
-          <div style="font-size:16px;font-weight:800;margin-bottom:6px">O'yinchi kutilmoqda</div>
-          <div style="font-size:13px;color:var(--sub);margin-bottom:14px">Xona ID: <b id="waitRoomId">—</b></div>
+          <div style="font-size:16px;font-weight:800;margin-bottom:6px" id="waitingPlayerText">O'yinchi kutilmoqda</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:14px"><span id="roomIdLabel">Xona ID</span>: <b id="waitRoomId">—</b></div>
           <div class="spinner"></div>
-          <button class="btn btn-ghost" onclick="cancelRoom()" style="margin-top:14px">Bekor qilish</button>
+          <button class="btn btn-ghost" onclick="cancelRoom()" style="margin-top:14px" id="cancelBtn">Bekor qilish</button>
         </div>
       </div>
       <div id="multiGame" style="display:none">
@@ -375,6 +464,27 @@
 
   </div><!-- content -->
 
+  <!-- PROFILE MODAL -->
+  <div class="profile-modal-bg" id="profileModal" style="display:none" onclick="closeProfileModal(event)">
+    <div class="profile-modal" id="profileModalContent">
+      <div class="profile-modal-drag"></div>
+      <div class="profile-avatar" id="pmAvatar">👤</div>
+      <div class="profile-name" id="pmName">—</div>
+      <div class="profile-group" id="pmGroup">—</div>
+      <div class="profile-stats">
+        <div class="profile-stat"><div class="profile-stat-val" id="pmXp">0</div><div class="profile-stat-lbl">XP</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="pmLevel">1</div><div class="profile-stat-lbl">Level</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="pmStreak">0</div><div class="profile-stat-lbl" id="pmStreakLbl">Streak</div></div>
+      </div>
+      <div class="profile-stats" style="margin-bottom:16px">
+        <div class="profile-stat"><div class="profile-stat-val" id="pmAttend">0</div><div class="profile-stat-lbl" id="pmAttendLbl">Davomat</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="pmHw">0</div><div class="profile-stat-lbl" id="pmHwLbl">Uy ishi</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="pmRank">#—</div><div class="profile-stat-lbl" id="pmRankLbl">Reyting</div></div>
+      </div>
+      <div class="profile-games" id="pmGames"></div>
+    </div>
+  </div>
+
   <div class="tabbar">
     <div class="tab-item active" id="tab-home"   onclick="goPage('home')"><div class="tab-icon">🏠</div><div class="tab-label">Bosh</div></div>
     <div class="tab-item"        id="tab-typing" onclick="goPage('typing')"><div class="tab-icon">⌨️</div><div class="tab-label">Typing</div></div>
@@ -386,12 +496,171 @@
 
 <div id="toast"></div>
 
+<!-- XP Reward Modal -->
+<div id="xpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e2a3a;border-radius:20px;padding:32px 24px;text-align:center;max-width:320px;width:90%;animation:xpPop 0.4s ease;">
+    <div id="xpModalIcon" style="font-size:56px;margin-bottom:8px;">🎉</div>
+    <div id="xpModalTitle" style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">G'alaba!</div>
+    <div id="xpModalXp" style="font-size:36px;font-weight:800;color:#ffd700;margin-bottom:4px;">+20 XP</div>
+    <div id="xpModalTotal" style="color:#aaa;font-size:14px;margin-bottom:16px;">Jami: 350 XP</div>
+    <div style="background:#0d1a2a;border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px;">
+      <div id="xpModalBar" style="height:100%;background:linear-gradient(90deg,#4CAF50,#8BC34A);transition:width 0.8s ease;width:0%;"></div>
+    </div>
+    <div id="xpModalLevel" style="color:#7eb8f7;font-size:13px;margin-bottom:20px;">Lv.3 O'quvchi</div>
+    <button onclick="closeXpModal()" style="background:#4CAF50;color:#fff;border:none;border-radius:12px;padding:12px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;">OK</button>
+  </div>
+</div>
+
+<!-- Block Blast Page -->
+<div id="blockBlastPage" style="display:none;position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow:auto;">
+  <div style="display:flex;align-items:center;padding:16px;gap:12px;">
+    <button onclick="closeBlockBlast()" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;">←</button>
+    <h2 style="color:#fff;margin:0;flex:1;">Block Blast</h2>
+    <div style="color:#fff;">Score: <span id="bbScore">0</span></div>
+  </div>
+  <canvas id="bbCanvas" style="display:block;margin:0 auto;touch-action:none;"></canvas>
+  <div id="bbPieces" style="display:flex;justify-content:center;gap:16px;padding:16px;"></div>
+  <div id="bbGameOver" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <div style="font-size:48px;">💥</div>
+    <div style="color:#fff;font-size:24px;font-weight:700;">O'yin tugadi!</div>
+    <div style="color:#ffd700;font-size:20px;">Score: <span id="bbFinalScore">0</span></div>
+    <button onclick="startBlockBlastGame()" style="background:#4CAF50;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;cursor:pointer;">Qayta o'ynash</button>
+    <button onclick="closeBlockBlast()" style="background:#333;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;cursor:pointer;">Chiqish</button>
+  </div>
+</div>
+
 <script>
 /* ── Telegram WebApp ─────────────────────────────────────────────────── */
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color'); }
 const INIT_DATA = tg?.initData || '';
 const BASE_URL  = window.location.origin;
+
+// ── Sound System ────────────────────────────────────────────────────────────
+let _soundOn = localStorage.getItem('soundOn') !== 'false';
+let _ac = null;
+function _getAC() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  return _ac;
+}
+function playSound(freq, type='sine', dur=0.15, vol=0.3) {
+  if (!_soundOn) return;
+  try {
+    const ac = _getAC();
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    o.start(); o.stop(ac.currentTime + dur);
+  } catch(e) {}
+}
+function playSoundSeq(freqs, dur=0.1) {
+  freqs.forEach((f, i) => setTimeout(() => playSound(f, 'sine', dur), i * dur * 1000));
+}
+function toggleSound() {
+  _soundOn = !_soundOn;
+  localStorage.setItem('soundOn', _soundOn);
+  const btn = document.getElementById('soundBtn');
+  if (btn) btn.textContent = _soundOn ? '🔊' : '🔇';
+}
+
+// ── Daily Game Limits ────────────────────────────────────────────────────────
+let _playsToday = {};
+const DAILY_LIMIT = 3;
+
+async function loadPlaysToday() {
+  try {
+    const initData = window.Telegram?.WebApp?.initData || '';
+    const r = await fetch('/api/game/plays-today', {headers: {'X-Init-Data': initData}});
+    if (r.ok) _playsToday = await r.json();
+    updateGameCardBadges();
+  } catch(e) {}
+}
+
+async function recordPlay(gameType) {
+  const initData = window.Telegram?.WebApp?.initData || '';
+  const r = await fetch('/api/game/record-play', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Init-Data': initData},
+    body: JSON.stringify({game_type: gameType})
+  });
+  const data = await r.json();
+  _playsToday[gameType] = data.play_count || (_playsToday[gameType] || 0) + 1;
+  return data;
+}
+
+function checkDailyLimit(gameType) {
+  return (_playsToday[gameType] || 0) >= DAILY_LIMIT;
+}
+
+function showLimitModal(gameType) {
+  alert(`⏳ ${gameType} uchun kunlik limit tugadi! (${DAILY_LIMIT}/${DAILY_LIMIT})\nErtaga yana o'ynashingiz mumkin.`);
+}
+
+function updateGameCardBadges() {
+  const gameTypes = ['typing', 'quiz', 'chess', '2048', 'memory', 'block_blast'];
+  gameTypes.forEach(gt => {
+    const badge = document.getElementById('badge_' + gt);
+    if (badge) {
+      const plays = _playsToday[gt] || 0;
+      const left = Math.max(0, DAILY_LIMIT - plays);
+      badge.textContent = left + '/' + DAILY_LIMIT + ' qoldi';
+      badge.style.color = left === 0 ? '#f44336' : left === 1 ? '#FF9800' : '#4CAF50';
+    }
+  });
+}
+
+// ── XP Modal ─────────────────────────────────────────────────────────────────
+function showXpModal(icon, title, xpEarned, totalXp, levelName, levelXp, nextXp) {
+  const el = document.getElementById('xpModal');
+  el.style.display = 'flex';
+  document.getElementById('xpModalIcon').textContent = icon;
+  document.getElementById('xpModalTitle').textContent = title;
+  document.getElementById('xpModalXp').textContent = '+' + xpEarned + ' XP';
+  document.getElementById('xpModalTotal').textContent = 'Jami: ' + totalXp + ' XP';
+  document.getElementById('xpModalLevel').textContent = levelName;
+  const pct = nextXp ? Math.min(100, Math.round((totalXp / nextXp) * 100)) : 100;
+  setTimeout(() => { document.getElementById('xpModalBar').style.width = pct + '%'; }, 100);
+  playSoundSeq([523, 659, 784], 0.12);
+}
+function closeXpModal() {
+  document.getElementById('xpModal').style.display = 'none';
+}
+
+// ── Per-Game Leaderboard ──────────────────────────────────────────────────────
+let _currentGameLb = 'typing';
+async function loadGameLeaderboard(gameType) {
+  _currentGameLb = gameType;
+  document.querySelectorAll('.game-lb-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.game === gameType);
+  });
+  const initData = window.Telegram?.WebApp?.initData || '';
+  try {
+    const r = await fetch('/api/game/leaderboard?type=' + gameType, {headers: {'X-Init-Data': initData}});
+    const data = await r.json();
+    const leaders = data.leaders || [];
+    const el = document.getElementById('gameLbList');
+    if (!el) return;
+    if (leaders.length === 0) { el.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Hali natija yo\'q</div>'; return; }
+    el.innerHTML = leaders.map((l, i) => `
+      <div style="display:flex;align-items:center;gap:12px;background:#1e2a3a;border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="font-size:18px;font-weight:700;color:${i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'#666'};min-width:24px;">${i+1}</div>
+        <div style="font-size:24px;">${l.avatar || '👤'}</div>
+        <div style="flex:1;"><div style="color:#fff;font-weight:600;">${l.full_name}</div><div style="color:#666;font-size:12px;">${l.group_name}</div></div>
+        <div style="color:#ffd700;font-weight:700;">${l.score}</div>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+// ── Refresh ───────────────────────────────────────────────────────────────────
+function refreshGames() {
+  playSound(400);
+  loadPlaysToday();
+  if (_currentGameLb) loadGameLeaderboard(_currentGameLb);
+}
 
 /* ── API ─────────────────────────────────────────────────────────────── */
 async function api(path, opts = {}) {
@@ -428,6 +697,7 @@ function goPage(name) {
   currentPage = name;
   const content = document.getElementById('content');
   content.scrollTop = 0;
+  if (name === 'home')   { loadPlaysToday(); loadGameLeaderboard(_currentGameLb || 'typing'); }
   if (name === 'typing') startTyping();
   if (name === 'quiz')   startQuiz();
   if (name === 'g2048')  init2048();
@@ -437,15 +707,47 @@ function goPage(name) {
 }
 
 /* ── Init ────────────────────────────────────────────────────────────── */
+async function loadTopPlayers() {
+  const el = document.getElementById('topPlayersCard');
+  try {
+    const data = await api('/student/leaderboard/global');
+    const leaders = (data.leaders || []).slice(0, 10);
+    if (!leaders.length) { el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:10px;font-size:13px">—</div>'; return; }
+    const medals = ['🥇','🥈','🥉'];
+    el.innerHTML = leaders.map((p,i) => {
+      const medal = medals[i] || `#${p.rank}`;
+      const av = p.avatar || '👤';
+      return `<div onclick="openProfile(${p.user_id || 0})" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <div style="width:26px;text-align:center;font-size:14px;font-weight:800">${medal}</div>
+        <div style="font-size:18px">${av}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.full_name}${p.is_me ? ' ⭐' : ''}</div>
+          <div style="font-size:11px;color:var(--sub)">${p.group_name} · Lv.${p.level}</div>
+        </div>
+        <div style="font-size:13px;font-weight:900;color:var(--gold)">${p.xp} XP</div>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:10px;font-size:13px">—</div>';
+  }
+}
+
 async function init() {
+  applyLang();
+  // Restore sound button state
+  const sBtn = document.getElementById('soundBtn');
+  if (sBtn) sBtn.textContent = _soundOn ? '🔊' : '🔇';
+  loadPlaysToday();
+  loadGameLeaderboard('typing');
   try {
     me = await api('/me');
     document.getElementById('hdrXp').textContent  = (me.xp || 0) + ' XP';
     document.getElementById('hdrLvl').textContent = 'Lv.' + (me.level || 1);
     loadBestScores();
+    loadTopPlayers();
   } catch(e) {
     if (e.status === 401 || e.status === 404) {
-      toast('Avval botda ro\'yxatdan o\'ting!');
+      toast(L.register_first);
     }
   }
 }
@@ -457,20 +759,20 @@ async function loadBestScores() {
     const best = prog.game_best || {};
     const games = [
       { key:'typing', name:'⌨️ Typing Speed', unit:'WPM' },
-      { key:'quiz',   name:'🧠 Code Quiz',    unit:'ball' },
-      { key:'2048',   name:'🔢 2048',          unit:'ball' },
-      { key:'memory', name:'🃏 Memory',         unit:'harakatda' },
-      { key:'chess',  name:'♟ Shaxmat',        unit:'g\'alaba' },
+      { key:'quiz',   name:'🧠 Code Quiz',    unit: L.ball },
+      { key:'2048',   name:'🔢 2048',          unit: L.ball },
+      { key:'memory', name:'🃏 ' + L.memory_name, unit: L.moves },
+      { key:'chess',  name:'♟ ' + L.chess_name,   unit:'' },
     ];
     el.innerHTML = games.map(g => {
       const v = best[g.key];
       return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px">
         <span>${g.name}</span>
-        <span style="font-weight:800;color:var(--gold)">${v ? v + ' ' + g.unit : '—'}</span>
+        <span style="font-weight:800;color:var(--gold)">${v ? v + (g.unit ? ' ' + g.unit : '') : '—'}</span>
       </div>`;
     }).join('');
   } catch {
-    el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:12px;font-size:13px">Rekordlar yuklanmadi</div>';
+    el.innerHTML = `<div style="color:var(--sub);text-align:center;padding:12px;font-size:13px">${L.no_records}</div>`;
   }
 }
 
@@ -485,7 +787,7 @@ async function saveScore(game_type, score, xp_earned) {
       document.getElementById('hdrXp').textContent  = res.new_xp + ' XP';
       document.getElementById('hdrLvl').textContent = 'Lv.' + res.new_level;
     }
-    if (res.leveled_up) toast('🎉 Daraja oshdi! Lv.' + res.new_level);
+    if (res.leveled_up) toast(L.level_up + res.new_level);
     return res;
   } catch { return null; }
 }
@@ -493,13 +795,35 @@ async function saveScore(game_type, score, xp_earned) {
 /* ══════════════════════════════════════════════════════════════════════
    TYPING SPEED
 ══════════════════════════════════════════════════════════════════════ */
-const TYPING_TEXTS = [
+const TYPING_TEXTS_UZ = [
   "Python dasturlash tili oddiy va o'qishga qulay sintaksisga ega. U data science, web va avtomatlashtirish uchun ishlatiladi.",
   "Funksiyalar kodni qayta ishlatish imkonini beradi. Ular parametr qabul qilib natija qaytaradi.",
   "Tsikl konstruktsiyalari kodni bir necha marta takrorlash uchun ishlatiladi. For va while tsikllari mavjud.",
   "O'zgaruvchi — ma'lumotni saqlaydigan nomlangan xotira joyi. Python da tur ko'rsatmasdan e'lon qilinadi.",
   "Massiv — bir xil turdagi elementlar to'plami. Python da list, tuple va set turlari mavjud.",
 ];
+const TYPING_TEXTS_RU = [
+  "Программирование — это искусство создания программ для решения задач с помощью компьютера.",
+  "Функции позволяют повторно использовать код и делают программу более структурированной.",
+  "Цикл — это конструкция, которая позволяет выполнять блок кода несколько раз подряд.",
+  "Переменная — это именованная ячейка памяти для хранения данных в программе.",
+  "Массив — это структура данных для хранения набора элементов одного типа.",
+];
+const TYPING_TEXTS_EN = [
+  "Programming is the art of creating software applications to solve real world problems efficiently.",
+  "Functions allow us to reuse code and keep our programs organized and easy to maintain.",
+  "A loop is a programming construct that repeats a block of code multiple times in sequence.",
+  "A variable is a named storage location that holds a value which can change during execution.",
+  "An array is a data structure that stores a collection of elements of the same type.",
+];
+const TYPING_TEXTS_ALL = { uz: TYPING_TEXTS_UZ, ru: TYPING_TEXTS_RU, en: TYPING_TEXTS_EN };
+let typingLang = 'uz';
+function setTypingLang(l) {
+  typingLang = l;
+  ['uz','ru','en'].forEach(k => document.getElementById('typLang'+k.charAt(0).toUpperCase()+k.slice(1))?.classList.toggle('active', k===l));
+  startTyping();
+}
+const TYPING_TEXTS = TYPING_TEXTS_UZ; // legacy alias
 
 let typTimer=null, typStart=null, typTimeLeft=60, typWords=[], typIdx=0, typFinished=false;
 
@@ -508,7 +832,8 @@ function startTyping() {
   typFinished = false;
   typTimeLeft = 60;
   typIdx = 0;
-  const text = TYPING_TEXTS[Math.floor(Math.random() * TYPING_TEXTS.length)];
+  const texts = TYPING_TEXTS_ALL[typingLang] || TYPING_TEXTS_UZ;
+  const text = texts[Math.floor(Math.random() * texts.length)];
   typWords = text.split('');
   renderTypingText(0);
   document.getElementById('typInput').value = '';
@@ -546,6 +871,11 @@ function onTypingInput() {
 
   typIdx = val.length;
   const correctSoFar = typWords.slice(0, typIdx).join('') === val;
+
+  // Sound on correct keystroke
+  if (typIdx > 0 && typWords[typIdx - 1] === val[typIdx - 1]) {
+    playSound(800, 'sine', 0.05);
+  }
 
   // Color chars
   const el = document.getElementById('typText');
@@ -592,12 +922,13 @@ async function finishTyping(completed) {
 
   document.getElementById('typFinalWpm').textContent = wpm;
   document.getElementById('typFinalAcc').textContent = acc + '%';
-  document.getElementById('typXpMsg').textContent    = `+${xp} XP olindi!`;
-  document.getElementById('typResult').style.display = '';
+  document.getElementById('typXpMsg').textContent    = `+${xp} ${L.xp_earned}!`;
+  document.getElementById('typResult').style.display = 'block';
   document.getElementById('typText').style.display   = 'none';
 
   tg?.HapticFeedback?.notificationOccurred('success');
-  await saveScore('typing', wpm, xp);
+  const res = await saveScore('typing', wpm, xp);
+  if (res) showXpModal('⌨️', 'Typing Speed!', xp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -630,18 +961,25 @@ function startQuiz() {
   quizIdx   = 0;
   // Shuffle and pick 10
   quizQ = [...QUIZ_QUESTIONS].sort(() => Math.random() - .5).slice(0, 10);
-  document.getElementById('quizGame').style.display   = '';
+  document.getElementById('quizGame').style.display   = 'block';
   document.getElementById('quizResult').style.display = 'none';
   showQuizQ();
 }
 
 function showQuizQ() {
   const q = quizQ[quizIdx];
+  if (!q) return;
   document.getElementById('quizQNum').textContent = `${quizIdx+1}/10`;
   document.getElementById('quizQ').textContent    = q.q;
-  document.getElementById('quizOpts').innerHTML   = q.opts.map((o,i) =>
-    `<button class="quiz-opt" onclick="answerQuiz(${i})">${o}</button>`
-  ).join('');
+  const optsEl = document.getElementById('quizOpts');
+  if (optsEl) {
+    optsEl.style.display = 'block';
+    optsEl.innerHTML = q.opts.map((o,i) =>
+      `<button class="quiz-opt" onclick="answerQuiz(${i})">${o}</button>`
+    ).join('');
+  }
+  const quizCard = document.getElementById('quizGame');
+  if (quizCard) quizCard.style.display = 'block';
   quizTimeLeft  = 30;
   quizAnswered  = false;
   clearInterval(quizTimer);
@@ -667,7 +1005,8 @@ function answerQuiz(chosen) {
   const q     = quizQ[quizIdx];
   const opts  = document.getElementById('quizOpts').querySelectorAll('.quiz-opt');
   const isOk  = chosen === q.ans;
-  if (isOk) { quizScore++; tg?.HapticFeedback?.impactOccurred('light'); }
+  if (isOk) { quizScore++; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523, 659, 784], 0.12); }
+  else { playSound(300, 'square', 0.3); }
   opts.forEach((el, i) => {
     if (i === q.ans)   el.classList.add('show-correct');
     if (i === chosen && !isOk) el.classList.add('wrong');
@@ -684,14 +1023,15 @@ async function finishQuiz() {
   clearInterval(quizTimer);
   const xp = quizScore * 5;
   document.getElementById('quizFinalScore').textContent = quizScore * 10;
-  document.getElementById('quizFinalXp').textContent    = `+${xp} XP olindi`;
+  document.getElementById('quizFinalXp').textContent    = `+${xp} ${L.xp_earned}`;
   document.getElementById('quizResultRows').innerHTML   = quizResults.map(r =>
     `<div class="quiz-result-row"><span>${r.q.slice(0,40)}…</span><span style="color:${r.correct ? 'var(--success)':'var(--danger)'}">${r.correct ? '✅' : '❌'}</span></div>`
   ).join('');
   document.getElementById('quizGame').style.display   = 'none';
-  document.getElementById('quizResult').style.display = '';
+  document.getElementById('quizResult').style.display = 'block';
   tg?.HapticFeedback?.notificationOccurred('success');
-  await saveScore('quiz', quizScore * 10, xp);
+  const res = await saveScore('quiz', quizScore * 10, xp);
+  if (res) showXpModal('🧠', 'Code Quiz!', xp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -703,6 +1043,7 @@ let t2048X0=0, t2048Y0=0;
 function init2048() {
   g2048Over = false; score2048 = 0;
   board2048 = Array(4).fill(null).map(() => Array(4).fill(0));
+  document.getElementById('g2048Overlay').style.display = 'none';
   addTile2048(); addTile2048();
   render2048();
 }
@@ -731,7 +1072,7 @@ function slide2048(row) {
   const r = row.filter(v => v);
   const res = []; let merged = false;
   for (let i = 0; i < r.length; i++) {
-    if (!merged && r[i+1] === r[i]) { res.push(r[i]*2); score2048 += r[i]*2; i++; merged = true; }
+    if (!merged && r[i+1] === r[i]) { res.push(r[i]*2); score2048 += r[i]*2; i++; merged = true; playSound(600, 'sine', 0.1); }
     else { res.push(r[i]); merged = false; }
   }
   while (res.length < 4) res.push(0);
@@ -752,10 +1093,19 @@ function move2048(dir) {
   // Check 2048 milestone
   const max = Math.max(...board2048.flat());
   if (max === 2048) {
-    toast('🎉 2048! +30 XP'); saveScore('2048', score2048, 30);
+    toast(L.game_over_2048_msg);
+    saveScore('2048', score2048, 30).then(r => { if (r) showXpModal('🎲', '2048!', 30, r.new_xp || 0, 'Lv.' + (r.new_level || 1), 0, 0); });
   }
   // Game over check
-  if (!hasMove2048()) { g2048Over = true; toast(`Game Over! Ball: ${score2048}`); saveScore('2048', score2048, 10); }
+  if (!hasMove2048()) {
+    g2048Over = true;
+    document.getElementById('g2048OverlaySub').textContent = L.game_over_sub || 'Oyin tugadi';
+    document.getElementById('g2048OverlayScore').textContent = (L.score || 'Ball') + ': ' + score2048;
+    document.getElementById('g2048Overlay').style.display = 'flex';
+    tg?.HapticFeedback?.notificationOccurred('error');
+    playSoundSeq([400, 350, 300, 200], 0.15);
+    saveScore('2048', score2048, 10).then(r => { if (r) showXpModal('🔢', 'Game Over!', 10, r.new_xp || 0, 'Lv.' + (r.new_level || 1), 0, 0); });
+  }
 }
 
 function transpose2048(b) { return b[0].map((_, i) => b.map(r => r[i])); }
@@ -812,7 +1162,7 @@ function renderMemory() {
   document.getElementById('memPairs').textContent = memMatched + '/8';
 }
 
-function flipCard(idx) {
+async function flipCard(idx) {
   if (memLocked || memCards[idx].flipped || memCards[idx].matched) return;
   memCards[idx].flipped = true;
   memFlipped.push(idx);
@@ -829,8 +1179,9 @@ function flipCard(idx) {
       tg?.HapticFeedback?.impactOccurred('light');
       if (memMatched === 8) {
         clearInterval(memTimerInt);
-        toast(`🎉 Bajarildi! ${memMoves} harakatda, ${memSecs}s`);
-        saveScore('memory', memMoves, 15);
+        toast(`${L.memory_done} ${memMoves} ${L.moves}, ${memSecs}s`);
+        const res = await saveScore('memory', memMoves, 15);
+        if (res) showXpModal('🃏', L.memory_done || 'Memory!', 15, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
       }
     } else {
       setTimeout(() => {
@@ -845,16 +1196,17 @@ function flipCard(idx) {
 /* ══════════════════════════════════════════════════════════════════════
    CHESS (chess.js CDN — solo vs random AI)
 ══════════════════════════════════════════════════════════════════════ */
-let chess=null, chessSelected=null, chessMoveCount=0, chessGameOver=false;
+let chess=null, chessSelected=null, chessMoveCount=0, chessGameOver=false, chessFirstMove=true;
 
 function initChess() {
   chess = new Chess();
   chessSelected  = null;
   chessMoveCount = 0;
   chessGameOver  = false;
+  chessFirstMove = true;
   renderChess();
-  document.getElementById('chessMsg').textContent = 'Dona bosib boshlang ♟';
-  document.getElementById('chessStatus').textContent = 'Sizning navbat';
+  document.getElementById('chessMsg').textContent = L.chess_hint || 'Dona bosib boshlang ♟';
+  document.getElementById('chessStatus').textContent = L.your_turn || 'Sizning navbat';
   document.getElementById('chessMoves').textContent = '0';
 }
 
@@ -875,7 +1227,8 @@ function renderChess() {
       const sym  = p ? (PIECE_SYMBOLS[p.color+p.type.toUpperCase()] || '?') : '';
       const light= (r+c)%2===0;
       const selCls = chessSelected === sq ? ' selected' : '';
-      html += `<div class="chess-cell ${light?'light':'dark'}${selCls}" onclick="chessClick('${sq}')">${sym}</div>`;
+      const pieceHtml = sym ? `<span class="cp-${p.color}">${sym}</span>` : '';
+      html += `<div class="chess-cell ${light?'light':'dark'}${selCls}" onclick="chessClick('${sq}')">${pieceHtml}</div>`;
     }
   }
   el.innerHTML = html;
@@ -890,14 +1243,22 @@ function chessClick(sq) {
     const moves = chess.moves({ square: chessSelected, verbose: true });
     const mv    = moves.find(m => m.to === sq);
     if (mv) {
+      const isCapture = !!chess.get(mv.to);
       chess.move(mv);
       chessMoveCount++;
       chessSelected = null;
       document.getElementById('chessMoves').textContent = chessMoveCount;
+      if (isCapture) playSound(200, 'sine', 0.2);
+      else playSound(400, 'sine', 0.08);
       renderChess();
       if (chess.game_over()) { endChess(); return; }
-      document.getElementById('chessStatus').textContent = 'AI o\'ylayapti...';
-      setTimeout(aiMove, 400);
+      document.getElementById('chessStatus').textContent = L.ai_thinking || 'AI o\'ylayapti...';
+      document.getElementById('chessMsg').innerHTML = chessFirstMove
+        ? `<span class="chess-ai-thinking">⏳ ${L.ai_thinking_long || 'AI o\'ylayapti... (10 soniya)'}</span>`
+        : `<span class="chess-ai-thinking">${L.ai_thinking || 'AI o\'ylayapti...'}</span>`;
+      const delay = chessFirstMove ? 10000 : 800;
+      chessFirstMove = false;
+      setTimeout(aiMove, delay);
     } else {
       const piece = chess.get(sq);
       chessSelected = (piece && piece.color === 'w') ? sq : null;
@@ -913,7 +1274,8 @@ function aiMove() {
   chess.move(moves[Math.floor(Math.random()*moves.length)]);
   chessMoveCount++;
   document.getElementById('chessMoves').textContent = chessMoveCount;
-  document.getElementById('chessStatus').textContent = 'Sizning navbat';
+  document.getElementById('chessStatus').textContent = L.your_turn || 'Sizning navbat';
+  document.getElementById('chessMsg').textContent = L.chess_hint || 'Dona bosib boshlang ♟';
   renderChess();
   if (chess.game_over()) endChess();
 }
@@ -922,14 +1284,154 @@ async function endChess() {
   chessGameOver = true;
   let msg, xp=0;
   if (chess.in_checkmate()) {
-    if (chess.turn() === 'b') { msg = '🎉 Siz yutdingiz!'; xp = 20; tg?.HapticFeedback?.notificationOccurred('success'); }
-    else { msg = '😔 AI yutdi. Qayta urinib ko\'ring!'; xp = 5; }
-  } else { msg = '🤝 Durang!'; xp = 8; }
+    if (chess.turn() === 'b') { msg = L.chess_won; xp = 20; tg?.HapticFeedback?.notificationOccurred('success'); }
+    else { msg = L.chess_lost; xp = 5; }
+  } else { msg = L.chess_draw; xp = 8; }
   document.getElementById('chessMsg').textContent   = msg;
-  document.getElementById('chessStatus').textContent = 'Tugadi';
+  document.getElementById('chessStatus').textContent = L.finished;
   toast(msg + ' +' + xp + ' XP');
-  await saveScore('chess', xp===20?1:0, xp);
+  const res = await saveScore('chess', xp===20?1:0, xp);
+  if (res) showXpModal('♟', msg, xp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOCK BLAST GAME
+══════════════════════════════════════════════════════════════════════ */
+const BB_SIZE = 8, BB_CELL = 36;
+let bbBoard = [], bbScore = 0, bbPieces = [], bbDragPiece = null;
+
+const BB_PIECES = [
+  [[1,1],[1,1]], [[1,1,1]], [[1],[1],[1]], [[1,1,0],[0,1,1]],
+  [[0,1,1],[1,1,0]], [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]],
+  [[1,1,1],[0,1,0]], [[1,1,1,1]], [[1,1],[0,1],[0,1]],
+];
+const BB_COLORS = ['#FF5722','#2196F3','#4CAF50','#FF9800','#9C27B0','#00BCD4','#F44336','#8BC34A','#3F51B5','#FFEB3B'];
+
+function bbNewBoard() { return Array.from({length:BB_SIZE}, () => Array(BB_SIZE).fill(0)); }
+function bbGetPieces() {
+  bbPieces = Array.from({length:3}, () => ({
+    shape: BB_PIECES[Math.floor(Math.random()*BB_PIECES.length)],
+    color: BB_COLORS[Math.floor(Math.random()*BB_COLORS.length)]
+  }));
+  renderBBPieces();
+}
+function bbCanPlace(shape, row, col) {
+  return shape.every((r,ri) => r.every((c,ci) => !c||(row+ri<BB_SIZE&&col+ci<BB_SIZE&&row+ri>=0&&col+ci>=0&&!bbBoard[row+ri][col+ci])));
+}
+function bbPlace(shape, row, col, color) {
+  shape.forEach((r,ri) => r.forEach((c,ci) => { if(c) bbBoard[row+ri][col+ci]=color; }));
+  playSound(350,'sine',0.1);
+  bbClearLines();
+}
+function bbClearLines() {
+  let cleared=0;
+  for(let r=0;r<BB_SIZE;r++) if(bbBoard[r].every(c=>c)){bbBoard[r]=Array(BB_SIZE).fill(0);cleared++;}
+  for(let c=0;c<BB_SIZE;c++) if(bbBoard.every(r=>r[c])){bbBoard.forEach(r=>r[c]=0);cleared++;}
+  if(cleared>0){bbScore+=cleared*BB_SIZE*10;const el=document.getElementById('bbScore');if(el)el.textContent=bbScore;playSoundSeq([300,500,700,800],0.08);}
+  drawBBBoard();
+}
+function bbCanPlaceAnywhere(shape) {
+  for(let r=0;r<BB_SIZE;r++) for(let c=0;c<BB_SIZE;c++) if(bbCanPlace(shape,r,c)) return true;
+  return false;
+}
+function bbCheckGameOver() { return bbPieces.every(p=>p&&!bbCanPlaceAnywhere(p.shape)); }
+function drawBBBoard() {
+  const canvas=document.getElementById('bbCanvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0d1a2a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<BB_SIZE;r++) for(let c=0;c<BB_SIZE;c++) {
+    const x=c*BB_CELL,y=r*BB_CELL;
+    ctx.strokeStyle='#1e2a3a'; ctx.strokeRect(x+1,y+1,BB_CELL-2,BB_CELL-2);
+    if(bbBoard[r][c]){ctx.fillStyle=bbBoard[r][c];ctx.fillRect(x+2,y+2,BB_CELL-4,BB_CELL-4);}
+  }
+}
+function renderBBPieces() {
+  const el=document.getElementById('bbPieces'); if(!el) return;
+  el.innerHTML=bbPieces.map((p,i)=>{
+    if(!p) return '<div style="width:80px;height:80px;"></div>';
+    const cs=Math.min(20,Math.floor(70/Math.max(p.shape.length,p.shape[0].length)));
+    return `<div id="bbPiece_${i}" draggable="true" style="cursor:grab;padding:8px;background:#1e2a3a;border-radius:8px;touch-action:none;"
+      ondragstart="bbDragStart(event,${i})" ontouchstart="bbTouchStart(event,${i})" ontouchmove="bbTouchMove(event)" ontouchend="bbTouchEnd(event)">
+      ${p.shape.map(row=>`<div style="display:flex;">${row.map(c=>`<div style="width:${cs}px;height:${cs}px;margin:1px;background:${c?p.color:'transparent'};border-radius:2px;"></div>`).join('')}</div>`).join('')}
+    </div>`;
+  }).join('');
+  const canvas=document.getElementById('bbCanvas');
+  if(canvas){canvas.ondragover=e=>{e.preventDefault();bbHighlightDrop(e);};canvas.ondrop=e=>{e.preventDefault();bbDoDrop(e);};}
+}
+function bbDragStart(e,idx){bbDragPiece=idx;e.dataTransfer.setData('text','bb');}
+let _bbTouchPiece=null;
+function bbTouchStart(e,idx){_bbTouchPiece=idx;e.preventDefault();}
+function bbTouchMove(e){
+  e.preventDefault();
+  const touch=e.touches[0],canvas=document.getElementById('bbCanvas');
+  if(!canvas||_bbTouchPiece===null) return;
+  const rect=canvas.getBoundingClientRect();
+  bbHighlightBoard(Math.floor((touch.clientY-rect.top)/BB_CELL),Math.floor((touch.clientX-rect.left)/BB_CELL),bbPieces[_bbTouchPiece]?.shape);
+}
+function bbTouchEnd(e){
+  const touch=e.changedTouches[0],canvas=document.getElementById('bbCanvas');
+  if(!canvas||_bbTouchPiece===null) return;
+  const rect=canvas.getBoundingClientRect();
+  bbDropAt(Math.floor((touch.clientY-rect.top)/BB_CELL),Math.floor((touch.clientX-rect.left)/BB_CELL),_bbTouchPiece);
+  _bbTouchPiece=null; drawBBBoard();
+}
+function bbHighlightDrop(e){
+  if(bbDragPiece===null) return;
+  const canvas=document.getElementById('bbCanvas'),rect=canvas.getBoundingClientRect();
+  bbHighlightBoard(Math.floor((e.clientY-rect.top)/BB_CELL),Math.floor((e.clientX-rect.left)/BB_CELL),bbPieces[bbDragPiece]?.shape);
+}
+function bbHighlightBoard(row,col,shape){
+  drawBBBoard(); if(!shape) return;
+  const ctx=document.getElementById('bbCanvas').getContext('2d'),canPlace=bbCanPlace(shape,row,col);
+  ctx.globalAlpha=0.5;
+  shape.forEach((r,ri)=>r.forEach((c,ci)=>{if(c){ctx.fillStyle=canPlace?'#4CAF50':'#f44336';ctx.fillRect((col+ci)*BB_CELL+2,(row+ri)*BB_CELL+2,BB_CELL-4,BB_CELL-4);}}));
+  ctx.globalAlpha=1;
+}
+function bbDoDrop(e){
+  if(bbDragPiece===null) return;
+  const canvas=document.getElementById('bbCanvas'),rect=canvas.getBoundingClientRect();
+  bbDropAt(Math.floor((e.clientY-rect.top)/BB_CELL),Math.floor((e.clientX-rect.left)/BB_CELL),bbDragPiece);
+  bbDragPiece=null; drawBBBoard();
+}
+function bbDropAt(row,col,pieceIdx){
+  const p=bbPieces[pieceIdx];
+  if(!p||!bbCanPlace(p.shape,row,col)) return;
+  bbPlace(p.shape,row,col,p.color);
+  bbPieces[pieceIdx]=null;
+  if(bbPieces.every(p=>!p)) bbGetPieces();
+  renderBBPieces();
+  if(bbCheckGameOver()) bbEndGame();
+}
+async function bbEndGame(){
+  const xp=bbScore>=500?30:bbScore>=200?20:bbScore>=50?15:10;
+  const el=document.getElementById('bbFinalScore'); if(el) el.textContent=bbScore;
+  const over=document.getElementById('bbGameOver'); if(over) over.style.display='flex';
+  playSoundSeq([400,350,300,200],0.15);
+  const initData=window.Telegram?.WebApp?.initData||'';
+  try{
+    const r=await fetch('/api/game/score',{method:'POST',headers:{'Content-Type':'application/json','X-Init-Data':initData},body:JSON.stringify({game_type:'block_blast',score:bbScore,xp_earned:xp})});
+    const d=await r.json();
+    showXpModal('🎮','Block Blast!',xp,d.new_xp||0,'Lv.'+(d.new_level||1),0,0);
+  }catch(e){}
+}
+function startBlockBlastGame(){
+  bbBoard=bbNewBoard(); bbScore=0;
+  const sc=document.getElementById('bbScore'); if(sc) sc.textContent='0';
+  const over=document.getElementById('bbGameOver'); if(over) over.style.display='none';
+  bbGetPieces(); drawBBBoard();
+}
+async function startBlockBlast(){
+  if(checkDailyLimit('block_blast')){showLimitModal('Block Blast');return;}
+  await recordPlay('block_blast');
+  updateGameCardBadges();
+  const page=document.getElementById('blockBlastPage'); if(!page) return;
+  page.style.display='block';
+  const canvas=document.getElementById('bbCanvas');
+  canvas.width=BB_SIZE*BB_CELL; canvas.height=BB_SIZE*BB_CELL;
+  startBlockBlastGame();
+}
+function closeBlockBlast(){const page=document.getElementById('blockBlastPage');if(page)page.style.display='none';}
 
 /* ══════════════════════════════════════════════════════════════════════
    MULTIPLAYER TYPING RACE
@@ -952,17 +1454,17 @@ async function loadRooms() {
   try {
     const data = await api('/game/rooms?type=typing_race');
     if (!data.rooms.length) {
-      el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:14px;font-size:13px">Hozircha ochiq xona yo\'q. Yangi yarating!</div>';
+      el.innerHTML = `<div style="color:var(--sub);text-align:center;padding:14px;font-size:13px">${L.no_rooms}</div>`;
       return;
     }
     el.innerHTML = data.rooms.map(r =>
       `<div class="room-card">
         <div class="room-av">${r.player1_name.charAt(0).toUpperCase()}</div>
-        <div><div class="room-name">${r.player1_name}</div><div class="room-sub">Typing Race kutmoqda</div></div>
-        <button class="room-join-btn" onclick="joinRoom(${r.id})">Qo'shilish</button>
+        <div><div class="room-name">${r.player1_name}</div><div class="room-sub">${L.waiting_race}</div></div>
+        <button class="room-join-btn" onclick="joinRoom(${r.id})">${L.join}</button>
       </div>`
     ).join('');
-  } catch { el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:14px">Xatolik</div>'; }
+  } catch { el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:14px">⚠️</div>'; }
 }
 
 async function createRoom() {
@@ -1083,11 +1585,262 @@ function endRace(reason, winnerId) {
   clearInterval(racePollTimer);
   document.getElementById('raceInput').disabled = true;
   const isWinner = winnerId === me?.user_id;
-  const msg = reason === 'time' ? 'Vaqt tugadi!' : (isWinner ? '🎉 Siz yutdingiz!' : '😔 Raqib tezroq!');
+  const msg = reason === 'time' ? L.time_up : (isWinner ? L.race_won : L.race_lost);
   document.getElementById('raceStatus').textContent = msg;
   toast(msg + (isWinner ? ' +20 XP' : ' +5 XP'));
   tg?.HapticFeedback?.notificationOccurred(isWinner ? 'success' : 'warning');
   setTimeout(() => showMultiLobby(), 3000);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROFILE MODAL
+══════════════════════════════════════════════════════════════════════ */
+async function openProfile(userId) {
+  document.getElementById('profileModal').style.display = 'flex';
+  document.getElementById('pmAvatar').textContent = '⏳';
+  document.getElementById('pmName').textContent = '...';
+  document.getElementById('pmGroup').textContent = '';
+  document.getElementById('pmGames').innerHTML = '<div class="spinner"></div>';
+  try {
+    const p = await api(`/student/profile/${userId}`);
+    document.getElementById('pmAvatar').textContent = p.avatar_emoji || '👤';
+    document.getElementById('pmName').textContent   = p.full_name + (p.is_me ? ' (Sen)' : '');
+    document.getElementById('pmGroup').textContent  = p.group_name + ' · ' + p.level_name;
+    document.getElementById('pmXp').textContent     = p.xp;
+    document.getElementById('pmLevel').textContent  = 'Lv.' + p.level;
+    document.getElementById('pmStreak').textContent = p.streak_days + '🔥';
+    document.getElementById('pmAttend').textContent = p.attend_count;
+    document.getElementById('pmHw').textContent     = p.hw_conf_count;
+    document.getElementById('pmRank').textContent   = '#' + (p.rank || '—');
+    const best = p.game_best || {};
+    const gamesHtml = [
+      ['⌨️ Typing', best.typing ? best.typing + ' WPM' : '—'],
+      ['🧠 Quiz',   best.quiz   ? best.quiz  + ' ball' : '—'],
+      ['🔢 2048',   best['2048'] ? best['2048'] + ' ball' : '—'],
+      ['🃏 Memory', best.memory ? best.memory + ' harakatda' : '—'],
+      ['♟ Chess',  best.chess  ? best.chess + ' g\'alaba' : '—'],
+    ].map(([n,v]) =>
+      `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px"><span>${n}</span><span style="color:var(--gold);font-weight:800">${v}</span></div>`
+    ).join('');
+    document.getElementById('pmGames').innerHTML = gamesHtml;
+  } catch(e) {
+    document.getElementById('pmName').textContent = '⚠️ Yuklanmadi';
+    document.getElementById('pmGames').innerHTML = '';
+  }
+}
+
+function closeProfileModal(e) {
+  if (e.target === document.getElementById('profileModal')) {
+    document.getElementById('profileModal').style.display = 'none';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LANGUAGE SYSTEM (UZ / RU)
+══════════════════════════════════════════════════════════════════════ */
+const STRINGS = {
+  uz: {
+    // Header & tabs
+    title: "🕹 O'yinlar",
+    tab_home: "Bosh", tab_typing: "Typing", tab_quiz: "Quiz",
+    tab_chess: "Shaxmat", tab_multi: "Race",
+    // Home
+    choose_game: "O'yinni tanlang",
+    my_records: "Mening rekordlarim",
+    no_records: "Rekordlar yuklanmadi",
+    // Game cards
+    typing_name: "Typing Speed", typing_desc: "Yozish tezligini o'lchaymiz — WPM",
+    quiz_name: "Code Quiz", quiz_desc: "Dasturlash savollari",
+    g2048_name: "2048", g2048_desc: "Klassik raqamlar o'yini",
+    memory_name: "Memory", memory_desc: "Karta juftlashtir",
+    chess_name: "Shaxmat", chess_desc: "Bot bilan o'ynash",
+    race_name: "Typing Race 🔥", race_desc: "2 o'yinchi — kim tez yozadi?",
+    xp_win: "G'alaba: +20 XP · Yutqazish: +5 XP",
+    // Stats labels
+    accuracy: "Aniqlik", time: "Vaqt", ball: "Ball", record: "Rekord",
+    max_tile: "Katak", moves: "Harakatlar", pairs: "Juftlar", seconds: "Soniya",
+    score: "Ball",
+    // Buttons
+    play_again: "Qayta o'ynash", new_game: "Yangi o'yin",
+    back: "← Orqaga", start: "Boshlash",
+    // Typing
+    typing_placeholder: "Yozishni boshlang...",
+    xp_earned: "XP olindi",
+    // Quiz
+    quiz_done: "Test yakunlandi!",
+    // Chess
+    chess_hint: "Dona bosib boshlang ♟",
+    your_turn: "Sizning navbat",
+    ai_thinking: "AI o'ylayapti...",
+    ai_thinking_long: "AI o'ylayapti... (10 soniya)",
+    chess_won: "🎉 Siz yutdingiz!",
+    chess_lost: "😔 AI yutdi. Qayta urinib ko'ring!",
+    chess_draw: "🤝 Durang!",
+    finished: "Tugadi",
+    // 2048
+    game_over_sub: "Oyin tugadi",
+    game_over_2048_msg: "🎉 2048! +30 XP",
+    // Memory
+    memory_done: "🎉 Bajarildi!",
+    // Multiplayer
+    open_rooms: "Ochiq xonalar",
+    create_room: "🎯 Xona yaratish",
+    refresh_rooms: "🔄 Xonalarni yangilash",
+    waiting_player: "O'yinchi kutilmoqda",
+    room_id: "Xona ID",
+    cancel: "Bekor qilish",
+    join: "Qo'shilish",
+    waiting_race: "Typing Race kutmoqda",
+    no_rooms: "Hozircha ochiq xona yo'q. Yangi yarating!",
+    // Errors
+    register_first: "Avval botda ro'yxatdan o'ting!",
+    level_up: "🎉 Daraja oshdi! Lv.",
+    time_up: "Vaqt tugadi!",
+    race_won: "🎉 Siz yutdingiz!",
+    race_lost: "😔 Raqib tezroq!",
+  },
+  ru: {
+    // Header & tabs
+    title: "🕹 Игры",
+    tab_home: "Главная", tab_typing: "Typing", tab_quiz: "Тест",
+    tab_chess: "Шахматы", tab_multi: "Гонка",
+    // Home
+    choose_game: "Выберите игру",
+    my_records: "Мои рекорды",
+    no_records: "Рекорды не загружены",
+    // Game cards
+    typing_name: "Typing Speed", typing_desc: "Измеряем скорость набора — WPM",
+    quiz_name: "Code Quiz", quiz_desc: "Вопросы по программированию",
+    g2048_name: "2048", g2048_desc: "Классическая числовая игра",
+    memory_name: "Память", memory_desc: "Найди пары карточек",
+    chess_name: "Шахматы", chess_desc: "Играть с ботом",
+    race_name: "Typing Race 🔥", race_desc: "2 игрока — кто быстрее?",
+    xp_win: "Победа: +20 XP · Поражение: +5 XP",
+    // Stats labels
+    accuracy: "Точность", time: "Время", ball: "Очки", record: "Рекорд",
+    max_tile: "Плитка", moves: "Ходы", pairs: "Пары", seconds: "Секунды",
+    score: "Очки",
+    // Buttons
+    play_again: "Играть снова", new_game: "Новая игра",
+    back: "← Назад", start: "Начать",
+    // Typing
+    typing_placeholder: "Начните вводить...",
+    xp_earned: "XP получено",
+    // Quiz
+    quiz_done: "Тест завершён!",
+    // Chess
+    chess_hint: "Нажмите на фигуру ♟",
+    your_turn: "Ваш ход",
+    ai_thinking: "ИИ думает...",
+    ai_thinking_long: "ИИ думает... (10 секунд)",
+    chess_won: "🎉 Вы победили!",
+    chess_lost: "😔 ИИ победил. Попробуйте снова!",
+    chess_draw: "🤝 Ничья!",
+    finished: "Завершено",
+    // 2048
+    game_over_sub: "Игра окончена",
+    game_over_2048_msg: "🎉 2048! +30 XP",
+    // Memory
+    memory_done: "🎉 Выполнено!",
+    // Multiplayer
+    open_rooms: "Открытые комнаты",
+    create_room: "🎯 Создать комнату",
+    refresh_rooms: "🔄 Обновить комнаты",
+    waiting_player: "Ожидаем игрока",
+    room_id: "ID комнаты",
+    cancel: "Отмена",
+    join: "Присоединиться",
+    waiting_race: "Typing Race ожидает",
+    no_rooms: "Нет открытых комнат. Создайте новую!",
+    // Errors
+    register_first: "Сначала зарегистрируйтесь в боте!",
+    level_up: "🎉 Уровень повышен! Lv.",
+    time_up: "Время вышло!",
+    race_won: "🎉 Вы победили!",
+    race_lost: "😔 Соперник быстрее!",
+  },
+};
+
+let gameLang = localStorage.getItem('gameLang') || 'uz';
+let L = STRINGS[gameLang];
+
+function setGameLang(l) {
+  gameLang = l;
+  L = STRINGS[l];
+  localStorage.setItem('gameLang', l);
+  applyLang();
+}
+
+function applyLang() {
+  // Header
+  const htEl = document.querySelector('.header-title');
+  if (htEl) htEl.textContent = L.title;
+  // Tab labels
+  const tabMap = { home: L.tab_home, typing: L.tab_typing, quiz: L.tab_quiz, chess: L.tab_chess, multi: L.tab_multi };
+  Object.entries(tabMap).forEach(([k,v]) => {
+    const el = document.querySelector(`#tab-${k} .tab-label`);
+    if (el) el.textContent = v;
+  });
+  // Lang button state
+  document.getElementById('gLangUz')?.classList.toggle('active', gameLang==='uz');
+  document.getElementById('gLangRu')?.classList.toggle('active', gameLang==='ru');
+  // data-t attributes
+  const tMap = {
+    accuracy:L.accuracy, time:L.time, ball:L.ball, record:L.record,
+    max_tile:L.max_tile, moves:L.moves, pairs:L.pairs, seconds:L.seconds,
+    score:L.score, play_again:L.play_again, new_game:L.new_game, back:L.back,
+    start:L.start,
+  };
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.getAttribute('data-t');
+    if (tMap[key]) el.textContent = tMap[key];
+  });
+  // Game cards
+  const gMap = [
+    ['game-card-typing-name', L.typing_name], ['game-card-typing-desc', L.typing_desc],
+    ['game-card-quiz-name',   L.quiz_name],   ['game-card-quiz-desc',   L.quiz_desc],
+    ['game-card-2048-name',   L.g2048_name],  ['game-card-2048-desc',   L.g2048_desc],
+    ['game-card-mem-name',    L.memory_name], ['game-card-mem-desc',    L.memory_desc],
+    ['game-card-chess-name',  L.chess_name],  ['game-card-chess-desc',  L.chess_desc],
+    ['game-card-race-name',   L.race_name],   ['game-card-race-desc',   L.race_desc],
+    ['game-card-race-xp',     L.xp_win],
+  ];
+  gMap.forEach(([id,txt]) => { const el=document.getElementById(id); if(el) el.textContent=txt; });
+  // Section titles
+  document.querySelectorAll('[data-tsec]').forEach(el => {
+    const key = el.getAttribute('data-tsec');
+    const val = { choose_game:L.choose_game, my_records:L.my_records, open_rooms:L.open_rooms }[key];
+    if (val) el.textContent = val;
+  });
+  // Typing placeholder
+  document.getElementById('typInput')?.setAttribute('placeholder', L.typing_placeholder);
+  document.getElementById('raceInput')?.setAttribute('placeholder', L.typing_placeholder);
+  // Chess
+  if (!chessGameOver && chess) {
+    if (chess.turn() === 'w') {
+      document.getElementById('chessStatus').textContent = L.your_turn;
+      document.getElementById('chessMsg').textContent = L.chess_hint;
+    }
+  }
+  // Multiplayer buttons
+  const crBtn = document.getElementById('createRoomBtn');
+  if (crBtn) crBtn.textContent = L.create_room;
+  const rfBtn = document.getElementById('refreshRoomsBtn');
+  if (rfBtn) rfBtn.textContent = L.refresh_rooms;
+  const wpEl = document.getElementById('waitingPlayerText');
+  if (wpEl) wpEl.textContent = L.waiting_player;
+  const riEl = document.getElementById('roomIdLabel');
+  if (riEl) riEl.textContent = L.room_id;
+  const cnBtn = document.getElementById('cancelBtn');
+  if (cnBtn) cnBtn.textContent = L.cancel;
+  // Active lang button visual
+  document.getElementById('gLangUz')?.style && (document.getElementById('gLangUz').style.color = gameLang==='uz' ? 'var(--accent)' : 'var(--sub)');
+  document.getElementById('gLangRu')?.style && (document.getElementById('gLangRu').style.color = gameLang==='ru' ? 'var(--accent)' : 'var(--sub)');
+  // Quiz title
+  const qtEl = document.getElementById('quizDoneTitle');
+  if (qtEl) qtEl.textContent = L.quiz_done;
+  // Reload best scores with new language
+  if (me) loadBestScores();
 }
 
 /* ── Start ───────────────────────────────────────────────────────────── */

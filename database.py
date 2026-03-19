@@ -325,6 +325,63 @@ class GameRoom(Base):
     created_at:   Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
 
+# ─── Model: O'yin o'ynash hisoblagi ──────────────────────────────────────────
+
+class GamePlayCount(Base):
+    """Har o'quvchi har o'yin uchun kunlik o'ynash soni."""
+    __tablename__ = "game_play_counts"
+    __table_args__ = (UniqueConstraint("user_id", "game_type", "date_str"),)
+
+    id:         Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id:    Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    game_type:  Mapped[str] = mapped_column(String(30), nullable=False)
+    date_str:   Mapped[str] = mapped_column(String(20), nullable=False)  # "YYYY-MM-DD"
+    play_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+# ─── Model: Referal o'quvchi ──────────────────────────────────────────────────
+
+class ReferralStudent(Base):
+    """Kutilayotgan o'quvchilar (referal yoki to'g'ridan-to'g'ri ariza)."""
+    __tablename__ = "referral_students"
+
+    id:                Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    referrer_user_id:  Mapped[int]           = mapped_column(BigInteger, nullable=False, index=True)
+    # referrer_user_id=0 → to'g'ridan-to'g'ri ariza (referral yo'q)
+    telegram_user_id:  Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, unique=True)
+    full_name:         Mapped[str]           = mapped_column(String(255), nullable=False)
+    age:               Mapped[str]           = mapped_column(String(10),  nullable=False)
+    location:          Mapped[str]           = mapped_column(String(255), nullable=False)
+    interests:         Mapped[str]           = mapped_column(String(500), nullable=False)
+    phone:             Mapped[str]           = mapped_column(String(20),  nullable=False)
+    status:            Mapped[str]           = mapped_column(String(20),  default="pending")  # pending/approved/rejected
+    group_name:        Mapped[Optional[str]] = mapped_column(String(50),  nullable=True)
+    xp_awarded:        Mapped[bool]          = mapped_column(Boolean, default=False)
+    created_at:        Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
+    # Yangi fieldlar: rad etish sababi + guruh ma'lumotlari
+    reject_reason:     Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    registration_type: Mapped[str]           = mapped_column(String(20),  default="direct", server_default="direct")
+    # registration_type: "referral" (taklif orqali) | "direct" (mustaqil ariza)
+    has_group:         Mapped[bool]          = mapped_column(Boolean, default=False, server_default="0")
+    group_time:        Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)
+    group_day_type:    Mapped[Optional[str]] = mapped_column(String(10),  nullable=True)   # ODD/EVEN
+    teacher_name:      Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    mars_id:           Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)   # Tasdiqlangandan keyin
+
+
+# ─── Model: Admin profili ─────────────────────────────────────────────────────
+
+class AdminProfile(Base):
+    """Admin Mini App profili."""
+    __tablename__ = "admin_profiles"
+
+    telegram_id:  Mapped[int]           = mapped_column(BigInteger, primary_key=True)
+    display_name: Mapped[str]           = mapped_column(String(255), nullable=False)
+    avatar_emoji: Mapped[str]           = mapped_column(String(20),  default="👨‍💼")
+    created_at:   Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
+    last_active:  Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
 
 # Level oshganda beriladigan bonus XP
@@ -427,6 +484,25 @@ class DatabaseService:
                         )
                     )
                     logger.info(f"Migration: students.{_col} ustuni qo'shildi.")
+                except Exception:
+                    pass
+            # referral_students jadvaliga yangi ustunlar
+            for _col, _def in [
+                ("reject_reason",     "VARCHAR(500)"),
+                ("registration_type", "VARCHAR(20) NOT NULL DEFAULT 'direct'"),
+                ("has_group",         "BOOLEAN NOT NULL DEFAULT 0"),
+                ("group_time",        "VARCHAR(20)"),
+                ("group_day_type",    "VARCHAR(10)"),
+                ("teacher_name",      "VARCHAR(100)"),
+                ("mars_id",           "VARCHAR(20)"),
+            ]:
+                try:
+                    await conn.execute(
+                        __import__("sqlalchemy").text(
+                            f"ALTER TABLE referral_students ADD COLUMN {_col} {_def}"
+                        )
+                    )
+                    logger.info(f"Migration: referral_students.{_col} ustuni qo'shildi.")
                 except Exception:
                     pass
         logger.info("Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi.")
@@ -1462,3 +1538,269 @@ class DatabaseService:
             if s:
                 await session.delete(s)
                 await session.commit()
+
+    # ── GAME PLAY COUNTS ────────────────────────────────────────────────────────
+
+    async def get_or_create_play_count(self, user_id: int, game_type: str, date_str: str) -> int:
+        """Bugungi o'ynash sonini qaytaradi (mavjud bo'lmasa 0)."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GamePlayCount).where(
+                    GamePlayCount.user_id   == user_id,
+                    GamePlayCount.game_type == game_type,
+                    GamePlayCount.date_str  == date_str,
+                )
+            )
+            rec = result.scalar_one_or_none()
+            return rec.play_count if rec else 0
+
+    async def increment_play_count(self, user_id: int, game_type: str, date_str: str) -> int:
+        """O'ynash sonini 1 ga oshiradi va yangi qiymatni qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GamePlayCount).where(
+                    GamePlayCount.user_id   == user_id,
+                    GamePlayCount.game_type == game_type,
+                    GamePlayCount.date_str  == date_str,
+                )
+            )
+            rec = result.scalar_one_or_none()
+            if rec:
+                rec.play_count += 1
+            else:
+                rec = GamePlayCount(
+                    user_id=user_id, game_type=game_type,
+                    date_str=date_str, play_count=1,
+                )
+                session.add(rec)
+            await session.commit()
+            return rec.play_count
+
+    async def get_all_play_counts_today(self, user_id: int, date_str: str) -> dict:
+        """Berilgan kun uchun barcha o'yinlar bo'yicha o'ynash sonini qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GamePlayCount).where(
+                    GamePlayCount.user_id  == user_id,
+                    GamePlayCount.date_str == date_str,
+                )
+            )
+            recs = result.scalars().all()
+            return {r.game_type: r.play_count for r in recs}
+
+    # ── REFERRAL ────────────────────────────────────────────────────────────────
+
+    async def create_referral_student(self, data: dict) -> "ReferralStudent":
+        """Yangi referal o'quvchini yaratadi."""
+        async with self.session_factory() as session:
+            rs = ReferralStudent(
+                referrer_user_id = data["referrer_user_id"],
+                telegram_user_id = data.get("telegram_user_id"),
+                full_name        = data["full_name"],
+                age              = data["age"],
+                location         = data["location"],
+                interests        = data["interests"],
+                phone            = data["phone"],
+            )
+            session.add(rs)
+            await session.commit()
+            await session.refresh(rs)
+            return rs
+
+    async def get_referral_students(self, status: Optional[str] = None) -> list["ReferralStudent"]:
+        """Referal o'quvchilarni qaytaradi (ixtiyoriy holat filteri)."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            q = select(ReferralStudent).order_by(desc(ReferralStudent.created_at))
+            if status:
+                q = q.where(ReferralStudent.status == status)
+            result = await session.execute(q)
+            return list(result.scalars().all())
+
+    async def approve_referral_student(self, rs_id: int, group_name: str) -> Optional["ReferralStudent"]:
+        """Referal o'quvchini tasdiqlaydi va guruhga qo'shadi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
+            rs = result.scalar_one_or_none()
+            if rs:
+                rs.status     = "approved"
+                rs.group_name = group_name
+                await session.commit()
+                await session.refresh(rs)
+            return rs
+
+    async def reject_referral_student(self, rs_id: int) -> Optional["ReferralStudent"]:
+        """Referal o'quvchini rad etadi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
+            rs = result.scalar_one_or_none()
+            if rs:
+                rs.status = "rejected"
+                await session.commit()
+                await session.refresh(rs)
+            return rs
+
+    async def get_my_referrals(self, referrer_user_id: int) -> list["ReferralStudent"]:
+        """Berilgan foydalanuvchi taklif qilgan o'quvchilar ro'yxati."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(ReferralStudent)
+                .where(ReferralStudent.referrer_user_id == referrer_user_id)
+                .order_by(desc(ReferralStudent.created_at))
+            )
+            return list(result.scalars().all())
+
+    async def get_referral_count(self, referrer_user_id: int) -> int:
+        """Berilgan foydalanuvchi taklif qilgan o'quvchilar soni."""
+        from sqlalchemy import func as sqlfunc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(sqlfunc.count()).select_from(ReferralStudent)
+                .where(ReferralStudent.referrer_user_id == referrer_user_id)
+            )
+            return result.scalar_one() or 0
+
+    async def award_referral_xp(self, referrer_id: int, rs_id: int) -> bool:
+        """Referal uchun XP beradi (bir marta). True — yangi XP; False — allaqachon berilgan."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
+            rs = result.scalar_one_or_none()
+            if not rs or rs.xp_awarded:
+                return False
+            rs.xp_awarded = True
+            await session.commit()
+        await self.add_xp(referrer_id, 500)
+        if rs.telegram_user_id:
+            await self.add_xp(rs.telegram_user_id, 500)
+        return True
+
+    # ── ADMIN PROFILE ────────────────────────────────────────────────────────────
+
+    async def get_admin_profile(self, telegram_id: int) -> Optional["AdminProfile"]:
+        """Admin profilini qaytaradi."""
+        async with self.session_factory() as session:
+            return await session.get(AdminProfile, telegram_id)
+
+    async def upsert_admin_profile(self, telegram_id: int, data: dict) -> "AdminProfile":
+        """Admin profilini yaratadi yoki yangilaydi."""
+        async with self.session_factory() as session:
+            ap = await session.get(AdminProfile, telegram_id)
+            if ap:
+                if "display_name" in data:
+                    ap.display_name = data["display_name"]
+                if "avatar_emoji" in data:
+                    ap.avatar_emoji = data["avatar_emoji"]
+                ap.last_active = datetime.now()
+            else:
+                ap = AdminProfile(
+                    telegram_id  = telegram_id,
+                    display_name = data.get("display_name", f"Admin {telegram_id}"),
+                    avatar_emoji = data.get("avatar_emoji", "👨‍💼"),
+                    last_active  = datetime.now(),
+                )
+                session.add(ap)
+            await session.commit()
+            await session.refresh(ap)
+            return ap
+
+    async def create_direct_registration(self, data: dict) -> "ReferralStudent":
+        """Mustaqil (referalsiz) ariza yaratadi."""
+        async with self.session_factory() as session:
+            rs = ReferralStudent(
+                referrer_user_id  = 0,   # 0 = to'g'ridan-to'g'ri ariza
+                telegram_user_id  = data.get("telegram_user_id"),
+                full_name         = data["full_name"],
+                age               = data["age"],
+                location          = data["location"],
+                interests         = data.get("interests", ""),
+                phone             = data["phone"],
+                registration_type = "direct",
+                has_group         = data.get("has_group", False),
+                group_time        = data.get("group_time"),
+                group_day_type    = data.get("group_day_type"),
+                teacher_name      = data.get("teacher_name"),
+            )
+            session.add(rs)
+            await session.commit()
+            await session.refresh(rs)
+            return rs
+
+    async def reject_referral_with_reason(self, rs_id: int, reason: str) -> Optional["ReferralStudent"]:
+        """Kutayotgan o'quvchini sabab bilan rad etadi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
+            rs = result.scalar_one_or_none()
+            if rs:
+                rs.status        = "rejected"
+                rs.reject_reason = reason
+                await session.commit()
+                await session.refresh(rs)
+            return rs
+
+    async def approve_and_register(
+        self, rs_id: int, group_name: str
+    ) -> Optional["ReferralStudent"]:
+        """
+        Kutayotgan o'quvchini tasdiqlaydi, guruhga qo'shadi va
+        students jadvaliga qo'shadi (agar telegram_user_id bo'lsa).
+        Generated Mars ID: P{id:06d} ko'rinishida.
+        """
+        import hashlib
+        async with self.session_factory() as session:
+            result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
+            rs = result.scalar_one_or_none()
+            if not rs:
+                return None
+            rs.status     = "approved"
+            rs.group_name = group_name
+            await session.commit()
+            await session.refresh(rs)
+
+        if rs.telegram_user_id:
+            mars_id  = f"P{rs_id:06d}"
+            password = hashlib.md5(f"{rs.telegram_user_id}".encode()).hexdigest()[:6]
+            # Student credentials ga qo'shamiz (login uchun)
+            await self.add_student_credential(mars_id, rs.full_name, password, group_name)
+            # Students jadvaliga qo'shamiz
+            await self.register_student(
+                user_id           = rs.telegram_user_id,
+                telegram_username = None,
+                full_name         = rs.full_name,
+                mars_id           = mars_id,
+                group_name        = group_name,
+                phone_number      = rs.phone,
+            )
+            # Mars ID ni referral_students jadvalida ham saqlaymiz
+            async with self.session_factory() as session:
+                result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
+                rs2 = result.scalar_one_or_none()
+                if rs2:
+                    rs2.mars_id = mars_id
+                    await session.commit()
+                    await session.refresh(rs2)
+                    return rs2
+        return rs
+
+    async def get_pending_registration_by_user(self, telegram_user_id: int) -> Optional["ReferralStudent"]:
+        """Telegram user ID bo'yicha kutayotgan arizani qaytaradi."""
+        from sqlalchemy import desc
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(ReferralStudent)
+                .where(ReferralStudent.telegram_user_id == telegram_user_id)
+                .order_by(desc(ReferralStudent.created_at))
+                .limit(1)
+            )
+            return result.scalar_one_or_none()
+
+    # ── STUDENT PROGRESS HELPER ─────────────────────────────────────────────────
+
+    async def get_student_progress(self, user_id: int) -> Optional[dict]:
+        """O'quvchining joriy XP va daraja ma'lumotlarini qaytaradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if not s:
+                return None
+            return {"xp": s.xp or 0, "level": s.level or 1, "streak_days": s.streak_days or 0}

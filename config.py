@@ -32,6 +32,25 @@ BOT_TOKEN: str = _get_required("BOT_TOKEN")
 # Admin Telegram ID lari, vergul bilan ajratilgan: "123456789,987654321"
 ADMIN_IDS: list[int] = _parse_admin_ids(os.getenv("ADMIN_IDS", ""))
 
+# Mini Admin ID lari — faqat admin-mini.html ga kirish huquqi
+# ADMIN_IDS ro'yxatidagilar ham avtomatik mini-admin hisoblanadi
+_mini_raw = os.getenv("MINI_ADMIN_IDS", "")
+MINI_ADMIN_IDS: list[int] = list(set(ADMIN_IDS + _parse_admin_ids(_mini_raw)))
+
+# Mini Admin parol logini — "username:password,username2:password2" formatida
+# Faqat admin-mini.html uchun (Telegram bo'lmasa ham kirish mumkin)
+def _parse_logins(raw: str) -> dict[str, str]:
+    result = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if ":" in pair:
+            u, p = pair.split(":", 1)
+            if u.strip():
+                result[u.strip()] = p.strip()
+    return result
+
+MINI_ADMIN_LOGINS: dict[str, str] = _parse_logins(os.getenv("MINI_ADMIN_LOGINS", ""))
+
 # ─── Ma'lumotlar bazasi ───────────────────────────────────────────────────────
 # aiosqlite uchun: "sqlite+aiosqlite:///bot.db"
 DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///bot.db")

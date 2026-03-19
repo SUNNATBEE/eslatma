@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Admin Mini App</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a0f1a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; }
+.header { background: #111827; padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #1e2a3a; }
+.header-title { flex: 1; font-size: 17px; font-weight: 700; color: #fff; }
+.header-avatar { font-size: 28px; }
+.lang-btn { background: #1e2a3a; border: none; color: #aaa; border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+.content { padding: 16px; padding-bottom: 80px; }
+/* Bottom Nav */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111827; border-top: 1px solid #1e2a3a; display: flex; z-index: 100; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 4px 10px; cursor: pointer; border: none; background: none; color: #555; font-size: 9px; gap: 3px; transition: color 0.2s; position: relative; }
+.nav-item.active { color: #2196F3; }
+.nav-item .icon { font-size: 20px; }
+.nav-badge { position: absolute; top: 4px; right: calc(50% - 16px); background: #f44336; color: #fff; border-radius: 10px; font-size: 9px; padding: 1px 5px; font-weight: 700; }
+/* Cards */
+.card { background: #111827; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #1e2a3a; }
+.card-title { font-size: 14px; color: #7eb8f7; font-weight: 600; margin-bottom: 12px; }
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat-card { background: #111827; border-radius: 12px; padding: 14px; border: 1px solid #1e2a3a; text-align: center; }
+.stat-num { font-size: 28px; font-weight: 800; color: #fff; }
+.stat-label { font-size: 11px; color: #666; margin-top: 2px; }
+/* Student list */
+.student-card { background: #111827; border-radius: 12px; padding: 12px; margin-bottom: 8px; border: 1px solid #1e2a3a; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.2s; }
+.student-card:hover { border-color: #2196F3; }
+.student-avatar { font-size: 28px; width: 44px; height: 44px; background: #1e2a3a; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.student-info { flex: 1; min-width: 0; }
+.student-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.student-group { font-size: 12px; color: #666; }
+.att-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.att-yes { background: #1b4f1b; color: #4CAF50; }
+.att-no  { background: #4f1b1b; color: #f44336; }
+.att-pending { background: #2a2a00; color: #ffd700; }
+/* Search */
+.search-box { background: #1e2a3a; border: 1px solid #2a3a4a; color: #fff; border-radius: 10px; padding: 10px 14px; width: 100%; font-size: 14px; margin-bottom: 12px; outline: none; }
+.search-box::placeholder { color: #555; }
+/* Filter chips */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { background: #1e2a3a; border: 1px solid #2a3a4a; color: #aaa; border-radius: 20px; padding: 5px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.chip.active { background: #2196F3; color: #fff; border-color: #2196F3; }
+/* Bottom Sheet */
+.sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 500; display: none; }
+.sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #111827; border-radius: 20px 20px 0 0; padding: 20px 16px 32px; z-index: 501; max-height: 90vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s ease; border-top: 1px solid #1e2a3a; }
+.sheet.open { transform: translateY(0); }
+.sheet-handle { width: 40px; height: 4px; background: #2a3a4a; border-radius: 2px; margin: 0 auto 16px; }
+.sheet-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+/* Buttons */
+.btn { border: none; border-radius: 10px; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
+.btn-primary { background: #2196F3; color: #fff; }
+.btn-success { background: #4CAF50; color: #fff; }
+.btn-danger  { background: #f44336; color: #fff; }
+.btn-ghost   { background: #1e2a3a; color: #aaa; }
+.btn-outline { background: transparent; color: #2196F3; border: 1px solid #2196F3; }
+/* Action grid */
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.action-btn { background: #1e2a3a; border: 1px solid #2a3a4a; color: #fff; border-radius: 10px; padding: 12px; font-size: 13px; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.action-btn .ab-icon { font-size: 22px; }
+/* Attendance tab filter */
+.att-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.att-tab { flex: 1; background: #1e2a3a; border: none; color: #666; border-radius: 8px; padding: 8px 4px; font-size: 12px; cursor: pointer; }
+.att-tab.active { background: #2196F3; color: #fff; }
+/* Progress bar */
+.progress-bar { background: #1e2a3a; border-radius: 8px; height: 8px; overflow: hidden; margin: 8px 0; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); border-radius: 8px; transition: width 0.5s ease; }
+/* Text input */
+.txt-input { background: #1e2a3a; border: 1px solid #2a3a4a; color: #fff; border-radius: 10px; padding: 12px; width: 100%; font-size: 14px; outline: none; resize: vertical; font-family: inherit; }
+.txt-input::placeholder { color: #555; }
+/* Group card */
+.group-card { background: #111827; border-radius: 12px; padding: 14px; margin-bottom: 8px; border: 1px solid #1e2a3a; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.group-icon { font-size: 28px; }
+.group-info { flex: 1; }
+.group-name { font-weight: 600; font-size: 14px; }
+.group-meta { font-size: 12px; color: #666; margin-top: 2px; }
+.toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: #333; border-radius: 24px; transition: 0.3s; cursor: pointer; }
+.toggle-slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+input:checked + .toggle-slider { background: #4CAF50; }
+input:checked + .toggle-slider:before { transform: translateX(20px); }
+/* Leaderboard */
+.lb-podium { display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin: 16px 0; }
+.lb-podium-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.lb-rank-badge { font-size: 24px; }
+.lb-podium-name { font-size: 11px; color: #aaa; max-width: 70px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-podium-score { font-size: 12px; color: #ffd700; font-weight: 700; }
+.lb-podium-bar { width: 60px; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, #2196F3, #1565C0); }
+/* Curator card */
+.curator-card { background: #111827; border-radius: 12px; padding: 14px; margin-bottom: 8px; border: 1px solid #1e2a3a; }
+.curator-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.curator-status { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; }
+.curator-status.online { background: #1b4f1b; color: #4CAF50; }
+.curator-status.offline { background: #2a2a2a; color: #666; }
+/* Referral card */
+.ref-card { background: #111827; border-radius: 12px; padding: 14px; margin-bottom: 8px; border: 1px solid #1e2a3a; }
+.ref-name { font-weight: 600; font-size: 14px; }
+.ref-meta { font-size: 12px; color: #666; margin: 4px 0; }
+.ref-actions { display: flex; gap: 8px; margin-top: 10px; }
+.ref-actions button { flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+/* Settings */
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #1e2a3a; }
+.setting-label { font-size: 14px; color: #ccc; }
+.setting-value { color: #666; font-size: 13px; }
+/* Loading / empty */
+.loading { text-align: center; padding: 40px; color: #555; }
+.empty { text-align: center; padding: 32px; color: #555; font-size: 14px; }
+/* Toast */
+#toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+/* Inline input */
+.inline-label { font-size: 12px; color: #7eb8f7; margin-bottom: 6px; }
+/* Xabar yuborish */
+.msg-input-area { display: flex; gap: 8px; align-items: flex-end; }
+.msg-input-area textarea { flex: 1; }
+.msg-send-btn { background: #2196F3; color: #fff; border: none; border-radius: 10px; padding: 12px 16px; cursor: pointer; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div id="headerAvatar" class="header-avatar">👨‍💼</div>
+  <div class="header-title" id="headerTitle">Admin Panel</div>
+  <button class="lang-btn" onclick="toggleLang()" id="langBtn">RU</button>
+</div>
+
+<!-- Content area -->
+<div class="content" id="mainContent">
+  <div class="loading">Yuklanmoqda...</div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="showTab('dashboard')" id="nav_dashboard">
+    <span class="icon">📊</span><span id="nav_dashboard_lbl">Bosh</span>
+  </button>
+  <button class="nav-item" onclick="showTab('students')" id="nav_students">
+    <span class="icon">👥</span><span id="nav_students_lbl">O'quvchi</span>
+  </button>
+  <button class="nav-item" onclick="showTab('groups')" id="nav_groups">
+    <span class="icon">🏫</span><span id="nav_groups_lbl">Guruh</span>
+  </button>
+  <button class="nav-item" onclick="showTab('attendance')" id="nav_attendance">
+    <span class="icon">📋</span><span id="nav_attendance_lbl">Davomat</span>
+  </button>
+  <button class="nav-item" onclick="showTab('leaderboard')" id="nav_leaderboard">
+    <span class="icon">🏆</span><span id="nav_leaderboard_lbl">Reyting</span>
+  </button>
+  <button class="nav-item" onclick="showTab('curators')" id="nav_curators">
+    <span class="icon">👩‍💼</span><span id="nav_curators_lbl">Kurator</span>
+  </button>
+  <button class="nav-item" onclick="showTab('referral')" id="nav_referral">
+    <span class="icon">📝</span><span id="nav_referral_lbl">Ariza</span>
+    <span class="nav-badge" id="refBadge" style="display:none;">0</span>
+  </button>
+  <button class="nav-item" onclick="showTab('settings')" id="nav_settings">
+    <span class="icon">⚙️</span><span id="nav_settings_lbl">Sozlama</span>
+  </button>
+</div>
+
+<!-- Bottom Sheet Overlay -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="sheet" id="mainSheet">
+  <div class="sheet-handle"></div>
+  <div id="sheetContent"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Login sahifasi -->
+<div id="loginPage" style="display:none;position:fixed;inset:0;background:#0a0f1a;z-index:9999;align-items:center;justify-content:center;padding:24px;">
+  <div style="width:100%;max-width:360px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-size:56px;margin-bottom:12px;">🔐</div>
+      <div style="font-size:22px;font-weight:800;color:#fff;">Admin Panel</div>
+      <div style="color:#555;font-size:13px;margin-top:4px;">Mars IT O'quv Markaz</div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="color:#7eb8f7;font-size:13px;margin-bottom:6px;">Login</div>
+      <input id="loginUsername" type="text" placeholder="admin" autocomplete="username"
+        style="width:100%;padding:13px 14px;border-radius:12px;background:#111827;border:1px solid #1e2a3a;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="color:#7eb8f7;font-size:13px;margin-bottom:6px;">Parol</div>
+      <input id="loginPassword" type="password" placeholder="••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter') doLogin()"
+        style="width:100%;padding:13px 14px;border-radius:12px;background:#111827;border:1px solid #1e2a3a;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">
+    </div>
+    <div id="loginErr" style="color:#f44336;font-size:13px;text-align:center;margin-bottom:12px;display:none;"></div>
+    <button id="loginBtn" onclick="doLogin()"
+      style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#2196F3,#1565C0);color:#fff;border:none;font-size:16px;font-weight:700;cursor:pointer;">
+      Kirish →
+    </button>
+  </div>
+</div>
+
+<script>
+// ── Init ─────────────────────────────────────────────────────────────────────
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const initData = tg?.initData || '';
+
+// ── Language ──────────────────────────────────────────────────────────────────
+let lang = localStorage.getItem('adminLang') || 'uz';
+const T = {
+  uz: {
+    dashboard: 'Bosh sahifa', students: "O'quvchilar", groups: 'Guruhlar',
+    attendance: 'Davomat', leaderboard: 'Reyting', curators: 'Kuratorlar',
+    referral: 'Arizalar', settings: 'Sozlamalar',
+    total_students: 'Jami o\'quvchilar', today_present: 'Bugun keldi',
+    today_absent: 'Kelmadi', today_pending: 'Kutilmoqda',
+    search_placeholder: 'Ism yoki Mars ID bo\'yicha qidirish...',
+    all_groups: 'Barcha guruhlar', send_message: 'Xabar yuborish',
+    approve: 'Tasdiqlash', reject: 'Rad etish',
+    pending: 'Kutilmoqda', approved: 'Tasdiqlangan', rejected: 'Rad etilgan',
+    name: 'Ism', age: 'Yosh', location: 'Joylashuv', phone: 'Telefon',
+    interests: 'Qiziqishlar', invited_by: 'Taklif qilgan',
+    select_group: 'Guruhni tanlang', save: 'Saqlash',
+    reminder_time: 'Eslatma vaqti', broadcast: 'Ommaviy xabar',
+    target: 'Maqsad', message: 'Xabar matni', send: 'Yuborish',
+    admin_profile: 'Admin profili', display_name: 'Ko\'rinish ismi',
+    avatar: 'Avatar emoji', last_active: 'So\'nggi faollik',
+    group_on: 'Faol', group_off: 'Nofaol', class_time: 'Dars vaqti',
+    student_count: 'O\'quvchilar', has_homework: 'Uy vazifasi bor',
+    toggle_on: 'Yoqish', toggle_off: 'O\'chirish',
+    send_to_group: 'Guruhga xabar', send_to_all: 'Barcha guruhlarga',
+    att_present: 'Keldi', att_absent: 'Kelmadi', att_pending: 'Kutilmoqda',
+    date: 'Sana', status_changed: 'Holat o\'zgartirildi',
+    global_lb: 'Umumiy reyting', game_lb: 'O\'yin reytingi',
+    no_data: 'Ma\'lumot yo\'q', loading: 'Yuklanmoqda...',
+    success: 'Muvaffaqiyatli!', error: 'Xato yuz berdi',
+    confirm: 'Tasdiqlash', cancel: 'Bekor qilish',
+    referral_pending_count: 'Kutilayotgan referallar',
+    xp: 'XP', level: 'Daraja', streak: 'Streak',
+    attendance_history: 'Davomat tarixi', game_best: 'Eng yaxshi natijalar',
+  },
+  ru: {
+    dashboard: 'Главная', students: 'Ученики', groups: 'Группы',
+    attendance: 'Посещаемость', leaderboard: 'Рейтинг', curators: 'Кураторы',
+    referral: 'Заявки', settings: 'Настройки',
+    total_students: 'Всего учеников', today_present: 'Сегодня пришли',
+    today_absent: 'Не пришли', today_pending: 'Ожидается',
+    search_placeholder: 'Поиск по имени или Mars ID...',
+    all_groups: 'Все группы', send_message: 'Отправить сообщение',
+    approve: 'Подтвердить', reject: 'Отклонить',
+    pending: 'Ожидается', approved: 'Подтверждён', rejected: 'Отклонён',
+    name: 'Имя', age: 'Возраст', location: 'Местонахождение', phone: 'Телефон',
+    interests: 'Интересы', invited_by: 'Пригласил',
+    select_group: 'Выберите группу', save: 'Сохранить',
+    reminder_time: 'Время напоминания', broadcast: 'Массовое сообщение',
+    target: 'Цель', message: 'Текст сообщения', send: 'Отправить',
+    admin_profile: 'Профиль администратора', display_name: 'Отображаемое имя',
+    avatar: 'Эмодзи аватара', last_active: 'Последняя активность',
+    group_on: 'Активна', group_off: 'Неактивна', class_time: 'Время урока',
+    student_count: 'Учеников', has_homework: 'Есть ДЗ',
+    toggle_on: 'Включить', toggle_off: 'Выключить',
+    send_to_group: 'Написать группе', send_to_all: 'Всем группам',
+    att_present: 'Пришли', att_absent: 'Не пришли', att_pending: 'Ожидается',
+    date: 'Дата', status_changed: 'Статус изменён',
+    global_lb: 'Общий рейтинг', game_lb: 'Игровой рейтинг',
+    no_data: 'Нет данных', loading: 'Загрузка...',
+    success: 'Успешно!', error: 'Произошла ошибка',
+    confirm: 'Подтвердить', cancel: 'Отмена',
+    referral_pending_count: 'Ожидающие рефералы',
+    xp: 'XP', level: 'Уровень', streak: 'Серия',
+    attendance_history: 'История посещаемости', game_best: 'Лучшие результаты',
+  }
+};
+function t(key) { return (T[lang] || T.uz)[key] || key; }
+function toggleLang() {
+  lang = lang === 'uz' ? 'ru' : 'uz';
+  localStorage.setItem('adminLang', lang);
+  document.getElementById('langBtn').textContent = lang === 'uz' ? 'RU' : 'UZ';
+  updateNavLabels();
+  showTab(_currentTab, true);
+}
+function updateNavLabels() {
+  document.getElementById('nav_dashboard_lbl').textContent = t('dashboard').substring(0,7);
+  document.getElementById('nav_students_lbl').textContent = t('students').substring(0,8);
+  document.getElementById('nav_groups_lbl').textContent = t('groups').substring(0,6);
+  document.getElementById('nav_attendance_lbl').textContent = t('attendance').substring(0,7);
+  document.getElementById('nav_leaderboard_lbl').textContent = t('leaderboard').substring(0,7);
+  document.getElementById('nav_curators_lbl').textContent = t('curators').substring(0,7);
+  document.getElementById('nav_referral_lbl').textContent = t('referral').substring(0,7);
+  document.getElementById('nav_settings_lbl').textContent = t('settings').substring(0,7);
+}
+
+// ── Auth Token (parol login) ──────────────────────────────────────────────────
+let _sessionToken = localStorage.getItem('miniAdminToken') || '';
+let _sessionUser  = localStorage.getItem('miniAdminUser')  || '';
+
+function _authHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  if (initData)       h['X-Init-Data']    = initData;
+  if (_sessionToken)  h['Authorization']  = 'Bearer ' + _sessionToken;
+  return h;
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { ..._authHeaders(), ...(opts.headers || {}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (res.status === 401) { showLoginPage(); return {}; }
+  return res.json();
+}
+
+// ── Login / Logout ────────────────────────────────────────────────────────────
+function showLoginPage() {
+  const p = document.getElementById('loginPage');
+  p.style.display = 'flex';
+  // Nav va content ni yashiramiz
+  document.querySelector('.bottom-nav').style.display = 'none';
+  document.querySelector('.header').style.display    = 'none';
+}
+function hideLoginPage() {
+  const p = document.getElementById('loginPage');
+  p.style.display = 'none';
+  document.querySelector('.bottom-nav').style.display = 'flex';
+  document.querySelector('.header').style.display    = 'flex';
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  const errEl    = document.getElementById('loginErr');
+  const btn      = document.getElementById('loginBtn');
+  if (!username || !password) { errEl.textContent = 'Login va parolni kiriting'; errEl.style.display='block'; return; }
+  btn.disabled = true; btn.textContent = '⏳ Tekshirilmoqda...';
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/mini-admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const d = await res.json();
+    if (!res.ok || !d.token) {
+      errEl.textContent = d.error || 'Login yoki parol noto\'g\'ri';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Kirish →';
+      return;
+    }
+    _sessionToken = d.token;
+    _sessionUser  = d.username;
+    localStorage.setItem('miniAdminToken', _sessionToken);
+    localStorage.setItem('miniAdminUser',  _sessionUser);
+    hideLoginPage();
+    showTab('dashboard', true);
+  } catch(e) {
+    errEl.textContent = 'Tarmoq xatosi';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Kirish →';
+  }
+}
+
+async function doLogout() {
+  if (_sessionToken) {
+    await fetch('/api/mini-admin/logout', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + _sessionToken }
+    }).catch(() => {});
+  }
+  _sessionToken = ''; _sessionUser = '';
+  localStorage.removeItem('miniAdminToken');
+  localStorage.removeItem('miniAdminUser');
+  showLoginPage();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 2500);
+}
+
+// ── Bottom Sheet ──────────────────────────────────────────────────────────────
+function openSheet(html, title = '') {
+  document.getElementById('sheetContent').innerHTML =
+    (title ? `<div class="sheet-title">${title}</div>` : '') + html;
+  document.getElementById('sheetOverlay').style.display = 'block';
+  requestAnimationFrame(() => document.getElementById('mainSheet').classList.add('open'));
+}
+function closeSheet() {
+  document.getElementById('mainSheet').classList.remove('open');
+  setTimeout(() => { document.getElementById('sheetOverlay').style.display = 'none'; }, 300);
+}
+
+// ── Tab Navigation ────────────────────────────────────────────────────────────
+let _currentTab = 'dashboard';
+let _adminProfile = null;
+let _studentsData = [], _groupsData = [], _attData = {}, _lbData = [], _curatorData = [], _refData = [];
+
+function showTab(tab, force = false) {
+  if (_currentTab === tab && !force) return;
+  _currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById('nav_' + tab);
+  if (nb) nb.classList.add('active');
+  renderTab(tab);
+}
+
+async function renderTab(tab) {
+  const content = document.getElementById('mainContent');
+  content.innerHTML = `<div class="loading">${t('loading')}</div>`;
+  switch(tab) {
+    case 'dashboard':   await renderDashboard(); break;
+    case 'students':    await renderStudents(); break;
+    case 'groups':      await renderGroups(); break;
+    case 'attendance':  await renderAttendance(); break;
+    case 'leaderboard': await renderLeaderboard(); break;
+    case 'curators':    await renderCurators(); break;
+    case 'referral':    await renderReferral(); break;
+    case 'settings':    await renderSettings(); break;
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function renderDashboard() {
+  const [profile, stats] = await Promise.all([
+    api('/api/admin/profile'),
+    api('/api/admin/stats'),
+  ]);
+  _adminProfile = profile;
+  document.getElementById('headerAvatar').textContent = profile.avatar_emoji || '👨‍💼';
+  document.getElementById('headerTitle').textContent = profile.display_name || 'Admin';
+
+  const pct = stats.total_students > 0
+    ? Math.round((stats.today_present / stats.total_students) * 100) : 0;
+  const pendingRef = profile.referral_pending || 0;
+  if (pendingRef > 0) {
+    const badge = document.getElementById('refBadge');
+    badge.textContent = pendingRef;
+    badge.style.display = 'block';
+  }
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="card" style="text-align:center;padding:20px;">
+      <div style="font-size:52px;margin-bottom:8px;">${profile.avatar_emoji || '👨‍💼'}</div>
+      <div style="font-size:20px;font-weight:700;">${profile.display_name || 'Admin'}</div>
+      <div style="color:#666;font-size:13px;margin-top:4px;">${t('last_active')}: ${new Date().toLocaleDateString('uz')}</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num">${stats.total_students || 0}</div>
+        <div class="stat-label">${t('total_students')}</div>
+      </div>
+      <div class="stat-card" style="border-color:#1b4f1b;">
+        <div class="stat-num" style="color:#4CAF50;">${stats.today_present || 0}</div>
+        <div class="stat-label">${t('today_present')}</div>
+      </div>
+      <div class="stat-card" style="border-color:#4f1b1b;">
+        <div class="stat-num" style="color:#f44336;">${stats.today_absent || 0}</div>
+        <div class="stat-label">${t('today_absent')}</div>
+      </div>
+      <div class="stat-card" style="border-color:#2a2a00;">
+        <div class="stat-num" style="color:#ffd700;">${stats.today_pending || 0}</div>
+        <div class="stat-label">${t('today_pending')}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📈 Bugungi davomat</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#aaa;margin-bottom:6px;">
+        <span>${t('att_present')}: ${stats.today_present || 0}</span>
+        <span>${pct}%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${pct}%;"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚡ Tezkor amallar</div>
+      <div class="action-grid">
+        <button class="action-btn" onclick="showTab('attendance')">
+          <span class="ab-icon">📋</span><span>Davomat</span>
+        </button>
+        <button class="action-btn" onclick="showTab('referral')">
+          <span class="ab-icon">🔗</span><span>Referal (${pendingRef})</span>
+        </button>
+        <button class="action-btn" onclick="showTab('students')">
+          <span class="ab-icon">👥</span><span>O'quvchilar</span>
+        </button>
+        <button class="action-btn" onclick="showBroadcastSheet()">
+          <span class="ab-icon">📢</span><span>Xabar yuborish</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Students ──────────────────────────────────────────────────────────────────
+let _studentFilter = 'all', _studentSearch = '';
+async function renderStudents() {
+  const [studData, groups] = await Promise.all([
+    api('/api/admin/students'),
+    api('/api/admin/groups'),
+  ]);
+  _studentsData = studData.students || [];
+  _groupsData = groups.groups || [];
+  renderStudentList();
+}
+function renderStudentList() {
+  const filtered = _studentsData.filter(s => {
+    const matchGroup = _studentFilter === 'all' || s.group_name === _studentFilter;
+    const q = _studentSearch.toLowerCase();
+    const matchSearch = !q || s.full_name.toLowerCase().includes(q) || (s.mars_id || '').toLowerCase().includes(q);
+    return matchGroup && matchSearch;
+  });
+  const uniqueGroups = [...new Set(_studentsData.map(s => s.group_name))].sort();
+
+  document.getElementById('mainContent').innerHTML = `
+    <input class="search-box" placeholder="${t('search_placeholder')}" value="${_studentSearch}"
+      oninput="_studentSearch=this.value;renderStudentList()">
+    <div class="chips">
+      <div class="chip ${_studentFilter==='all'?'active':''}" onclick="_studentFilter='all';renderStudentList()">Barchasi (${_studentsData.length})</div>
+      ${uniqueGroups.map(g => `<div class="chip ${_studentFilter===g?'active':''}" onclick="_studentFilter='${g}';renderStudentList()">${g}</div>`).join('')}
+    </div>
+    <div id="studentList">
+      ${filtered.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
+        filtered.map(s => `
+          <div class="student-card" onclick="openStudentSheet(${s.user_id})">
+            <div class="student-avatar">${s.avatar || '👤'}</div>
+            <div class="student-info">
+              <div class="student-name">${s.full_name}</div>
+              <div class="student-group">${s.group_name} • ${s.mars_id || ''}</div>
+            </div>
+            <span class="att-badge ${s.att_today==='yes'?'att-yes':s.att_today==='no'?'att-no':'att-pending'}">
+              ${s.att_today==='yes'?'✅':s.att_today==='no'?'❌':'⏳'}
+            </span>
+          </div>
+        `).join('')
+      }
+    </div>
+  `;
+}
+async function openStudentSheet(userId) {
+  const s = _studentsData.find(x => x.user_id === userId);
+  if (!s) return;
+  openSheet(`
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:52px;">${s.avatar || '👤'}</div>
+      <div style="font-size:20px;font-weight:700;margin-top:8px;">${s.full_name}</div>
+      <div style="color:#666;font-size:13px;">${s.group_name}</div>
+    </div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><div style="color:#666;font-size:12px;">Mars ID</div><div style="color:#fff;">${s.mars_id||'—'}</div></div>
+        <div><div style="color:#666;font-size:12px;">Telegram</div><div style="color:#fff;">${s.username||'—'}</div></div>
+        <div><div style="color:#666;font-size:12px;">Telefon</div><div style="color:#fff;">${s.phone||'—'}</div></div>
+        <div><div style="color:#666;font-size:12px;">So'nggi faollik</div><div style="color:#fff;font-size:12px;">${s.last_active||'—'}</div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="inline-label">${t('send_message')}</div>
+      <div class="msg-input-area">
+        <textarea class="txt-input" id="studentMsgInput" rows="3" placeholder="${t('message')}..."></textarea>
+        <button class="msg-send-btn" onclick="sendStudentMessage(${userId})">📤</button>
+      </div>
+    </div>
+    <div class="att-badge ${s.att_today==='yes'?'att-yes':s.att_today==='no'?'att-no':'att-pending'}" style="font-size:14px;padding:8px 16px;">
+      Bugun: ${s.att_today==='yes'?'✅ Keldi':s.att_today==='no'?'❌ Kelmadi':'⏳ Kutilmoqda'}
+    </div>
+  `, s.full_name);
+}
+async function sendStudentMessage(userId) {
+  const text = document.getElementById('studentMsgInput')?.value.trim();
+  if (!text) { showToast('❌ Xabar bo\'sh'); return; }
+  const r = await api('/api/admin/message/student', { method: 'POST', body: { user_id: userId, text } });
+  if (r.ok) { showToast('✅ ' + t('success')); closeSheet(); }
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+// ── Groups ────────────────────────────────────────────────────────────────────
+async function renderGroups() {
+  const data = await api('/api/admin/groups-detail');
+  _groupsData = data.groups || [];
+  document.getElementById('mainContent').innerHTML = `
+    <div id="groupList">
+      ${_groupsData.map(g => `
+        <div class="group-card" onclick="openGroupSheet(${g.chat_id})">
+          <div class="group-icon">${g.audience==='PARENT'?'👨‍👩‍👧':'🎓'}</div>
+          <div class="group-info">
+            <div class="group-name">${g.name}</div>
+            <div class="group-meta">${g.group_type==='ODD'?'Toq':'Juft'} • ${g.student_count||0} o'quvchi${g.class_time?' • ⏰'+g.class_time:''}</div>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" ${g.is_active?'checked':''} onchange="toggleGroup(${g.chat_id},this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+async function toggleGroup(chatId, isActive) {
+  const r = await api('/api/admin/toggle-group', { method: 'POST', body: { chat_id: chatId, is_active: isActive } });
+  if (r.ok) showToast(isActive ? '✅ Guruh yoqildi' : '🔴 Guruh o\'chirildi');
+}
+async function openGroupSheet(chatId) {
+  const g = _groupsData.find(x => x.chat_id === chatId);
+  if (!g) return;
+  openSheet(`
+    <div style="margin-bottom:12px;font-size:28px;text-align:center;">${g.audience==='PARENT'?'👨‍👩‍👧':'🎓'}</div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><div style="color:#666;font-size:12px;">Turi</div><div>${g.group_type==='ODD'?'Toq':'Juft'}</div></div>
+        <div><div style="color:#666;font-size:12px;">O'quvchilar</div><div>${g.student_count||0}</div></div>
+        <div><div style="color:#666;font-size:12px;">Dars vaqti</div><div>${g.class_time||'—'}</div></div>
+        <div><div style="color:#666;font-size:12px;">Uy vazifasi</div><div>${g.has_homework?'✅ Bor':'❌ Yo\'q'}</div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="inline-label">${t('send_to_group')}</div>
+      <div class="msg-input-area">
+        <textarea class="txt-input" id="groupMsgInput" rows="3" placeholder="${t('message')}..."></textarea>
+        <button class="msg-send-btn" onclick="sendGroupMessage(${chatId})">📤</button>
+      </div>
+    </div>
+  `, g.name);
+}
+async function sendGroupMessage(chatId) {
+  const text = document.getElementById('groupMsgInput')?.value.trim();
+  if (!text) { showToast('❌ Xabar bo\'sh'); return; }
+  const r = await api('/api/admin/message/group', { method: 'POST', body: { chat_id: chatId, text } });
+  if (r.ok) { showToast('✅ ' + t('success')); closeSheet(); }
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+let _attFilter = 'all';
+async function renderAttendance() {
+  const data = await api('/api/admin/attendance');
+  _attData = data;
+  renderAttList();
+}
+function renderAttList() {
+  const { present = [], absent = [], pending = [], date = '' } = _attData;
+  let items = [];
+  if (_attFilter === 'all') items = [
+    ...present.map(s => ({...s, status:'yes'})),
+    ...absent.map(s => ({...s, status:'no'})),
+    ...pending.map(s => ({...s, status:'pending'})),
+  ];
+  else if (_attFilter === 'yes') items = present.map(s => ({...s, status:'yes'}));
+  else if (_attFilter === 'no') items = absent.map(s => ({...s, status:'no'}));
+  else items = pending.map(s => ({...s, status:'pending'}));
+
+  document.getElementById('mainContent').innerHTML = `
+    <div style="color:#666;font-size:13px;margin-bottom:12px;">📅 ${date}</div>
+    <div class="chips">
+      <div class="chip ${_attFilter==='all'?'active':''}" onclick="_attFilter='all';renderAttList()">Barchasi (${present.length+absent.length+pending.length})</div>
+      <div class="chip ${_attFilter==='yes'?'active':''}" onclick="_attFilter='yes';renderAttList()">✅ Keldi (${present.length})</div>
+      <div class="chip ${_attFilter==='no'?'active':''}" onclick="_attFilter='no';renderAttList()">❌ Kelmadi (${absent.length})</div>
+      <div class="chip ${_attFilter==='pending'?'active':''}" onclick="_attFilter='pending';renderAttList()">⏳ Kutilmoqda (${pending.length})</div>
+    </div>
+    ${items.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
+      items.map(s => `
+        <div class="student-card" style="cursor:default;">
+          <div class="student-avatar">👤</div>
+          <div class="student-info">
+            <div class="student-name">${s.full_name}</div>
+            <div class="student-group">${s.group_name}${s.reason?' • <i>'+s.reason+'</i>':''}</div>
+          </div>
+          <span class="att-badge ${s.status==='yes'?'att-yes':s.status==='no'?'att-no':'att-pending'}">
+            ${s.status==='yes'?'✅':s.status==='no'?'❌':'⏳'}
+          </span>
+        </div>
+      `).join('')
+    }
+  `;
+}
+
+// ── Leaderboard ───────────────────────────────────────────────────────────────
+let _lbGameType = 'xp';
+async function renderLeaderboard() {
+  const data = await api('/api/student/leaderboard/global');
+  _lbData = data.leaders || [];
+  renderLbView();
+}
+function renderLbView() {
+  const top3 = _lbData.slice(0, 3);
+  const rest = _lbData.slice(3);
+  document.getElementById('mainContent').innerHTML = `
+    <div class="chips" style="margin-bottom:16px;">
+      <div class="chip active" onclick="switchLb('xp',this)">⭐ XP</div>
+      <div class="chip" onclick="switchLb('typing',this)">⌨️ Typing</div>
+      <div class="chip" onclick="switchLb('quiz',this)">❓ Quiz</div>
+      <div class="chip" onclick="switchLb('chess',this)">♟ Chess</div>
+      <div class="chip" onclick="switchLb('2048',this)">🎲 2048</div>
+      <div class="chip" onclick="switchLb('block_blast',this)">🟥 Blocks</div>
+    </div>
+    <div id="lbContent">
+      ${renderLbPodium(top3)}
+      <div id="lbList">
+        ${rest.map((s, i) => `
+          <div class="student-card" style="cursor:default;">
+            <div style="font-size:16px;font-weight:700;color:#666;min-width:28px;">${i+4}</div>
+            <div class="student-avatar">${s.avatar||'👤'}</div>
+            <div class="student-info">
+              <div class="student-name">${s.full_name}</div>
+              <div class="student-group">${s.group_name} • Lv.${s.level}</div>
+            </div>
+            <div style="color:#ffd700;font-weight:700;">${s.xp} XP</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+function renderLbPodium(top3) {
+  if (top3.length === 0) return '';
+  const order = [1, 0, 2]; // 2nd, 1st, 3rd
+  const heights = [60, 80, 50];
+  const medals = ['🥈','🥇','🥉'];
+  return `
+    <div class="lb-podium">
+      ${order.map((idx, pos) => top3[idx] ? `
+        <div class="lb-podium-item">
+          <span style="font-size:20px;">${top3[idx].avatar||'👤'}</span>
+          <span class="lb-rank-badge">${medals[pos]}</span>
+          <div class="lb-podium-bar" style="height:${heights[pos]}px;"></div>
+          <span class="lb-podium-name">${top3[idx].full_name}</span>
+          <span class="lb-podium-score">${top3[idx].xp} XP</span>
+        </div>
+      ` : '').join('')}
+    </div>
+  `;
+}
+async function switchLb(type, el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  _lbGameType = type;
+  if (type === 'xp') {
+    const data = await api('/api/student/leaderboard/global');
+    _lbData = data.leaders || [];
+    renderLbView();
+  } else {
+    const data = await api('/api/game/leaderboard?type=' + type);
+    const leaders = (data.leaders || []).map((l, i) => ({...l, xp: l.score, level: 1}));
+    document.getElementById('lbList').innerHTML = leaders.map((s, i) => `
+      <div class="student-card" style="cursor:default;">
+        <div style="font-size:16px;font-weight:700;color:#666;min-width:28px;">${i+1}</div>
+        <div class="student-avatar">${s.avatar||'👤'}</div>
+        <div class="student-info">
+          <div class="student-name">${s.full_name}</div>
+          <div class="student-group">${s.group_name}</div>
+        </div>
+        <div style="color:#ffd700;font-weight:700;">${s.score}</div>
+      </div>
+    `).join('') || `<div class="empty">${t('no_data')}</div>`;
+  }
+}
+
+// ── Curators ──────────────────────────────────────────────────────────────────
+async function renderCurators() {
+  const data = await api('/api/admin/curator-stats');
+  const curators = Array.isArray(data) ? data : [];
+  document.getElementById('mainContent').innerHTML = `
+    ${curators.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
+      curators.map(c => `
+        <div class="curator-card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <div style="font-size:28px;">👩‍💼</div>
+            <div style="flex:1;">
+              <div class="curator-name">${c.full_name}</div>
+              <div style="color:#666;font-size:12px;">@${c.key}</div>
+            </div>
+            <span class="curator-status ${c.logged_in?'online':'offline'}">${c.logged_in?'🟢 Online':'⚫ Offline'}</span>
+          </div>
+          ${c.logged_in ? `
+            <div style="font-size:12px;color:#666;">
+              TG ID: ${c.telegram_id} •
+              Kirdi: ${c.logged_in_at ? new Date(c.logged_in_at).toLocaleDateString('uz') : '—'}
+            </div>
+          ` : ''}
+        </div>
+      `).join('')
+    }
+  `;
+}
+
+// ── Referral ──────────────────────────────────────────────────────────────────
+let _refFilter = 'pending';
+async function renderReferral() {
+  await loadReferrals();
+}
+async function loadReferrals() {
+  const data = await api('/api/admin/referral-students?status=' + _refFilter);
+  _refData = data.referrals || [];
+  const pendingData = await api('/api/admin/referral-students?status=pending');
+  const pendingCount = (pendingData.referrals || []).length;
+  const badge = document.getElementById('refBadge');
+  if (pendingCount > 0) { badge.textContent = pendingCount; badge.style.display = 'block'; }
+  else badge.style.display = 'none';
+  renderRefList();
+}
+function renderRefList() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="chips">
+      <div class="chip ${_refFilter==='pending'?'active':''}" onclick="_refFilter='pending';loadReferrals()">${t('pending')}</div>
+      <div class="chip ${_refFilter==='approved'?'active':''}" onclick="_refFilter='approved';loadReferrals()">${t('approved')}</div>
+      <div class="chip ${_refFilter==='rejected'?'active':''}" onclick="_refFilter='rejected';loadReferrals()">${t('rejected')}</div>
+    </div>
+    ${_refData.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
+      _refData.map(r => {
+        const isReferral = (r.registration_type === 'referral' || r.referrer_user_id);
+        const typeBadge = isReferral
+          ? `<span style="background:rgba(102,126,234,.25);color:#a78bfa;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;margin-right:6px;">🔗 Referal</span>`
+          : `<span style="background:rgba(76,175,80,.15);color:#4CAF50;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;margin-right:6px;">📝 To'g'ridan</span>`;
+        const groupInfoHtml = r.has_group ? `
+          <div style="margin-top:6px;padding:8px;background:rgba(255,255,255,.05);border-radius:8px;font-size:12px;">
+            🏫 <b>Guruh:</b> ${r.group_time || '—'} &nbsp;
+            📅 ${r.group_day_type === 'ODD' ? 'Toq kunlar' : r.group_day_type === 'EVEN' ? 'Juft kunlar' : '—'} &nbsp;
+            👨‍🏫 ${r.teacher_name || '—'}
+          </div>` : '';
+        const rejectReasonHtml = r.status === 'rejected' && r.reject_reason
+          ? `<div style="margin-top:6px;color:#ff6b6b;font-size:12px;background:rgba(255,107,107,.1);padding:6px 10px;border-radius:8px;">Sabab: ${r.reject_reason}</div>`
+          : '';
+        return `
+        <div class="ref-card">
+          <div class="ref-name">${typeBadge}${r.full_name}</div>
+          <div class="ref-meta">
+            Yosh: ${r.age} • ${r.location}<br>
+            📱 ${r.phone}<br>
+            💡 ${r.interests}<br>
+            ${isReferral ? `🔗 Taklif qilgan: <code>${r.referrer_user_id}</code><br>` : ''}
+            🕐 ${r.created_at}
+          </div>
+          ${groupInfoHtml}
+          ${rejectReasonHtml}
+          ${r.status === 'pending' ? `
+            <div class="ref-actions">
+              <button style="background:#1b4f1b;color:#4CAF50;" onclick="approveRef(${r.id})">✅ ${t('approve')}</button>
+              <button style="background:#4f1b1b;color:#f44336;" onclick="rejectRef(${r.id})">❌ ${t('reject')}</button>
+            </div>
+          ` : `
+            <div style="margin-top:8px;">
+              <span class="att-badge ${r.status==='approved'?'att-yes':'att-no'}">
+                ${r.status==='approved'?'✅ '+t('approved'):'❌ '+t('rejected')}
+              </span>
+              ${r.group_name ? ` • 📚 ${r.group_name}` : ''}
+              ${r.mars_id ? ` • Mars ID: <b>${r.mars_id}</b>` : ''}
+            </div>
+          `}
+        </div>
+      `}).join('')
+    }
+  `;
+}
+async function approveRef(id) {
+  // Show group selector sheet
+  const groups = await api('/api/admin/groups');
+  const groupList = (groups.groups || []).map(g => g.name);
+  openSheet(`
+    <div style="margin-bottom:16px;font-weight:600;">Guruh tanlang:</div>
+    <div id="groupSelectList">
+      ${groupList.map(g => `
+        <div class="student-card" onclick="confirmApproveRef(${id},'${g}')" style="margin-bottom:6px;cursor:pointer;">
+          <div style="font-size:20px;">📚</div>
+          <div class="student-info"><div class="student-name">${g}</div></div>
+          <div>→</div>
+        </div>
+      `).join('')}
+      <div style="margin-top:12px;">
+        <input id="customGroupInput" placeholder="Yoki guruh nomini yozing..." style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:14px;box-sizing:border-box;">
+        <button onclick="confirmApproveRef(${id}, document.getElementById('customGroupInput').value.trim())" style="margin-top:8px;width:100%;padding:10px;border-radius:8px;background:#4CAF50;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;">✅ Tasdiqlash</button>
+      </div>
+    </div>
+  `, '✅ Tasdiqlash — Guruh tanlang');
+}
+async function confirmApproveRef(id, groupName) {
+  if (!groupName) { showToast('Guruh nomini kiriting'); return; }
+  closeSheet();
+  const r = await api(`/api/admin/referral-students/${id}/approve`, { method: 'POST', body: { group_name: groupName } });
+  if (r.ok) {
+    const marsInfo = r.mars_id ? ` Mars ID: ${r.mars_id}` : '';
+    showToast('✅ Tasdiqlandi!' + marsInfo);
+    await loadReferrals();
+  } else showToast('❌ ' + (r.error || t('error')));
+}
+async function rejectRef(id) {
+  // Show reject reason sheet instead of confirm()
+  openSheet(`
+    <div style="margin-bottom:12px;font-weight:600;font-size:16px;">❌ Rad etish sababi</div>
+    <div style="color:rgba(255,255,255,.6);font-size:13px;margin-bottom:12px;">O'quvchiga bu sabab Telegram orqali yuboriladi.</div>
+    <textarea id="rejectReasonInput" placeholder="Masalan: Guruhlar to'ldi, keyinroq murojaat qiling." style="width:100%;padding:12px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:14px;min-height:100px;box-sizing:border-box;resize:vertical;"></textarea>
+    <button onclick="confirmRejectRef(${id})" style="margin-top:12px;width:100%;padding:12px;border-radius:10px;background:#c0392b;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;">❌ Rad etish</button>
+  `, '❌ Rad etish');
+}
+async function confirmRejectRef(id) {
+  const reason = (document.getElementById('rejectReasonInput')?.value || '').trim();
+  if (!reason) { showToast('Sabab yozing'); return; }
+  closeSheet();
+  const r = await api(`/api/admin/referral-students/${id}/reject`, { method: 'POST', body: { reason } });
+  if (r.ok) { showToast('🔴 Rad etildi. Xabar yuborildi.'); await loadReferrals(); }
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+let _reminderH = 20, _reminderM = 0;
+async function renderSettings() {
+  const [profile, reminder] = await Promise.all([
+    api('/api/admin/profile'),
+    api('/api/admin/reminder-time'),
+  ]);
+  _reminderH = reminder.hour || 20;
+  _reminderM = reminder.minute || 0;
+  document.getElementById('mainContent').innerHTML = `
+    <!-- Session info + Logout -->
+    ${_sessionUser ? `
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="color:#7eb8f7;font-size:12px;">Kirgan foydalanuvchi</div>
+        <div style="font-weight:700;font-size:16px;">👤 ${_sessionUser}</div>
+      </div>
+      <button onclick="doLogout()" style="padding:8px 16px;border-radius:10px;background:#4f1b1b;color:#f44336;border:1px solid #7a2020;font-size:13px;font-weight:600;cursor:pointer;">🚪 Chiqish</button>
+    </div>` : ''}
+    <!-- Admin Profile -->
+    <div class="card">
+      <div class="card-title">👨‍💼 ${t('admin_profile')}</div>
+      <div style="margin-bottom:12px;">
+        <div class="inline-label">${t('avatar')}</div>
+        <input class="search-box" id="avatarInput" value="${profile.avatar_emoji||'👨‍💼'}" placeholder="emoji">
+      </div>
+      <div style="margin-bottom:12px;">
+        <div class="inline-label">${t('display_name')}</div>
+        <input class="search-box" id="displayNameInput" value="${profile.display_name||''}" placeholder="${t('display_name')}">
+      </div>
+      <button class="btn btn-primary" onclick="saveAdminProfile()">${t('save')}</button>
+    </div>
+    <!-- Reminder Time -->
+    <div class="card">
+      <div class="card-title">⏰ ${t('reminder_time')}</div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+        <input type="number" class="search-box" id="reminderH" value="${_reminderH}" min="0" max="23" style="width:80px;text-align:center;">
+        <span style="font-size:24px;font-weight:700;">:</span>
+        <input type="number" class="search-box" id="reminderM" value="${_reminderM}" min="0" max="59" style="width:80px;text-align:center;">
+      </div>
+      <button class="btn btn-primary" onclick="saveReminderTime()">${t('save')}</button>
+    </div>
+    <!-- Broadcast -->
+    <div class="card">
+      <div class="card-title">📢 ${t('broadcast')}</div>
+      <div style="margin-bottom:12px;">
+        <div class="inline-label">${t('target')}</div>
+        <select class="search-box" id="broadcastTarget">
+          <option value="all">Barcha o'quvchilar (DM)</option>
+          <option value="parents">Ota-ona guruhlar</option>
+          <option value="students_group">O'quvchi guruhlar</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div class="inline-label">${t('message')}</div>
+        <textarea class="txt-input" id="broadcastText" rows="4" placeholder="${t('message')}..."></textarea>
+      </div>
+      <button class="btn btn-success" onclick="sendBroadcast()">${t('send')}</button>
+    </div>
+    <!-- Auto Messages Link -->
+    <div class="card">
+      <div class="card-title">🤖 Avto xabarlar</div>
+      <div style="color:#aaa;font-size:13px;margin-bottom:12px;">Batafsil sozlamalar uchun Admin Panel ni oching.</div>
+      <button class="btn btn-ghost" onclick="window.open('/admin.html','_blank')">🔗 Admin Panel ochish</button>
+    </div>
+    <!-- Guide -->
+    <div class="card">
+      <div class="card-title">📖 ${lang==='uz'?'Qo\'llanma':'Инструкция'}</div>
+      <div style="color:#aaa;font-size:13px;line-height:1.6;">
+        ${lang==='uz' ? `
+          <b>📊 Bosh sahifa:</b> Bugungi statistika<br>
+          <b>👥 O'quvchilar:</b> Qidirish, profil, xabar yuborish<br>
+          <b>🏫 Guruhlar:</b> Yoq/o'chir, guruhga yozish<br>
+          <b>📋 Davomat:</b> Kim keldi/kelmadi<br>
+          <b>🏆 Reyting:</b> Top o'quvchilar va o'yin reytingi<br>
+          <b>👩‍💼 Kuratorlar:</b> Faol sessiyalar<br>
+          <b>🔗 Referal:</b> Yangi o'quvchilarni tasdiqlash<br>
+          <b>⚙️ Sozlama:</b> Profil, eslatma vaqti, xabar yuborish
+        ` : `
+          <b>📊 Главная:</b> Дневная статистика<br>
+          <b>👥 Ученики:</b> Поиск, профиль, отправка сообщений<br>
+          <b>🏫 Группы:</b> Вкл/выкл, написать группе<br>
+          <b>📋 Посещаемость:</b> Кто пришёл/не пришёл<br>
+          <b>🏆 Рейтинг:</b> Топ учеников и игровой рейтинг<br>
+          <b>👩‍💼 Кураторы:</b> Активные сессии<br>
+          <b>🔗 Реферал:</b> Подтверждение новых учеников<br>
+          <b>⚙️ Настройки:</b> Профиль, время напоминания, рассылка
+        `}
+      </div>
+    </div>
+  `;
+}
+async function saveAdminProfile() {
+  const displayName = document.getElementById('displayNameInput')?.value.trim();
+  const avatarEmoji = document.getElementById('avatarInput')?.value.trim();
+  const r = await api('/api/admin/profile', { method: 'POST', body: { display_name: displayName, avatar_emoji: avatarEmoji } });
+  if (r.ok) {
+    showToast('✅ ' + t('success'));
+    document.getElementById('headerAvatar').textContent = avatarEmoji || '👨‍💼';
+    document.getElementById('headerTitle').textContent = displayName || 'Admin';
+  } else showToast('❌ ' + (r.error || t('error')));
+}
+async function saveReminderTime() {
+  const h = parseInt(document.getElementById('reminderH')?.value || '20');
+  const m = parseInt(document.getElementById('reminderM')?.value || '0');
+  const r = await api('/api/admin/reminder-time', { method: 'POST', body: { hour: h, minute: m } });
+  if (r.ok) showToast(`✅ Eslatma vaqti: ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+  else showToast('❌ ' + (r.error || t('error')));
+}
+async function sendBroadcast() {
+  const text = document.getElementById('broadcastText')?.value.trim();
+  const target = document.getElementById('broadcastTarget')?.value || 'all';
+  if (!text) { showToast('❌ Xabar bo\'sh'); return; }
+  const r = await api('/api/admin/broadcast', { method: 'POST', body: { text, target } });
+  if (r.ok) showToast(`✅ Yuborildi: ${r.sent}, Xato: ${r.failed}`);
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+// ── Broadcast Sheet ───────────────────────────────────────────────────────────
+function showBroadcastSheet() {
+  openSheet(`
+    <div style="margin-bottom:12px;">
+      <div class="inline-label">${t('target')}</div>
+      <select class="search-box" id="bcTarget">
+        <option value="all">Barcha o'quvchilar</option>
+        <option value="parents">Ota-ona guruhlar</option>
+        <option value="students_group">O'quvchi guruhlar</option>
+      </select>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="inline-label">${t('message')}</div>
+      <textarea class="txt-input" id="bcText" rows="5" placeholder="${t('message')}..."></textarea>
+    </div>
+    <button class="btn btn-success" onclick="doQuickBroadcast()">${t('send')}</button>
+  `, '📢 ' + t('broadcast'));
+}
+async function doQuickBroadcast() {
+  const text = document.getElementById('bcText')?.value.trim();
+  const target = document.getElementById('bcTarget')?.value || 'all';
+  if (!text) { showToast('❌ Xabar bo\'sh'); return; }
+  const r = await api('/api/admin/broadcast', { method: 'POST', body: { text, target } });
+  if (r.ok) { showToast(`✅ Yuborildi: ${r.sent}`); closeSheet(); }
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+// ── Auth check & Init ──────────────────────────────────────────────────────────
+async function init() {
+  // 1. Avval mavjud token yoki initData ni tekshiramiz
+  const r = await fetch('/api/admin/me', { headers: _authHeaders() });
+  if (r.status === 401) {
+    // Token va initData ham ishlamadi → login sahifasi
+    showLoginPage();
+    return;
+  }
+  const data = await r.json();
+  if (data.error) {
+    showLoginPage();
+    return;
+  }
+  hideLoginPage();
+  updateNavLabels();
+  showTab('dashboard');
+}
+
+init();
+</script>
+</body>
+</html>

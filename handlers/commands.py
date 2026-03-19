@@ -34,11 +34,34 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
       Admin      → admin panel
       Ro'yxatdan o'tgan o'quvchi → o'quvchi paneli
       Yangi foydalanuvchi       → ro'yxatdan o'tish
+      /start ref_XXXX           → referal ro'yxatdan o'tish
     """
     from aiogram.fsm.context import FSMContext  # noqa — already imported via type hint
     await state.clear()  # Avvalgi FSM holatini tozalaymiz
 
     user_id = message.from_user.id
+
+    # Referal deep-link: /start ref_123456789
+    deep_link = message.text.split(maxsplit=1)[1] if message.text and " " in message.text else ""
+    if deep_link.startswith("ref_"):
+        ref_user_id = deep_link[4:].strip()
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo as WAI
+        from config import WEBAPP_URL as _WA
+        if _WA and ref_user_id.isdigit() and int(ref_user_id) != user_id:
+            ref_url = f"{_WA.rstrip('/')}/webapp/student.html?ref={ref_user_id}"
+            markup = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="📝 Ro'yxatdan o'tish (do'st taklifi)",
+                    web_app=WAI(url=ref_url),
+                )
+            ]])
+            await message.answer(
+                f"👋 Do'stingiz sizi MARS IT ga taklif qildi!\n\n"
+                f"Quyidagi tugmani bosib ro'yxatdan o'ting va <b>+500 XP</b> oling!\n"
+                f"Ikkalangizga ham XP beriladi 🎉",
+                reply_markup=markup,
+            )
+            return
 
     if _is_admin(user_id):
         await message.answer(

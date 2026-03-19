@@ -820,6 +820,12 @@
       font-size: 90px; font-weight: 900; color: rgba(255,255,255,.13); line-height: 1;
       pointer-events: none; user-select: none; letter-spacing: -4px;
     }
+
+    /* ── Quiz fix ── */
+    .quiz-opt { display: block !important; width: 100%; }
+
+    /* ── XP Modal animation ── */
+    @keyframes xpPop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
   </style>
 </head>
 <body>
@@ -835,6 +841,8 @@
     <div class="header-right">
       <div class="level-badge" id="hdrLevel">Lv.1</div>
       <button class="lang-btn" id="langBtn" onclick="toggleLang()">🇷🇺</button>
+      <button id="soundBtn" onclick="toggleSound()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;">🔊</button>
+      <button onclick="refreshCurrentTab()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;" title="Yangilash">🔄</button>
       <button class="help-btn" onclick="openGuide()">?</button>
     </div>
   </div>
@@ -993,6 +1001,11 @@
             <div class="mc-label" data-i18n="game.multi">Multiplayer Yozish</div>
             <div class="mc-sub" data-i18n="game.multi.sub">+20 XP g'alaba</div>
           </div>
+          <div class="menu-card" onclick="startBlockBlast()">
+            <div class="mc-icon">🧱</div>
+            <div class="mc-label">Block Blast</div>
+            <div class="mc-sub">+10–30 XP</div>
+          </div>
         </div>
       </div>
 
@@ -1108,6 +1121,26 @@
 
     </div><!-- end page-games -->
 
+    <!-- ═════════════════════════ REFERRAL PAGE ══════════════════════ -->
+    <div class="page" id="page-referral">
+      <div id="referralSection" style="padding:16px;">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:40px;">🤝</div>
+          <h3 style="color:#fff;margin:8px 0;">Do'stingizni taklif qiling!</h3>
+          <p style="color:#aaa;font-size:14px;">Har bir do'stingiz uchun ikkalangizga ham <b style="color:#ffd700;">+500 XP</b></p>
+        </div>
+        <div style="background:#1e2a3a;border-radius:12px;padding:16px;margin-bottom:16px;">
+          <div style="color:#7eb8f7;font-size:12px;margin-bottom:8px;">Mening referal linkım:</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div id="referralLink" style="flex:1;background:#0d1a2a;border-radius:8px;padding:10px;color:#fff;font-size:12px;word-break:break-all;"></div>
+            <button onclick="copyReferralLink()" style="background:#4CAF50;color:#fff;border:none;border-radius:8px;padding:10px;cursor:pointer;white-space:nowrap;">📋 Nusxa</button>
+          </div>
+        </div>
+        <button onclick="shareReferralLink()" style="width:100%;background:linear-gradient(135deg,#2196F3,#1976D2);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:12px;">📤 Telegram orqali ulashing</button>
+        <div id="referralInvitedList" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Tab bar -->
@@ -1129,6 +1162,9 @@
     </div>
     <div class="tab-item"        id="tab-games"    onclick="goPage('games')">
       <div class="tab-icon">🕹</div><div class="tab-label" data-i18n="tab.games">O'yinlar</div>
+    </div>
+    <div class="tab-item"        id="tab-referral" onclick="goPage('referral')">
+      <div class="tab-icon">🤝</div><div class="tab-label">Taklif</div>
     </div>
   </div>
 </div>
@@ -1176,6 +1212,12 @@
       </select>
       <button class="reg-btn" onclick="regNext1()">Davom etish →</button>
       <div class="reg-err" id="regErr1"></div>
+      <div style="margin-top:20px;text-align:center;">
+        <div style="color:var(--text2);font-size:13px;margin-bottom:8px;">Mars ID yo'qmi?</div>
+        <button class="reg-btn" style="background:linear-gradient(135deg,#667eea,#764ba2);" onclick="showDirectRegForm()">
+          📝 Yangi ariza topshirish
+        </button>
+      </div>
     </div>
 
     <!-- Qadam 2: Mars ID va parol -->
@@ -1200,6 +1242,106 @@
       <div class="reg-err" id="regErr3"></div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── To'g'ridan-to'g'ri ro'yxatdan o'tish formi ── -->
+<div id="directRegOverlay" style="display:none;position:fixed;inset:0;background:#0a0f1a;z-index:500;overflow-y:auto;padding:20px;">
+  <div style="max-width:400px;margin:0 auto;padding-bottom:40px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:48px;margin-bottom:8px;">📝</div>
+      <div style="font-size:20px;font-weight:700;color:#fff;">Yangi ariza</div>
+      <div style="color:var(--text2);font-size:13px;margin-top:4px;">Admin ko'rib chiqadi va tasdiqlaydi</div>
+    </div>
+
+    <!-- Pending state -->
+    <div id="directRegPending" style="display:none;text-align:center;padding:24px;">
+      <div style="font-size:48px;margin-bottom:12px;">⏳</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;">Ariza kutilmoqda</div>
+      <div style="color:var(--text2);font-size:14px;margin-bottom:16px;">Admin arizangizni ko'rib chiqmoqda. Tasdiqlangach Telegram orqali xabar olasiz.</div>
+      <button onclick="document.getElementById('directRegOverlay').style.display='none'" style="padding:12px 24px;border-radius:12px;background:#667eea;color:#fff;border:none;font-size:15px;font-weight:600;">Yopish</button>
+    </div>
+
+    <!-- Rejected state -->
+    <div id="directRegRejected" style="display:none;text-align:center;padding:24px;">
+      <div style="font-size:48px;margin-bottom:12px;">❌</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;">Ariza rad etildi</div>
+      <div id="directRegRejectReason" style="color:#ff6b6b;font-size:14px;margin-bottom:16px;background:rgba(255,107,107,0.1);padding:12px;border-radius:10px;"></div>
+      <div style="color:var(--text2);font-size:13px;margin-bottom:16px;">Savollar bo'lsa, markaz bilan bog'laning.</div>
+      <button onclick="document.getElementById('directRegOverlay').style.display='none'" style="padding:12px 24px;border-radius:12px;background:#667eea;color:#fff;border:none;font-size:15px;font-weight:600;">Yopish</button>
+    </div>
+
+    <!-- Approved state -->
+    <div id="directRegApproved" style="display:none;text-align:center;padding:24px;">
+      <div style="font-size:48px;margin-bottom:12px;">✅</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;">Tasdiqlandi!</div>
+      <div id="directRegApprovedInfo" style="color:#4ade80;font-size:14px;margin-bottom:16px;"></div>
+      <button onclick="document.getElementById('directRegOverlay').style.display='none'; init();" style="padding:12px 24px;border-radius:12px;background:#4ade80;color:#000;border:none;font-size:15px;font-weight:600;">Kirish</button>
+    </div>
+
+    <!-- Form state -->
+    <div id="directRegForm">
+      <div style="margin-bottom:16px;">
+        <div style="color:var(--text2);font-size:13px;margin-bottom:6px;">Ism va familiya *</div>
+        <input id="drFullName" type="text" placeholder="Abdullayev Abdulloh" style="width:100%;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:15px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="color:var(--text2);font-size:13px;margin-bottom:6px;">Yosh *</div>
+        <input id="drAge" type="number" placeholder="16" inputmode="numeric" style="width:100%;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:15px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="color:var(--text2);font-size:13px;margin-bottom:6px;">Turar joyi *</div>
+        <input id="drLocation" type="text" placeholder="Toshkent, Chilonzor" style="width:100%;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:15px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="color:var(--text2);font-size:13px;margin-bottom:6px;">Qiziqishlaringiz *</div>
+        <input id="drInterests" type="text" placeholder="Dasturlash, matematika..." style="width:100%;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:15px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="color:var(--text2);font-size:13px;margin-bottom:6px;">Telefon raqam *</div>
+        <input id="drPhone" type="tel" placeholder="+998901234567" inputmode="tel" style="width:100%;padding:12px;border-radius:10px;background:var(--bg2);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:15px;box-sizing:border-box;">
+      </div>
+
+      <!-- Guruhim bor toggle -->
+      <div style="background:var(--bg2);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleHasGroup()">
+          <div>
+            <div style="color:#fff;font-size:15px;font-weight:600;">🏫 Guruhim bor</div>
+            <div style="color:var(--text2);font-size:12px;margin-top:2px;">Allaqachon biror guruhga qatnashyapsizmi?</div>
+          </div>
+          <div id="hasGroupToggle" style="width:44px;height:24px;border-radius:12px;background:#333;position:relative;transition:background .3s;">
+            <div id="hasGroupThumb" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .3s;"></div>
+          </div>
+        </div>
+        <!-- Group info fields (hidden by default) -->
+        <div id="groupInfoFields" style="display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">
+          <div style="margin-bottom:12px;">
+            <div style="color:var(--text2);font-size:12px;margin-bottom:5px;">Guruh nomi / raqami *</div>
+            <input id="drGroupTime" type="text" placeholder="Masalan: 9:00 yoki Guruh-3" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:14px;box-sizing:border-box;">
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="color:var(--text2);font-size:12px;margin-bottom:5px;">Dars kunlari *</div>
+            <div style="display:flex;gap:8px;">
+              <button id="btnOdd" onclick="selectDayType('ODD')" style="flex:1;padding:10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Toq kunlar</button>
+              <button id="btnEven" onclick="selectDayType('EVEN')" style="flex:1;padding:10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Juft kunlar</button>
+            </div>
+          </div>
+          <div style="margin-bottom:4px;">
+            <div style="color:var(--text2);font-size:12px;margin-bottom:5px;">O'qituvchi ismi *</div>
+            <input id="drTeacherName" type="text" placeholder="Masalan: Dilnoza opa" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:14px;box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+
+      <div id="directRegErr" style="color:#ff6b6b;font-size:13px;text-align:center;margin-bottom:12px;display:none;"></div>
+
+      <button id="directRegBtn" onclick="submitDirectReg()" style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;font-size:16px;font-weight:700;cursor:pointer;">
+        ✅ Ariza topshirish
+      </button>
+      <button onclick="document.getElementById('directRegOverlay').style.display='none'" style="width:100%;padding:12px;margin-top:8px;border-radius:12px;background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--text2);font-size:14px;cursor:pointer;">
+        ← Orqaga
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1475,12 +1617,454 @@
   </div>
 </div>
 
+<!-- ── XP Reward Modal ── -->
+<div id="xpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e2a3a;border-radius:20px;padding:32px 24px;text-align:center;max-width:320px;width:90%;animation:xpPop 0.4s ease;">
+    <div id="xpModalIcon" style="font-size:56px;margin-bottom:8px;">🎉</div>
+    <div id="xpModalTitle" style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">G'alaba!</div>
+    <div id="xpModalXp" style="font-size:36px;font-weight:800;color:#ffd700;margin-bottom:4px;">+20 XP</div>
+    <div id="xpModalTotal" style="color:#aaa;font-size:14px;margin-bottom:16px;">Jami: 350 XP</div>
+    <div style="background:#0d1a2a;border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px;">
+      <div id="xpModalBar" style="height:100%;background:linear-gradient(90deg,#4CAF50,#8BC34A);transition:width 0.8s ease;width:0%;"></div>
+    </div>
+    <div id="xpModalLevel" style="color:#7eb8f7;font-size:13px;margin-bottom:20px;">Lv.3 O'quvchi</div>
+    <button onclick="closeXpModal()" style="background:#4CAF50;color:#fff;border:none;border-radius:12px;padding:12px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;">OK</button>
+  </div>
+</div>
+
+<!-- ── Block Blast Game Page ── -->
+<div id="blockBlastPage" style="display:none;position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow:auto;">
+  <div style="display:flex;align-items:center;padding:16px;gap:12px;">
+    <button onclick="closeBlockBlast()" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;">←</button>
+    <h2 style="color:#fff;margin:0;flex:1;">Block Blast</h2>
+    <div style="color:#ffd700;font-weight:700;">XP: <span id="bbXp">0</span></div>
+    <div style="color:#fff;margin-left:12px;">Score: <span id="bbScore">0</span></div>
+  </div>
+  <canvas id="bbCanvas" style="display:block;margin:0 auto;touch-action:none;"></canvas>
+  <div id="bbPieces" style="display:flex;justify-content:center;gap:16px;padding:16px;"></div>
+  <div id="bbGameOver" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <div style="font-size:48px;">💥</div>
+    <div style="color:#fff;font-size:24px;font-weight:700;">O'yin tugadi!</div>
+    <div style="color:#ffd700;font-size:20px;">Score: <span id="bbFinalScore">0</span></div>
+    <button onclick="startBlockBlastGame()" style="background:#4CAF50;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;cursor:pointer;">Qayta o'ynash</button>
+    <button onclick="closeBlockBlast()" style="background:#333;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;cursor:pointer;">Chiqish</button>
+  </div>
+</div>
+
 <script>
 /* ── Telegram WebApp ─────────────────────────────────────────────── */
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color'); }
 const INIT_DATA = tg?.initData || '';
 const BASE_URL  = window.location.origin;
+
+// ── Sound System ────────────────────────────────────────────────────────────
+let _soundOn = localStorage.getItem('soundOn') !== 'false';
+let _ac = null;
+function _getAC() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  return _ac;
+}
+function playSound(freq, type='sine', dur=0.15, vol=0.3) {
+  if (!_soundOn) return;
+  try {
+    const ac = _getAC();
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    o.start(); o.stop(ac.currentTime + dur);
+  } catch(e) {}
+}
+function playSoundSeq(freqs, dur=0.1) {
+  freqs.forEach((f, i) => setTimeout(() => playSound(f, 'sine', dur), i * dur * 1000));
+}
+function toggleSound() {
+  _soundOn = !_soundOn;
+  localStorage.setItem('soundOn', _soundOn);
+  document.getElementById('soundBtn').textContent = _soundOn ? '🔊' : '🔇';
+}
+
+// ── XP Modal ────────────────────────────────────────────────────────────────
+function showXpModal(icon, title, xpEarned, totalXp, levelName, levelXp, nextXp) {
+  const el = document.getElementById('xpModal');
+  el.style.display = 'flex';
+  document.getElementById('xpModalIcon').textContent = icon;
+  document.getElementById('xpModalTitle').textContent = title;
+  document.getElementById('xpModalXp').textContent = '+' + xpEarned + ' XP';
+  document.getElementById('xpModalTotal').textContent = 'Jami: ' + totalXp + ' XP';
+  document.getElementById('xpModalLevel').textContent = levelName;
+  const pct = nextXp ? Math.min(100, Math.round((totalXp / nextXp) * 100)) : 100;
+  setTimeout(() => { document.getElementById('xpModalBar').style.width = pct + '%'; }, 100);
+  playSoundSeq([523, 659, 784], 0.12);
+}
+function closeXpModal() {
+  document.getElementById('xpModal').style.display = 'none';
+}
+
+// ── Daily Game Limits ────────────────────────────────────────────────────────
+let _playsToday = {};
+const DAILY_LIMIT = 3;
+
+async function loadPlaysToday() {
+  try {
+    const r = await fetch('/api/game/plays-today', {headers: {'X-Init-Data': window.Telegram?.WebApp?.initData || ''}});
+    if (r.ok) _playsToday = await r.json();
+  } catch(e) {}
+}
+
+async function recordPlay(gameType) {
+  const r = await fetch('/api/game/record-play', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Init-Data': window.Telegram?.WebApp?.initData || ''},
+    body: JSON.stringify({game_type: gameType})
+  });
+  const data = await r.json();
+  _playsToday[gameType] = data.play_count || (_playsToday[gameType] || 0) + 1;
+  return data;
+}
+
+function checkDailyLimit(gameType) {
+  const plays = _playsToday[gameType] || 0;
+  return plays >= DAILY_LIMIT;
+}
+
+function showLimitModal(gameType) {
+  showToast(`⏳ ${gameType} uchun kunlik limit tugadi! (${DAILY_LIMIT}/${DAILY_LIMIT})\nErtaga yana o'ynashingiz mumkin.`);
+}
+
+// ── Refresh current tab ──────────────────────────────────────────────────────
+let _currentTabName = '';
+function refreshCurrentTab() {
+  playSound(400);
+  if (_currentTabName === 'homework') { loadHomework(); }
+  else if (_currentTabName === 'progress') { progressLoaded = false; loadProgress && loadProgress(); }
+  else if (_currentTabName === 'chat') { chatLoaded = false; loadChat && loadChat(); }
+  else if (_currentTabName === 'referral') { loadReferral && loadReferral(); }
+  else location.reload();
+}
+
+// ── showToast alias (for showLimitModal compatibility) ───────────────────────
+function showToast(msg) { toast(msg); }
+
+// ── Referral ─────────────────────────────────────────────────────────────────
+let _referralData = null;
+async function loadReferral() {
+  const initData = window.Telegram?.WebApp?.initData || '';
+  try {
+    const r = await fetch('/api/student/referral', {headers: {'X-Init-Data': initData}});
+    _referralData = await r.json();
+    document.getElementById('referralLink').textContent = _referralData.link || '';
+
+    const ri = await fetch('/api/student/referral/invited', {headers: {'X-Init-Data': initData}});
+    const riData = await ri.json();
+    const list = riData.invited || [];
+    const el = document.getElementById('referralInvitedList');
+    if (list.length === 0) {
+      el.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Hali hech kim taklif qilinmagan</div>';
+    } else {
+      el.innerHTML = '<div style="color:#7eb8f7;font-weight:600;margin-bottom:8px;">Taklif qilinganlar (' + list.length + '):</div>' +
+        list.map(p => `<div style="background:#1e2a3a;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="color:#fff;font-weight:600;">${p.name}</div><div style="color:#666;font-size:12px;">${p.joined_at}</div></div>
+          <div style="padding:4px 10px;border-radius:20px;font-size:12px;background:${p.status==='approved'?'#1b4f1b':p.status==='rejected'?'#4f1b1b':'#2a2a00'};color:${p.status==='approved'?'#4CAF50':p.status==='rejected'?'#f44336':'#ffd700'};">${p.status==='approved'?'✅ Qabul':p.status==='rejected'?'❌ Rad':'⏳ Kutilmoqda'}</div>
+        </div>`).join('');
+    }
+  } catch(e) { console.error(e); }
+}
+function copyReferralLink() {
+  const link = document.getElementById('referralLink').textContent;
+  navigator.clipboard?.writeText(link).then(() => showToast('✅ Nusxalandi!'));
+}
+function shareReferralLink() {
+  const link = document.getElementById('referralLink').textContent;
+  if (window.Telegram?.WebApp) {
+    window.Telegram.WebApp.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('MARS IT ga qo\'shiling va +500 XP oling! 🎉'));
+  }
+}
+
+// ── Referral registration form (from ?ref= URL param) ───────────────────────
+const _urlParams = new URLSearchParams(window.location.search);
+const _refCode = _urlParams.get('ref');
+if (_refCode) {
+  setTimeout(() => showReferralRegForm(_refCode), 500);
+}
+
+function showReferralRegForm(refCode) {
+  const overlay = document.createElement('div');
+  overlay.id = 'refRegOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0a0f1a;z-index:9000;overflow:auto;padding:20px;';
+  overlay.innerHTML = `
+    <h2 style="color:#fff;text-align:center;margin-bottom:8px;">🎉 Do'stingiz taklifi</h2>
+    <p style="color:#aaa;text-align:center;margin-bottom:24px;font-size:14px;">Ro'yxatdan o'ting va +500 XP oling!</p>
+    <div id="refRegForm" style="max-width:400px;margin:0 auto;">
+      <input id="refName" placeholder="Ism va Familiya" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-sizing:border-box;font-size:15px;">
+      <input id="refAge" placeholder="Yosh (masalan: 15)" type="number" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-sizing:border-box;font-size:15px;">
+      <input id="refLocation" placeholder="Turar joyi (shahar/tuman)" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-sizing:border-box;font-size:15px;">
+      <input id="refInterests" placeholder="Qiziqishlari (IT, matematika, ...)" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-sizing:border-box;font-size:15px;">
+      <input id="refPhone" placeholder="Telefon: +998901234567" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:20px;box-sizing:border-box;font-size:15px;">
+      <button onclick="submitRefReg('${refCode}')" style="width:100%;background:linear-gradient(135deg,#4CAF50,#2196F3);color:#fff;border:none;border-radius:12px;padding:16px;font-size:17px;font-weight:700;cursor:pointer;">✅ Ro'yxatdan o'tish</button>
+      <button onclick="document.getElementById('refRegOverlay').remove()" style="width:100%;background:transparent;color:#666;border:none;padding:12px;font-size:14px;cursor:pointer;margin-top:8px;">Bekor qilish</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function submitRefReg(refCode) {
+  const name = document.getElementById('refName')?.value.trim();
+  const age = document.getElementById('refAge')?.value.trim();
+  const location = document.getElementById('refLocation')?.value.trim();
+  const interests = document.getElementById('refInterests')?.value.trim();
+  const phone = document.getElementById('refPhone')?.value.trim();
+  if (!name || !age || !location || !interests || !phone) {
+    showToast('❌ Barcha maydonlarni to\'ldiring'); return;
+  }
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const tgUserId = tgUser?.id;
+  try {
+    const r = await fetch('/api/referral/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ref_code: refCode, full_name: name, age, location, interests, phone, telegram_user_id: tgUserId})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('refRegOverlay').remove();
+      showToast('✅ Arizangiz yuborildi! Admin tasdiqlagandan so\'ng XP beriladi.');
+    } else {
+      showToast('❌ ' + (d.error || 'Xato yuz berdi'));
+    }
+  } catch(e) { showToast('❌ Xato: ' + e.message); }
+}
+
+// ── Block Blast Game ────────────────────────────────────────────────────────
+const BB_SIZE = 8, BB_CELL = 36;
+let bbBoard = [], bbScore = 0, bbPieces = [], bbDragPiece = null, bbDragOrigin = null, bbCanvas, bbCtx;
+
+const BB_PIECES = [
+  [[1,1],[1,1]],
+  [[1,1,1]],
+  [[1],[1],[1]],
+  [[1,1,0],[0,1,1]],
+  [[0,1,1],[1,1,0]],
+  [[1,0],[1,0],[1,1]],
+  [[0,1],[0,1],[1,1]],
+  [[1,1,1],[0,1,0]],
+  [[1,1],[1,0],[1,0]],
+  [[1,1,1,1]],
+];
+
+const BB_COLORS = ['#FF5722','#2196F3','#4CAF50','#FF9800','#9C27B0','#00BCD4','#F44336','#8BC34A','#3F51B5','#FFEB3B'];
+
+function bbNewBoard() { return Array.from({length:BB_SIZE}, () => Array(BB_SIZE).fill(0)); }
+
+function bbGetPieces() {
+  bbPieces = Array.from({length:3}, () => {
+    const idx = Math.floor(Math.random() * BB_PIECES.length);
+    return {shape: BB_PIECES[idx], color: BB_COLORS[Math.floor(Math.random()*BB_COLORS.length)], idx};
+  });
+  renderBBPieces();
+}
+
+function bbCanPlace(shape, row, col) {
+  return shape.every((r, ri) => r.every((c, ci) => !c || (row+ri < BB_SIZE && col+ci < BB_SIZE && row+ri >= 0 && col+ci >= 0 && !bbBoard[row+ri][col+ci])));
+}
+
+function bbPlace(shape, row, col, color) {
+  shape.forEach((r, ri) => r.forEach((c, ci) => { if (c) bbBoard[row+ri][col+ci] = color; }));
+  playSound(350, 'sine', 0.1);
+  bbClearLines();
+}
+
+function bbClearLines() {
+  let cleared = 0;
+  for (let r = 0; r < BB_SIZE; r++) {
+    if (bbBoard[r].every(c => c)) { bbBoard[r] = Array(BB_SIZE).fill(0); cleared++; }
+  }
+  for (let c = 0; c < BB_SIZE; c++) {
+    if (bbBoard.every(r => r[c])) { bbBoard.forEach(r => r[c] = 0); cleared++; }
+  }
+  if (cleared > 0) {
+    bbScore += cleared * BB_SIZE * 10;
+    document.getElementById('bbScore').textContent = bbScore;
+    playSoundSeq([300, 500, 700, 800], 0.08);
+  }
+  drawBBBoard();
+}
+
+function bbCheckGameOver() {
+  return bbPieces.every(p => p && !bbCanPlaceAnywhere(p.shape));
+}
+
+function bbCanPlaceAnywhere(shape) {
+  for (let r = 0; r < BB_SIZE; r++)
+    for (let c = 0; c < BB_SIZE; c++)
+      if (bbCanPlace(shape, r, c)) return true;
+  return false;
+}
+
+function drawBBBoard() {
+  const canvas = document.getElementById('bbCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0d1a2a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < BB_SIZE; r++) {
+    for (let c = 0; c < BB_SIZE; c++) {
+      const x = c * BB_CELL, y = r * BB_CELL;
+      ctx.strokeStyle = '#1e2a3a';
+      ctx.strokeRect(x+1, y+1, BB_CELL-2, BB_CELL-2);
+      if (bbBoard[r][c]) {
+        ctx.fillStyle = bbBoard[r][c];
+        ctx.fillRect(x+2, y+2, BB_CELL-4, BB_CELL-4);
+      }
+    }
+  }
+}
+
+function renderBBPieces() {
+  const el = document.getElementById('bbPieces');
+  if (!el) return;
+  el.innerHTML = bbPieces.map((p, i) => {
+    if (!p) return '<div style="width:80px;height:80px;"></div>';
+    const rows = p.shape.length, cols = p.shape[0].length;
+    const cellSize = Math.min(20, Math.floor(70/Math.max(rows,cols)));
+    let html = `<div id="bbPiece_${i}" draggable="true" style="cursor:grab;padding:8px;background:#1e2a3a;border-radius:8px;touch-action:none;"
+      ondragstart="bbDragStart(event,${i})" ontouchstart="bbTouchStart(event,${i})" ontouchmove="bbTouchMove(event)" ontouchend="bbTouchEnd(event)">`;
+    p.shape.forEach(row => {
+      html += '<div style="display:flex;">';
+      row.forEach(cell => {
+        html += `<div style="width:${cellSize}px;height:${cellSize}px;margin:1px;background:${cell ? p.color : 'transparent'};border-radius:2px;"></div>`;
+      });
+      html += '</div>';
+    });
+    return html + '</div>';
+  }).join('');
+
+  const canvas = document.getElementById('bbCanvas');
+  if (canvas) {
+    canvas.ondragover = e => { e.preventDefault(); bbHighlightDrop(e); };
+    canvas.ondrop = e => { e.preventDefault(); bbDoDrop(e); };
+  }
+}
+
+function bbDragStart(e, idx) { bbDragPiece = idx; e.dataTransfer.setData('text','bb'); }
+
+let _bbTouchPiece = null, _bbTouchOffset = {x:0, y:0};
+function bbTouchStart(e, idx) {
+  _bbTouchPiece = idx;
+  const touch = e.touches[0];
+  _bbTouchOffset = {x: touch.clientX, y: touch.clientY};
+  e.preventDefault();
+}
+function bbTouchMove(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const canvas = document.getElementById('bbCanvas');
+  if (!canvas || _bbTouchPiece === null) return;
+  const rect = canvas.getBoundingClientRect();
+  const col = Math.floor((touch.clientX - rect.left) / BB_CELL);
+  const row = Math.floor((touch.clientY - rect.top) / BB_CELL);
+  bbHighlightBoard(row, col, bbPieces[_bbTouchPiece]?.shape);
+}
+function bbTouchEnd(e) {
+  const touch = e.changedTouches[0];
+  const canvas = document.getElementById('bbCanvas');
+  if (!canvas || _bbTouchPiece === null) return;
+  const rect = canvas.getBoundingClientRect();
+  const col = Math.floor((touch.clientX - rect.left) / BB_CELL);
+  const row = Math.floor((touch.clientY - rect.top) / BB_CELL);
+  bbDropAt(row, col, _bbTouchPiece);
+  _bbTouchPiece = null;
+  drawBBBoard();
+}
+
+function bbHighlightDrop(e) {
+  if (bbDragPiece === null) return;
+  const canvas = document.getElementById('bbCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const col = Math.floor((e.clientX - rect.left) / BB_CELL);
+  const row = Math.floor((e.clientY - rect.top) / BB_CELL);
+  bbHighlightBoard(row, col, bbPieces[bbDragPiece]?.shape);
+}
+
+function bbHighlightBoard(row, col, shape) {
+  drawBBBoard();
+  if (!shape) return;
+  const ctx = document.getElementById('bbCanvas').getContext('2d');
+  const canPlace = bbCanPlace(shape, row, col);
+  ctx.globalAlpha = 0.5;
+  shape.forEach((r, ri) => r.forEach((c, ci) => {
+    if (c) {
+      ctx.fillStyle = canPlace ? '#4CAF50' : '#f44336';
+      ctx.fillRect((col+ci)*BB_CELL+2, (row+ri)*BB_CELL+2, BB_CELL-4, BB_CELL-4);
+    }
+  }));
+  ctx.globalAlpha = 1;
+}
+
+function bbDoDrop(e) {
+  if (bbDragPiece === null) return;
+  const canvas = document.getElementById('bbCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const col = Math.floor((e.clientX - rect.left) / BB_CELL);
+  const row = Math.floor((e.clientY - rect.top) / BB_CELL);
+  bbDropAt(row, col, bbDragPiece);
+  bbDragPiece = null;
+  drawBBBoard();
+}
+
+function bbDropAt(row, col, pieceIdx) {
+  const p = bbPieces[pieceIdx];
+  if (!p || !bbCanPlace(p.shape, row, col)) return;
+  bbPlace(p.shape, row, col, p.color);
+  bbPieces[pieceIdx] = null;
+  if (bbPieces.every(p => !p)) bbGetPieces();
+  renderBBPieces();
+  if (bbCheckGameOver()) bbEndGame();
+}
+
+async function bbEndGame() {
+  const xp = bbScore >= 500 ? 30 : bbScore >= 200 ? 20 : bbScore >= 50 ? 15 : 10;
+  document.getElementById('bbFinalScore').textContent = bbScore;
+  document.getElementById('bbGameOver').style.display = 'flex';
+  playSoundSeq([400, 350, 300, 200], 0.15);
+  const initData = window.Telegram?.WebApp?.initData || '';
+  try {
+    const r = await fetch('/api/game/score', {
+      method:'POST', headers:{'Content-Type':'application/json','X-Init-Data':initData},
+      body: JSON.stringify({game_type:'block_blast', score:bbScore, xp_earned:xp})
+    });
+    const d = await r.json();
+    showXpModal('🎮', 'Block Blast!', xp, d.new_xp || 0, d.new_level ? 'Lv.'+d.new_level : '', 0, 0);
+  } catch(e) {}
+}
+
+function startBlockBlastGame() {
+  bbBoard = bbNewBoard();
+  bbScore = 0;
+  document.getElementById('bbScore').textContent = '0';
+  document.getElementById('bbGameOver').style.display = 'none';
+  bbGetPieces();
+  drawBBBoard();
+}
+
+async function startBlockBlast() {
+  const limited = checkDailyLimit('block_blast');
+  if (limited) { showLimitModal('Block Blast'); return; }
+  await recordPlay('block_blast');
+  const page = document.getElementById('blockBlastPage');
+  page.style.display = 'block';
+  const canvas = document.getElementById('bbCanvas');
+  canvas.width = BB_SIZE * BB_CELL;
+  canvas.height = BB_SIZE * BB_CELL;
+  canvas.style.width = (BB_SIZE * BB_CELL) + 'px';
+  startBlockBlastGame();
+}
+
+function closeBlockBlast() {
+  document.getElementById('blockBlastPage').style.display = 'none';
+}
 
 /* ── API helper ──────────────────────────────────────────────────── */
 async function api(path, opts = {}) {
@@ -1506,7 +2090,7 @@ let currentPage  = 'home';
 let progressLoaded = false, historyLoaded = false, chatLoaded = false;
 let _chatPollTimer = null;
 let _chatLastId    = 0;
-const PAGES = ['home', 'homework', 'progress', 'history', 'chat', 'games'];
+const PAGES = ['home', 'homework', 'progress', 'history', 'chat', 'games', 'referral'];
 const AVATARS = ['🎓','😎','🚀','🌟','🔥','💎','🏆','👑','🦁','🐯','🦊','🐺','🎯','💡','⚡','🌈','🎨','🎵','🏄','🎭','😄','🤩','🥳','🦋'];
 
 /* ── Level perks definition ─────────────────────────────────────── */
@@ -1574,6 +2158,7 @@ function goPage(name) {
   document.getElementById('page-' + name)?.classList.add('active');
   document.getElementById('tab-'  + name)?.classList.add('active');
   currentPage = name;
+  _currentTabName = name;
   const content = document.getElementById('content');
   if (name === 'chat') {
     content.style.overflow = 'hidden';
@@ -1585,11 +2170,12 @@ function goPage(name) {
     // Stop chat polling when leaving chat
     if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
   }
-  if (name === 'homework')                 loadHomework();
+  if (name === 'homework')                    loadHomework();
   if (name === 'progress' && !progressLoaded) { progressLoaded = true; loadProgress(); }
   if (name === 'history'  && !historyLoaded)  { historyLoaded  = true; loadHistory(); }
   if (name === 'chat')                        loadChat();
-  if (name === 'games')                       showGHub();
+  if (name === 'games')                       { showGHub(); loadPlaysToday(); }
+  if (name === 'referral')                    loadReferral();
 }
 
 /* ── Toast ───────────────────────────────────────────────────────── */
@@ -1648,12 +2234,12 @@ async function sendAttend(status, reason) {
       try {
         const prog = await api('/student/progress');
         updateStatsStrip(prog);
-        toast('✅ Javob qabul qilindi! +10 XP 🎉');
-      } catch { toast('✅ Javob qabul qilindi!'); }
+        toast(t('toast.att_yes'));
+      } catch { toast(t('toast.att_yes')); }
     } else {
-      toast("❌ Ma'lumot saqlandi");
+      toast(t('toast.att_no'));
     }
-  } catch { toast('⚠️ Xatolik yuz berdi'); }
+  } catch { toast(t('toast.error')); }
 }
 
 /* ── No-attend modal ─────────────────────────────────────────────── */
@@ -1677,9 +2263,9 @@ async function setMood(mood) {
   document.getElementById('mood-'+mood).classList.add('active');
   try {
     await api('/student/mood', { method: 'POST', body: JSON.stringify({ mood }) });
-    const labels = { happy: '😊 Yaxshi', ok: '😐 Normal', sad: '😔 Xafa' };
-    toast('Kayfiyat saqlandi: ' + labels[mood]);
-  } catch { toast('⚠️ Xatolik'); }
+    const labels = { happy: t('mood.happy'), ok: t('mood.ok'), sad: t('mood.sad') };
+    toast(t('mood.saved') + ': ' + labels[mood]);
+  } catch { toast(t('toast.error')); }
 }
 
 /* ── Stats strip ─────────────────────────────────────────────────── */
@@ -1701,7 +2287,7 @@ async function loadHomework() {
   try {
     const hw = await api('/homework');
     if (!hw.exists) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Hozircha uy vazifasi yo\'q</div></div>';
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">${t('hw.no_hw')}</div></div>`;
       return;
     }
     // date_str for confirmation is sent_at date portion
@@ -1711,40 +2297,40 @@ async function loadHomework() {
     const confirmed = _hwDateStr ? await api('/student/hw-confirm-status?date_str=' + encodeURIComponent(_hwDateStr)).catch(() => ({confirmed:false})) : {confirmed:false};
 
     const confirmHtml = confirmed.confirmed
-      ? `<div class="hw-confirmed-badge">✅ Ko'rdim va tushundim — tasdiqlangan! (+15 XP olindı)</div>`
-      : `<button class="hw-confirm-btn" id="hwConfirmBtn" onclick="confirmHomework()">✅ Ko'rdim va tushundim (+15 XP)</button>`;
+      ? `<div class="hw-confirmed-badge">${t('hw.confirmed')}</div>`
+      : `<button class="hw-confirm-btn" id="hwConfirmBtn" onclick="confirmHomework()">${t('hw.confirm_btn')} (+15 XP)</button>`;
 
     el.innerHTML = `
       <div class="hw-box">
         <div class="hw-date">📅 ${hw.sent_at}</div>
-        <div class="hw-text">📚 ${hw.group_name} guruhiga uy vazifasi berilgan</div>
-        <button class="hw-open-btn" onclick="openInBot()">📖 Botda ko'rish</button>
+        <div class="hw-text">📚 ${hw.group_name} ${t('hw.group.msg')}</div>
+        <button class="hw-open-btn" onclick="openInBot()">📖 ${t('hw.view_bot')}</button>
         ${confirmHtml}
       </div>`;
   } catch {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik yuz berdi</div></div>';
+    el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${t('toast.error')}</div></div>`;
   }
 }
 
 async function confirmHomework() {
   if (!_hwDateStr) return;
   const btn = document.getElementById('hwConfirmBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saqlanmoqda...'; }
+  if (btn) { btn.disabled = true; btn.textContent = t('hw.saving'); }
   try {
     const res = await api('/student/hw-confirm', { method: 'POST', body: JSON.stringify({ date_str: _hwDateStr }) });
     if (res.already_confirmed) {
       if (btn) btn.closest('.hw-box').querySelector('button.hw-confirm-btn')?.replaceWith(
-        Object.assign(document.createElement('div'), {className:'hw-confirmed-badge', textContent:'✅ Allaqachon tasdiqlangan!'})
+        Object.assign(document.createElement('div'), {className:'hw-confirmed-badge', textContent: t('hw.confirmed')})
       );
-      toast('✅ Allaqachon tasdiqlangan!');
+      toast(t('toast.hw_already'));
     } else {
       tg?.HapticFeedback?.notificationOccurred('success');
-      toast(`✅ Tasdiqlandi! +${res.xp_gained} XP 🎉`);
+      toast(t('toast.hw_conf').replace('+15 XP', `+${res.xp_gained} XP`));
       loadHomework();
       // Refresh stats
       try { const prog = await api('/student/progress'); updateStatsStrip(prog); progressLoaded = false; } catch {}
     }
-  } catch { if (btn) { btn.disabled = false; btn.textContent = '✅ Ko\'rdim va tushundim (+15 XP)'; } toast('⚠️ Xatolik'); }
+  } catch { if (btn) { btn.disabled = false; btn.textContent = t('hw.confirm_btn') + ' (+15 XP)'; } toast(t('toast.error')); }
 }
 
 /* ── Progress ────────────────────────────────────────────────────── */
@@ -1926,7 +2512,7 @@ async function loadHistory() {
   try {
     const data = await api('/hw-history');
     if (!data.items.length) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Tarix bo\'sh</div></div>';
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">${t('hist.empty')}</div></div>`;
       return;
     }
     el.innerHTML = data.items.map((item, i) => `
@@ -1934,11 +2520,11 @@ async function loadHistory() {
         <div class="hist-icon">📚</div>
         <div class="hist-meta">
           <div class="hist-date">${item.sent_at}</div>
-          <div class="hist-num">#${data.items.length - i} vazifa</div>
+          <div class="hist-num">#${data.items.length - i} ${t('hist.item.num')}</div>
         </div>
       </div>`).join('');
   } catch {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik yuz berdi</div></div>';
+    el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${t('toast.error')}</div></div>`;
   }
 }
 
@@ -1958,7 +2544,7 @@ function changePhone() { tg?.showAlert("📱 Telefon raqamini o'zgartirish uchun
 
 /* ── Profile sheet ───────────────────────────────────────────────── */
 function openProfileSheet() {
-  if (!student) { toast("Ma'lumot yuklanmadi"); return; }
+  if (!student) { toast(t('toast.error')); return; }
   document.getElementById('psName').textContent   = student.full_name;
   document.getElementById('psSub').textContent    = student.group_name;
   document.getElementById('psAvatar').textContent = _curAvatar || student.full_name.charAt(0).toUpperCase();
@@ -1968,7 +2554,7 @@ function openProfileSheet() {
   document.getElementById('psPhone').textContent  = student.phone_number || '—';
   document.getElementById('psMarsId').textContent = student.mars_id ? 'Mars ID: ' + student.mars_id : '—';
   document.getElementById('psXp').textContent     = prog ? prog.xp + ' XP' : '—';
-  document.getElementById('psStreak').textContent = prog ? prog.streak_days + ' kun streak 🔥' : '—';
+  document.getElementById('psStreak').textContent = prog ? prog.streak_days + ' ' + t('streak.days') : '—';
   document.getElementById('profileSheet').classList.add('show');
 }
 function closeProfileSheet() {
@@ -2113,6 +2699,33 @@ const T = {
     'toast.att_no':"❌ Javob yuborildi",
     'toast.hw_conf':"✅ Tasdiqlandi! +15 XP 🎉",
     'toast.checkin':"✅ +5 XP — kunlik kirish bonusi!",
+    'toast.hw_already':"✅ Allaqachon tasdiqlangan!",
+    'toast.error':"⚠️ Xatolik yuz berdi",
+    /* Mood labels */
+    'toast.xp_earned':"olindi!",
+    'mood.happy':"😊 Yaxshi", 'mood.ok':"😐 Normal", 'mood.sad':"😔 Xafa",
+    'mood.saved':"Kayfiyat saqlandi",
+    /* History */
+    'hist.empty':"Tarix bo'sh", 'hist.item.num':"vazifa",
+    /* Homework dynamic */
+    'hw.group.msg':"guruhiga uy vazifasi berilgan",
+    'hw.saving':"⏳ Saqlanmoqda...",
+    /* Profile */
+    'streak.days':"kun streak 🔥", 'confirm.exit':"Profildan chiqmoqchimisiz?",
+    /* Games - results */
+    'game.retry':"🔄 Qayta",
+    'game.natija':"Natija", 'game.aniqlik':"Aniqlik", 'game.xp.earned':"XP olindi",
+    'game.typing.result':"🎉 Natija", 'game.quiz.correct':"to'g'ri",
+    'game.2048.win.msg':"🎉 2048 — G'alaba!", 'game.2048.over.msg':"Game Over!",
+    'game.mem.win.msg':"🎉 Tabriklaymiz!", 'game.mem.tries':"urinishda topildi",
+    'game.chess.your_turn':"⚪ Sizning navbatingiz (oq)",
+    'game.chess.win.status':"🏆 G'alaba!", 'game.chess.lose.status':"💀 Mag'lubiyat",
+    'game.chess.draw.status':"🤝 Durrang",
+    'game.chess.check_you':"⚠️ Shoh ostida! Siz!", 'game.chess.check_ai':"⚔️ AI shoh ostida!",
+    'game.chess.win.msg':"🎉 G'alaba!", 'game.chess.lose.msg':"😔 Urinib ko'ring!",
+    'game.chess.draw.msg':"🤝 Durrang!",
+    'game.multi.win.msg':"🏆 G'alaba!", 'game.multi.lose.msg':"😔 Keyingi safar!",
+    'open.in_bot':"Botga qaytib uy vazifasini ko'ring 📖",
   },
   ru: {
     /* Menu */
@@ -2176,6 +2789,33 @@ const T = {
     'toast.att_no':"❌ Ответ отправлен",
     'toast.hw_conf':"✅ Подтверждено! +15 XP 🎉",
     'toast.checkin':"✅ +5 XP — бонус за ежедневный вход!",
+    'toast.hw_already':"✅ Уже подтверждено!",
+    'toast.error':"⚠️ Произошла ошибка",
+    /* Mood labels */
+    'toast.xp_earned':"получено!",
+    'mood.happy':"😊 Хорошо", 'mood.ok':"😐 Нормально", 'mood.sad':"😔 Грустно",
+    'mood.saved':"Настроение сохранено",
+    /* History */
+    'hist.empty':"История пуста", 'hist.item.num':"задание",
+    /* Homework dynamic */
+    'hw.group.msg':"группе выдано домашнее задание",
+    'hw.saving':"⏳ Сохраняется...",
+    /* Profile */
+    'streak.days':"дней подряд 🔥", 'confirm.exit':"Выйти из профиля?",
+    /* Games - results */
+    'game.retry':"🔄 Ещё раз",
+    'game.natija':"Результат", 'game.aniqlik':"Точность", 'game.xp.earned':"XP получено",
+    'game.typing.result':"🎉 Результат", 'game.quiz.correct':"правильно",
+    'game.2048.win.msg':"🎉 2048 — Победа!", 'game.2048.over.msg':"Game Over!",
+    'game.mem.win.msg':"🎉 Поздравляем!", 'game.mem.tries':"ход и найдено",
+    'game.chess.your_turn':"⚪ Ваш ход (белые)",
+    'game.chess.win.status':"🏆 Победа!", 'game.chess.lose.status':"💀 Поражение",
+    'game.chess.draw.status':"🤝 Ничья",
+    'game.chess.check_you':"⚠️ Шах вам!", 'game.chess.check_ai':"⚔️ Шах AI!",
+    'game.chess.win.msg':"🎉 Победа!", 'game.chess.lose.msg':"😔 Попробуйте ещё!",
+    'game.chess.draw.msg':"🤝 Ничья!",
+    'game.multi.win.msg':"🏆 Победа!", 'game.multi.lose.msg':"😔 В следующий раз!",
+    'open.in_bot':"Вернитесь в бот, чтобы увидеть домашнее задание 📖",
   },
 };
 let _lang = localStorage.getItem('app_lang') || 'uz';
@@ -2233,13 +2873,17 @@ function showGame(id) {
 /* ── Save game score to backend ── */
 async function saveGameScore(gameType, score, xpEarned) {
   try {
-    await api('/game/score', {
+    const res = await api('/game/score', {
       method: 'POST',
       body: JSON.stringify({ game_type: gameType, score, xp_earned: xpEarned }),
     });
-    toast(`🎯 +${xpEarned} XP olindi!`);
+    const newXp = res?.new_xp || 0;
+    const newLevel = res?.new_level || 1;
+    const lvlName = res?.level_name || ('Lv.' + newLevel);
+    const nextXp = res?.next_level_xp || 0;
+    showXpModal('🎉', "G'alaba!", xpEarned, newXp, lvlName, 0, nextXp);
     profileData = null; // refresh on next open
-  } catch(e) { /* silent */ }
+  } catch(e) { toast(`🎯 +${xpEarned} XP ${t('toast.xp_earned') || 'olindi!'} `); }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -2321,9 +2965,9 @@ function typingEnd() {
   const xp = wpm >= 60 ? 25 : wpm >= 40 ? 15 : wpm >= 20 ? 10 : 5;
   const res = document.getElementById('typingResult');
   res.style.display = '';
-  res.innerHTML = `🎉 Natija: <b>${wpm} WPM</b>, Aniqlik: <b>${acc}%</b><br>+<b>${xp} XP</b> olindi!`;
+  res.innerHTML = `${t('game.typing.result')}: <b>${wpm} WPM</b>, ${t('game.aniqlik')}: <b>${acc}%</b><br>+<b>${xp} ${t('game.xp.earned')}</b>!`;
   document.getElementById('typingStartBtn').style.display = '';
-  document.getElementById('typingStartBtn').textContent = '🔄 Qayta';
+  document.getElementById('typingStartBtn').textContent = t('game.retry');
   saveGameScore('typing', wpm, xp);
 }
 function typingStop() { clearInterval(_tTimer); _tTimer = null; }
@@ -2417,7 +3061,7 @@ function quizStart() {
   _qIdx = 0; _qXp = 0;
   document.getElementById('quizStartBtn').style.display = 'none';
   document.getElementById('quizResult').style.display = 'none';
-  document.getElementById('quizCard').style.display = '';
+  document.getElementById('quizCard').style.display = 'block';
   document.getElementById('quizInfoRow').style.display = '';
   document.getElementById('quizTimerBar').style.display = '';
   quizShowQ();
@@ -2473,8 +3117,8 @@ function quizEnd() {
   document.getElementById('quizTimerBar').style.display = 'none';
   const res = document.getElementById('quizResult');
   res.style.display = '';
-  res.innerHTML = `🎯 Natija: <b>${_qXp / 5}</b>/10 to'g'ri<br>+<b>${_qXp} XP</b> olindi!`;
-  document.getElementById('quizStartBtn').textContent = '🔄 Qayta';
+  res.innerHTML = `🎯 ${t('game.natija')}: <b>${_qXp / 5}</b>/10 ${t('game.quiz.correct')}<br>+<b>${_qXp} ${t('game.xp.earned')}</b>!`;
+  document.getElementById('quizStartBtn').textContent = t('game.retry');
   document.getElementById('quizStartBtn').style.display = '';
   if (_qXp > 0) saveGameScore('quiz', _qXp/5, _qXp);
 }
@@ -2563,7 +3207,7 @@ function g2048GameOver(win) {
   const xp = win ? 30 : _g2048Score >= 500 ? 20 : _g2048Score >= 200 ? 15 : 10;
   const res = document.getElementById('g2048Result');
   res.style.display = '';
-  res.innerHTML = win ? `🎉 2048 — G'alaba! +<b>${xp} XP</b>!` : `Game Over! Score: <b>${_g2048Score}</b>, +<b>${xp} XP</b>`;
+  res.innerHTML = win ? `${t('game.2048.win.msg')} +<b>${xp} ${t('game.xp.earned')}</b>!` : `${t('game.2048.over.msg')} Score: <b>${_g2048Score}</b>, +<b>${xp} ${t('game.xp.earned')}</b>`;
   saveGameScore('2048', _g2048Score, xp);
   document.removeEventListener('keydown', window._g2048Key);
 }
@@ -2579,7 +3223,7 @@ function memInit() {
   document.getElementById('memFound').textContent = '0';
   document.getElementById('memTimer').textContent = '0';
   document.getElementById('memResult').style.display = 'none';
-  document.getElementById('memStartBtn').textContent = '🔄 Qayta';
+  document.getElementById('memStartBtn').textContent = t('game.retry');
   clearInterval(_memTimer);
   _memTimer = setInterval(() => {
     _memSec++;
@@ -2619,7 +3263,7 @@ function memEnd() {
   const xp = _memMoves <= 12 ? 25 : _memMoves <= 18 ? 20 : 15;
   const res = document.getElementById('memResult');
   res.style.display = '';
-  res.innerHTML = `🎉 Tabriklаymiz! ${_memMoves} urinishda topildi!<br>⏱ ${_memSec}s | +<b>${xp} XP</b>`;
+  res.innerHTML = `${t('game.mem.win.msg')} ${_memMoves} ${t('game.mem.tries')}!<br>⏱ ${_memSec}s | +<b>${xp} ${t('game.xp.earned')}</b>`;
   saveGameScore('memory', _memMoves, xp);
 }
 function memStop() { clearInterval(_memTimer); _memTimer = null; }
@@ -2635,7 +3279,7 @@ const CHESS_UNICODE = {
 function chessInit() {
   try { _chess = new Chess(); } catch(e) { document.getElementById('chessStatus').textContent = 'chess.js yuklanmadi'; return; }
   _chessSel = null; _chessPossible = []; _chessOver = false;
-  document.getElementById('chessStatus').textContent = '⚪ Sizning navbatingiz (oq)';
+  document.getElementById('chessStatus').textContent = t('game.chess.your_turn');
   document.getElementById('chessResult').style.display = 'none';
   chessRender();
 }
@@ -2684,26 +3328,26 @@ function chessAiMove() {
   _chess.move(move);
   chessRender();
   chessCheckEnd();
-  if (!_chessOver) document.getElementById('chessStatus').textContent = '⚪ Sizning navbatingiz (oq)';
+  if (!_chessOver) document.getElementById('chessStatus').textContent = t('game.chess.your_turn');
 }
 function chessCheckEnd() {
   if (_chess.in_checkmate()) {
     _chessOver = true;
     const win = _chess.turn() === 'b'; // black to move = black lost = white won
     const xp = win ? 20 : 5;
-    document.getElementById('chessStatus').textContent = win ? '🏆 G\'alaba!' : '💀 Mag\'lubiyat';
+    document.getElementById('chessStatus').textContent = win ? t('game.chess.win.status') : t('game.chess.lose.status');
     const res = document.getElementById('chessResult');
     res.style.display = '';
-    res.innerHTML = `${win?"🎉 G'alaba!":"😔 Urinib ko'ring!"} +<b>${xp} XP</b>`;
+    res.innerHTML = `${win ? t('game.chess.win.msg') : t('game.chess.lose.msg')} +<b>${xp} ${t('game.xp.earned')}</b>`;
     saveGameScore('chess', win?1:0, xp);
   } else if (_chess.in_draw() || _chess.in_stalemate()) {
     _chessOver = true;
-    document.getElementById('chessStatus').textContent = '🤝 Durrang';
+    document.getElementById('chessStatus').textContent = t('game.chess.draw.status');
     document.getElementById('chessResult').style.display = '';
-    document.getElementById('chessResult').innerHTML = '🤝 Durrang! +<b>8 XP</b>';
+    document.getElementById('chessResult').innerHTML = `${t('game.chess.draw.msg')} +<b>8 ${t('game.xp.earned')}</b>`;
     saveGameScore('chess', 0, 8);
   } else if (_chess.in_check()) {
-    document.getElementById('chessStatus').textContent = _chess.turn()==='w' ? '⚠️ Shoh ostida! Siz!' : '⚔️ AI shoh ostida!';
+    document.getElementById('chessStatus').textContent = _chess.turn()==='w' ? t('game.chess.check_you') : t('game.chess.check_ai');
   }
 }
 
@@ -2811,7 +3455,7 @@ function multiEnd(won) {
   const xp = won ? 20 : 5;
   const res = document.getElementById('multiResult');
   res.style.display = '';
-  res.innerHTML = won ? `🏆 G'alaba! +<b>${xp} XP</b>` : `😔 Keyingi safar! +<b>${xp} XP</b>`;
+  res.innerHTML = won ? `${t('game.multi.win.msg')} +<b>${xp} ${t('game.xp.earned')}</b>` : `${t('game.multi.lose.msg')} +<b>${xp} ${t('game.xp.earned')}</b>`;
   saveGameScore('typing_race', won?1:0, xp);
 }
 function openChannel() {
@@ -2819,7 +3463,7 @@ function openChannel() {
   else { window.open(channelLink, '_blank'); }
 }
 function openInBot() {
-  toast('Botga qaytib uy vazifasini ko\'ring 📖');
+  toast(t('open.in_bot'));
   setTimeout(() => tg?.close(), 1200);
 }
 
@@ -3064,6 +3708,134 @@ async function regSubmit() {
 function _regErr(step, msg) {
   const el = document.getElementById('regErr' + step);
   el.textContent = msg; el.classList.toggle('show', !!msg);
+}
+
+/* ── Direct Registration (referalsiz ariza) ──────────────────────────────── */
+let _hasGroup = false;
+let _selectedDayType = '';
+
+function showDirectRegForm() {
+  const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  const overlay = document.getElementById('directRegOverlay');
+  overlay.style.display = 'block';
+
+  // Check if already submitted
+  if (tgId) {
+    fetch('/api/student/pending-status?telegram_user_id=' + tgId)
+      .then(r => r.json())
+      .then(d => {
+        if (d.found) {
+          document.getElementById('directRegForm').style.display = 'none';
+          if (d.status === 'pending') {
+            document.getElementById('directRegPending').style.display = 'block';
+          } else if (d.status === 'rejected') {
+            document.getElementById('directRegRejected').style.display = 'block';
+            document.getElementById('directRegRejectReason').textContent = 'Sabab: ' + (d.reject_reason || '—');
+          } else if (d.status === 'approved') {
+            document.getElementById('directRegApproved').style.display = 'block';
+            document.getElementById('directRegApprovedInfo').textContent =
+              'Guruh: ' + (d.group_name || '—') + (d.mars_id ? ' | Mars ID: ' + d.mars_id : '');
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Prefill name from Telegram
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  if (tgUser) {
+    const name = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
+    if (name) document.getElementById('drFullName').value = name;
+  }
+}
+
+function toggleHasGroup() {
+  _hasGroup = !_hasGroup;
+  const toggle = document.getElementById('hasGroupToggle');
+  const thumb  = document.getElementById('hasGroupThumb');
+  const fields = document.getElementById('groupInfoFields');
+  if (_hasGroup) {
+    toggle.style.background = '#667eea';
+    thumb.style.left = '22px';
+    fields.style.display = 'block';
+  } else {
+    toggle.style.background = '#333';
+    thumb.style.left = '2px';
+    fields.style.display = 'none';
+    _selectedDayType = '';
+    document.getElementById('btnOdd').style.background  = 'rgba(255,255,255,.07)';
+    document.getElementById('btnEven').style.background = 'rgba(255,255,255,.07)';
+  }
+}
+
+function selectDayType(type) {
+  _selectedDayType = type;
+  document.getElementById('btnOdd').style.background  = type === 'ODD'  ? 'rgba(102,126,234,.5)' : 'rgba(255,255,255,.07)';
+  document.getElementById('btnEven').style.background = type === 'EVEN' ? 'rgba(102,126,234,.5)' : 'rgba(255,255,255,.07)';
+  document.getElementById('btnOdd').style.border  = type === 'ODD'  ? '1px solid #667eea' : '1px solid rgba(255,255,255,.1)';
+  document.getElementById('btnEven').style.border = type === 'EVEN' ? '1px solid #667eea' : '1px solid rgba(255,255,255,.1)';
+}
+
+function showDirectRegError(msg) {
+  const el = document.getElementById('directRegErr');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+async function submitDirectReg() {
+  const fullName    = document.getElementById('drFullName').value.trim();
+  const age         = document.getElementById('drAge').value.trim();
+  const location    = document.getElementById('drLocation').value.trim();
+  const interests   = document.getElementById('drInterests').value.trim();
+  const phone       = document.getElementById('drPhone').value.trim();
+
+  if (!fullName || !age || !location || !interests || !phone) {
+    showDirectRegError("Barcha majburiy maydonlarni to'ldiring"); return;
+  }
+  if (!phone.match(/^\+998\d{9}$/)) {
+    showDirectRegError('Telefon format: +998901234567'); return;
+  }
+  if (_hasGroup) {
+    const groupTime   = document.getElementById('drGroupTime').value.trim();
+    const teacherName = document.getElementById('drTeacherName').value.trim();
+    if (!groupTime || !_selectedDayType || !teacherName) {
+      showDirectRegError("Guruh ma'lumotlarini to'liq kiriting"); return;
+    }
+  }
+
+  const btn = document.getElementById('directRegBtn');
+  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
+  showDirectRegError('');
+
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const body = {
+    full_name:        fullName,
+    age:              age,
+    location:         location,
+    interests:        interests,
+    phone:            phone,
+    telegram_user_id: tgUser?.id || null,
+    has_group:        _hasGroup,
+    group_time:       _hasGroup ? document.getElementById('drGroupTime').value.trim() : null,
+    group_day_type:   _hasGroup ? _selectedDayType : null,
+    teacher_name:     _hasGroup ? document.getElementById('drTeacherName').value.trim() : null,
+  };
+
+  try {
+    const r = await fetch('/api/student/pending-register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!r.ok) { showDirectRegError(d.error || 'Xatolik'); btn.disabled = false; btn.textContent = '✅ Ariza topshirish'; return; }
+    tg?.HapticFeedback?.notificationOccurred('success');
+    document.getElementById('directRegForm').style.display = 'none';
+    document.getElementById('directRegPending').style.display = 'block';
+  } catch(e) {
+    showDirectRegError('Tarmoq xatosi. Qayta urinib ko\'ring.');
+    btn.disabled = false; btn.textContent = '✅ Ariza topshirish';
+  }
 }
 
 applyLang();

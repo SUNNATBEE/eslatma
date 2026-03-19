@@ -93,9 +93,12 @@ MARS_CREDENTIALS: dict[str, dict] = {
     "842138":  {"name": "Aliyev Azizbek",             "password": "83145", "group": "nFPro-120"},
     "1229261": {"name": "Fazilov Kamron",             "password": "21759", "group": "nFPro-120"},
     "1064165": {"name": "Abdullayev Bobur",           "password": "46817", "group": "nFPro-120"},
+
+    # ── IND-F-2979 ────────────────────────────────────────────────────────────
+    "1317220": {"name": "Xuramov Muhammadyusuf",      "password": "85270", "group": "IND-F-2979"},
 }
 
 MARS_GROUPS: list[str] = [
     "nF-2506", "nF-2694", "nF-2749", "nF-2803", "nF-2941", "nF-2957",
-    "2996-Pro", "2997-Pro", "nFPro-120",
+    "2996-Pro", "2997-Pro", "nFPro-120", "IND-F-2979",
 ]

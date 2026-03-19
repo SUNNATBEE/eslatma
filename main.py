@@ -1947,17 +1947,28 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         rs = await db.approve_and_register(rs_id, group_name)
         if not rs:
             return web.json_response({"error": "Topilmadi"}, status=404)
-        # Taklif qilganga bildirishnoma (referal uchun)
+        # Taklif qilganga bildirishnoma + Mini App tugmasi (referal uchun)
         if rs.referrer_user_id and rs.referrer_user_id != 0:
             await db.award_referral_xp(rs.referrer_user_id, rs_id)
+            wa_url = WEBAPP_URL.rstrip("/") + "/webapp/student.html" if WEBAPP_URL else None
             try:
-                await bot.send_message(
-                    rs.referrer_user_id,
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+                ref_msg = (
                     f"🎉 <b>Siz taklif qilgan do'st qabul qilindi!</b>\n\n"
                     f"👤 {rs.full_name}\n📚 Guruh: {group_name}\n\n"
-                    f"💰 <b>+500 XP</b> hisobingizga qo'shildi!",
-                    parse_mode="HTML",
+                    f"💰 <b>+500 XP</b> hisobingizga qo'shildi!\n"
+                    f"Mini App da reytingingizni ko'ring 👇"
                 )
+                if wa_url:
+                    ref_kb = InlineKeyboardMarkup(inline_keyboard=[[
+                        InlineKeyboardButton(
+                            text="🏆 Mini App — XP ni ko'rish",
+                            web_app=WebAppInfo(url=wa_url),
+                        )
+                    ]])
+                    await bot.send_message(rs.referrer_user_id, ref_msg, parse_mode="HTML", reply_markup=ref_kb)
+                else:
+                    await bot.send_message(rs.referrer_user_id, ref_msg, parse_mode="HTML")
             except Exception:
                 pass
         # To'g'ridan-to'g'ri ro'yxatdan o'tganga tasdiqlash xabari + Mini App tugmasi

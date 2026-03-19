@@ -1594,13 +1594,14 @@ class DatabaseService:
         """Yangi referal o'quvchini yaratadi."""
         async with self.session_factory() as session:
             rs = ReferralStudent(
-                referrer_user_id = data["referrer_user_id"],
-                telegram_user_id = data.get("telegram_user_id"),
-                full_name        = data["full_name"],
-                age              = data["age"],
-                location         = data["location"],
-                interests        = data["interests"],
-                phone            = data["phone"],
+                referrer_user_id  = data["referrer_user_id"],
+                telegram_user_id  = data.get("telegram_user_id"),
+                full_name         = data["full_name"],
+                age               = data["age"],
+                location          = data["location"],
+                interests         = data["interests"],
+                phone             = data["phone"],
+                registration_type = "referral",
             )
             session.add(rs)
             await session.commit()

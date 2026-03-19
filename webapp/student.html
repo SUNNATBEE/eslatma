@@ -3012,6 +3012,8 @@ const TYPING_TEXTS_RU = [
 ];
 let _tTimer = null, _tSec = 60, _tStarted = false, _tText = '', _tChars = [], _tIdx = 0, _tCorrect = 0;
 function typingStart() {
+  if (checkDailyLimit('typing')) { showLimitModal('Typing'); return; }
+  recordPlay('typing').catch(()=>{});
   const texts = _lang === 'ru' ? TYPING_TEXTS_RU : TYPING_TEXTS_UZ;
   _tText = texts[Math.floor(Math.random() * texts.length)];
   _tChars = _tText.split('');
@@ -3366,6 +3368,8 @@ function quizSetCat(cat) {
   });
 }
 function quizStart() {
+  if (checkDailyLimit('quiz')) { showLimitModal('Quiz'); return; }
+  recordPlay('quiz').catch(()=>{});
   _qQuestions = [...QUIZ_QUESTIONS[_qCat]].sort(() => Math.random() - .5).slice(0, 10);
   _qIdx = 0; _qXp = 0;
   document.getElementById('quizStartBtn').style.display = 'none';
@@ -3411,7 +3415,7 @@ function quizAnswer(si, correctSi) {
     else if (i === si) el.classList.add('wrong');
     else el.classList.add('show-correct');
   });
-  if (si === correctSi) _qXp += 5;
+  if (si === correctSi) _qXp += 2;
   document.getElementById('qXp').textContent = _qXp;
   _qIdx++;
   setTimeout(() => {
@@ -3426,10 +3430,10 @@ function quizEnd() {
   document.getElementById('quizTimerBar').style.display = 'none';
   const res = document.getElementById('quizResult');
   res.style.display = '';
-  res.innerHTML = `🎯 ${t('game.natija')}: <b>${_qXp / 5}</b>/10 ${t('game.quiz.correct')}<br>+<b>${_qXp} ${t('game.xp.earned')}</b>!`;
+  res.innerHTML = `🎯 ${t('game.natija')}: <b>${_qXp / 2}</b>/10 ${t('game.quiz.correct')}<br>+<b>${_qXp} ${t('game.xp.earned')}</b>!`;
   document.getElementById('quizStartBtn').textContent = t('game.retry');
   document.getElementById('quizStartBtn').style.display = '';
-  if (_qXp > 0) saveGameScore('quiz', _qXp/5, _qXp);
+  if (_qXp > 0) saveGameScore('quiz', _qXp/2, _qXp);
 }
 function quizStop() { clearInterval(_qTimer); _qTimer = null; }
 
@@ -3439,6 +3443,8 @@ function quizStop() { clearInterval(_qTimer); _qTimer = null; }
 let _g2048 = [], _g2048Score = 0, _g2048Best = 0, _g2048Over = false;
 let _g2048Touch = null;
 function g2048Init() {
+  if (checkDailyLimit('2048')) { showLimitModal('2048'); return; }
+  recordPlay('2048').catch(()=>{});
   _g2048 = Array.from({length:4}, () => Array(4).fill(0));
   _g2048Score = 0; _g2048Over = false;
   document.getElementById('g2048Score').textContent = '0';
@@ -3527,6 +3533,8 @@ function g2048GameOver(win) {
 const MEM_EMOJIS = ['🐍','⚛️','🐘','🦀','⚡','🔥','💎','🌟','🎯','🏆','🚀','🎮'];
 let _memFlipped = [], _memMatched = 0, _memMoves = 0, _memLocked = false, _memTimer = null, _memSec = 0;
 function memInit() {
+  if (checkDailyLimit('memory')) { showLimitModal('Memory'); return; }
+  recordPlay('memory').catch(()=>{});
   _memFlipped = []; _memMatched = 0; _memMoves = 0; _memLocked = false; _memSec = 0;
   document.getElementById('memMoves').textContent = '0';
   document.getElementById('memFound').textContent = '0';
@@ -3586,6 +3594,8 @@ const CHESS_UNICODE = {
   bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟',
 };
 function chessInit() {
+  if (checkDailyLimit('chess')) { showLimitModal('Chess'); return; }
+  recordPlay('chess').catch(()=>{});
   try { _chess = new Chess(); } catch(e) { document.getElementById('chessStatus').textContent = 'chess.js yuklanmadi'; return; }
   _chessSel = null; _chessPossible = []; _chessOver = false;
   document.getElementById('chessStatus').textContent = t('game.chess.your_turn');

@@ -865,6 +865,7 @@ const TYPING_TEXTS = TYPING_TEXTS_UZ; // legacy alias
 let typTimer=null, typStart=null, typTimeLeft=60, typWords=[], typIdx=0, typFinished=false;
 
 function startTyping() {
+  if (checkDailyLimit('typing')) { showLimitModal('Typing'); return; }
   recordPlay('typing').catch(()=>{});
   clearInterval(typTimer);
   typFinished = false;
@@ -1034,6 +1035,7 @@ let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswe
 let quizResults=[];
 
 function startQuiz() {
+  if (checkDailyLimit('quiz')) { showLimitModal('Quiz'); return; }
   recordPlay('quiz').catch(()=>{});
   quizResults = [];
   quizScore = 0;
@@ -1100,7 +1102,7 @@ function answerQuiz(chosen) {
 
 async function finishQuiz() {
   clearInterval(quizTimer);
-  const xp = quizScore * 5;
+  const xp = quizScore * 2;
   document.getElementById('quizFinalScore').textContent = quizScore * 10;
   document.getElementById('quizFinalXp').textContent    = `+${xp} ${L.xp_earned}`;
   document.getElementById('quizResultRows').innerHTML   = quizResults.map(r =>
@@ -1120,6 +1122,7 @@ let board2048=[], score2048=0, best2048=0, g2048Over=false;
 let t2048X0=0, t2048Y0=0;
 
 function init2048() {
+  if (checkDailyLimit('2048')) { showLimitModal('2048'); return; }
   recordPlay('2048').catch(()=>{});
   g2048Over = false; score2048 = 0;
   board2048 = Array(4).fill(null).map(() => Array(4).fill(0));
@@ -1220,6 +1223,7 @@ const MEM_EMOJIS = ['🐍','🌐','💾','🔧','⚡','🎯','🔍','🛡'];
 let memCards=[], memFlipped=[], memMatched=0, memMoves=0, memTimerInt=null, memSecs=0, memLocked=false;
 
 function initMemory() {
+  if (checkDailyLimit('memory')) { showLimitModal('Memory'); return; }
   recordPlay('memory').catch(()=>{});
   clearInterval(memTimerInt);
   memFlipped=[]; memMatched=0; memMoves=0; memSecs=0; memLocked=false;
@@ -1280,6 +1284,7 @@ async function flipCard(idx) {
 let chess=null, chessSelected=null, chessMoveCount=0, chessGameOver=false, chessFirstMove=true;
 
 function initChess() {
+  if (checkDailyLimit('chess')) { showLimitModal('Chess'); return; }
   recordPlay('chess').catch(()=>{});
   chess = new Chess();
   chessSelected  = null;

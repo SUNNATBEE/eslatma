@@ -2198,6 +2198,177 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         ap = await db.upsert_admin_profile(user_id, body)
         return web.json_response({"ok": True, "display_name": ap.display_name, "avatar_emoji": ap.avatar_emoji})
 
+    # ── Group leaderboard ─────────────────────────────────────────────────────
+    async def api_student_leaderboard_group(request: web.Request) -> web.Response:
+        """O'quvchining guruhi bo'yicha reyting (XP)."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        from database import _level_name
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        group_name = student.group_name or ""
+        leaders = await db.get_group_leaderboard(group_name, limit=20)
+        result = []
+        for i, s in enumerate(leaders):
+            result.append({
+                "rank":       i + 1,
+                "user_id":    s.user_id,
+                "full_name":  s.full_name,
+                "group_name": s.group_name,
+                "xp":         s.xp or 0,
+                "level":      s.level or 1,
+                "level_name": _level_name(s.level or 1),
+                "streak":     s.streak_days or 0,
+                "is_me":      s.user_id == user_id,
+                "avatar":     s.avatar_emoji or "",
+            })
+        return web.json_response({"leaders": result, "group_name": group_name})
+
+    # ── Monthly leaderboard ────────────────────────────────────────────────────
+    async def api_student_leaderboard_monthly(request: web.Request) -> web.Response:
+        """Joriy oy bo'yicha eng ko'p XP to'plagan o'quvchilar."""
+        user_id = _mini_admin_auth(request) or _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        import pytz
+        from config import TIMEZONE
+        tz = pytz.timezone(TIMEZONE)
+        year_month = datetime.now(tz).strftime("%Y-%m")
+        leaders = await db.get_monthly_leaderboard(year_month, limit=50)
+        for i, row in enumerate(leaders):
+            row["rank"] = i + 1
+            row["is_me"] = (row.get("user_id") == user_id)
+        return web.json_response({"leaders": leaders, "year_month": year_month})
+
+    # ── Admin: toggle attendance ───────────────────────────────────────────────
+    async def api_admin_attendance_update(request: web.Request) -> web.Response:
+        """Admin davomat statusini o'zgartiradi (click-to-toggle)."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        target_user_id = int(body.get("user_id", 0))
+        date_str = body.get("date", "")
+        status = body.get("status", "")  # "yes" or "no"
+        if not target_user_id or not date_str or status not in ("yes", "no"):
+            return web.json_response({"error": "user_id, date va status kerak"}, status=400)
+        ok = await db.admin_set_attendance(target_user_id, date_str, status)
+        return web.json_response({"ok": ok})
+
+    # ── Admin: warning list ────────────────────────────────────────────────────
+    async def api_admin_warnings(request: web.Request) -> web.Response:
+        """3+ kun kelmagan va uy vazifasi topshirmagan o'quvchilar."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        import pytz
+        from config import TIMEZONE
+        tz = pytz.timezone(TIMEZONE)
+        today_str = datetime.now(tz).strftime("%Y-%m-%d")
+        absent_students = await db.get_absent_streak_students(days=3)
+        absent_list = [{
+            "user_id":    s.get("user_id"),
+            "full_name":  s.get("full_name"),
+            "group_name": s.get("group_name"),
+            "absent_days": s.get("absent_days"),
+        } for s in absent_students]
+        # Uy vazifasi topshirmagan (3 kun ichida hech biri yo'q)
+        # Sodda: absent_students ichidan uy vazifasi yo'qlarini qaytaramiz
+        return web.json_response({
+            "absent_3days": absent_list,
+            "no_homework":  [],  # Future: homework submission tracking
+            "total":        len(absent_list),
+            "date":         today_str,
+        })
+
+    # ── Admin: send homework ───────────────────────────────────────────────────
+    async def api_admin_send_homework(request: web.Request) -> web.Response:
+        """Admin guruhi uchun uy vazifasi yuboradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+        group_name = (body.get("group_name") or "").strip()
+        text = (body.get("text") or "").strip()
+        if not group_name or not text:
+            return web.json_response({"error": "group_name va text kerak"}, status=400)
+        # Guruh chat_id ni topamiz
+        from sqlalchemy import select
+        from database import Group
+        async with db.session_factory() as session:
+            result = await session.execute(select(Group).where(Group.name == group_name))
+            group = result.scalar_one_or_none()
+        if not group:
+            return web.json_response({"error": "Guruh topilmadi"}, status=404)
+        try:
+            await bot.send_message(
+                chat_id=group.chat_id,
+                text=f"📝 <b>Uy vazifasi</b>\n\n{text}",
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+        return web.json_response({"ok": True})
+
+    # ── Admin: weekly stats (SVG chart) ────────────────────────────────────────
+    async def api_admin_weekly_stats(request: web.Request) -> web.Response:
+        """Oxirgi 7 kun davomiyligi statistikasi (dashboard SVG chart uchun)."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        stats = await db.get_weekly_attendance_stats(days=7)
+        return web.json_response({"days": stats})
+
+    # ── Student: daily challenge ───────────────────────────────────────────────
+    async def api_student_daily_challenge(request: web.Request) -> web.Response:
+        """Kunlik musobaqa/vazifa widget uchun."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        import pytz
+        from config import TIMEZONE
+        tz = pytz.timezone(TIMEZONE)
+        today_str = datetime.now(tz).strftime("%Y-%m-%d")
+        student = await db.get_student(user_id)
+        if not student:
+            return web.json_response({"error": "Not registered"}, status=404)
+        # Streak challenge: 7 kunlik faollik
+        streak = student.streak_days or 0
+        task = "7 kun ketma-ket Mini App ga kiring" if streak < 7 else "Haftalik rekordni yangilang!"
+        xp_reward = 100
+        completed = streak >= 7
+        progress = min(streak, 7)
+        total = 7
+        # Attendance challenge: bugun davomat belgilash
+        att = await db.get_student_attendance(user_id, today_str)
+        if not att:
+            task = "Bugun davomatni belgilang"
+            xp_reward = 20
+            completed = False
+            progress = 0
+            total = 1
+        else:
+            task = "Davomat belgilandi ✅"
+            completed = True
+            progress = 1
+            total = 1
+        return web.json_response({
+            "task":       task,
+            "xp_reward":  xp_reward,
+            "completed":  completed,
+            "progress":   progress,
+            "total":      total,
+            "streak":     streak,
+        })
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -2293,6 +2464,15 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     # Admin profile
     app.router.add_get("/api/admin/profile",               api_admin_profile_get)
     app.router.add_post("/api/admin/profile",              api_admin_profile_set)
+
+    app.router.add_get("/api/student/leaderboard/group",   api_student_leaderboard_group)
+    app.router.add_get("/api/student/leaderboard/monthly", api_student_leaderboard_monthly)
+    app.router.add_post("/api/admin/attendance-update",    api_admin_attendance_update)
+    app.router.add_get("/api/admin/warnings",              api_admin_warnings)
+    app.router.add_post("/api/admin/send-homework",        api_admin_send_homework)
+    app.router.add_get("/api/admin/weekly-stats",          api_admin_weekly_stats)
+    app.router.add_get("/api/student/daily-challenge",     api_student_daily_challenge)
+
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)

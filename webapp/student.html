@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0f1a" />
+  <link rel="manifest" href="/webapp/manifest.json" />
   <title>Mars IT — Shaxsiy Kabinet</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -15,6 +17,7 @@
       --accent:   var(--tg-theme-button-color,        #5288c1);
       --accent2:  #3a7cbf;
       --text:     var(--tg-theme-text-color,          #f5f5f5);
+      --text2:    #aab8c8;
       --sub:      var(--tg-theme-hint-color,          #708499);
       --link:     var(--tg-theme-link-color,          #6ab3f3);
       --btn-text: var(--tg-theme-button-text-color,   #ffffff);
@@ -25,7 +28,21 @@
       --radius:   14px;
       --radius-sm:10px;
       --shadow:   0 4px 24px rgba(0,0,0,.35);
+      --card-border: rgba(255,255,255,.06);
     }
+
+    /* Light theme overrides */
+    :root.theme-light {
+      --bg:          #f0f4f8;
+      --bg2:         #fff;
+      --text:        #111;
+      --text2:       #555;
+      --sub:         #6b7280;
+      --shadow:      0 4px 24px rgba(0,0,0,.10);
+      --card-border: rgba(0,0,0,.08);
+    }
+    :root.theme-light .header { border-bottom-color: rgba(0,0,0,.07); }
+    :root.theme-light .tabbar { border-top-color: rgba(0,0,0,.07); }
 
     html, body { height: 100%; background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -826,6 +843,34 @@
 
     /* ── XP Modal animation ── */
     @keyframes xpPop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+
+    /* ── Daily challenge widget ── */
+    .daily-challenge {
+      background: var(--bg2); border-radius: var(--radius-sm);
+      padding: 13px 14px; margin-bottom: 12px;
+      border: 1px solid var(--card-border);
+    }
+    .dc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .dc-title { font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; flex: 1; }
+    .dc-xp-badge {
+      font-size: 11px; font-weight: 800;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff; padding: 2px 8px; border-radius: 20px;
+    }
+    .dc-task { font-size: 13px; font-weight: 600; margin-bottom: 8px; line-height: 1.45; }
+    .dc-progress-bar { height: 6px; background: rgba(255,255,255,.1); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+    :root.theme-light .dc-progress-bar { background: rgba(0,0,0,.08); }
+    .dc-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--success)); border-radius: 3px; transition: width .5s; }
+    .dc-progress-lbl { font-size: 11px; color: var(--sub); }
+    .dc-done { font-size: 13px; font-weight: 700; color: var(--success); }
+
+    /* ── Group leaderboard page ── */
+    #page-group-lb .lb-item-sm { padding: 8px 0; }
+    .lb-siz-badge {
+      font-size: 10px; font-weight: 800;
+      background: var(--accent); color: #fff;
+      padding: 2px 7px; border-radius: 10px; margin-left: 5px;
+    }
   </style>
 </head>
 <body>
@@ -842,6 +887,7 @@
       <div class="level-badge" id="hdrLevel">Lv.1</div>
       <button class="lang-btn" id="langBtn" onclick="toggleLang()">🇷🇺</button>
       <button id="soundBtn" onclick="toggleSound()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;">🔊</button>
+      <button id="themeBtn" onclick="toggleTheme()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;" title="Tema o'zgartirish">🌙</button>
       <button onclick="refreshCurrentTab()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;" title="Yangilash">🔄</button>
       <button class="help-btn" onclick="openGuide()">?</button>
     </div>
@@ -861,6 +907,19 @@
           <button class="mood-btn" id="mood-happy" onclick="setMood('happy')" title="Yaxshi">😊</button>
           <button class="mood-btn" id="mood-ok"    onclick="setMood('ok')"    title="Normal">😐</button>
           <button class="mood-btn" id="mood-sad"   onclick="setMood('sad')"   title="Yomon">😔</button>
+        </div>
+      </div>
+
+      <!-- Daily challenge widget -->
+      <div class="daily-challenge" id="dailyChallengeWidget" style="display:none">
+        <div class="dc-header">
+          <div class="dc-title">Bugungi vazifa</div>
+          <div class="dc-xp-badge" id="dcXpBadge">+0 XP</div>
+        </div>
+        <div class="dc-task" id="dcTask">Yuklanmoqda...</div>
+        <div id="dcBody">
+          <div class="dc-progress-bar"><div class="dc-progress-fill" id="dcProgressFill" style="width:0%"></div></div>
+          <div class="dc-progress-lbl" id="dcProgressLbl"></div>
         </div>
       </div>
 
@@ -1121,6 +1180,12 @@
 
     </div><!-- end page-games -->
 
+    <!-- ═════════════════════════ GROUP LEADERBOARD PAGE ══════════════ -->
+    <div class="page" id="page-group-lb">
+      <p class="section-title">Guruh reytingi — Top 10</p>
+      <div class="card" id="groupLbContent"><div class="spinner"></div></div>
+    </div>
+
     <!-- ═════════════════════════ REFERRAL PAGE ══════════════════════ -->
     <div class="page" id="page-referral">
       <div id="referralSection" style="padding:16px;">
@@ -1153,6 +1218,9 @@
     </div>
     <div class="tab-item"        id="tab-progress" onclick="goPage('progress')">
       <div class="tab-icon">🎮</div><div class="tab-label" data-i18n="tab.progress">Natija</div>
+    </div>
+    <div class="tab-item"        id="tab-group-lb" onclick="goPage('group-lb')">
+      <div class="tab-icon">👥</div><div class="tab-label">Guruh</div>
     </div>
     <div class="tab-item"        id="tab-chat"     onclick="goPage('chat')">
       <div class="tab-icon">💬</div><div class="tab-label" data-i18n="tab.chat">Chat</div>
@@ -1741,6 +1809,7 @@ function refreshCurrentTab() {
   playSound(400);
   if (_currentTabName === 'homework') { loadHomework(); }
   else if (_currentTabName === 'progress') { progressLoaded = false; loadProgress && loadProgress(); }
+  else if (_currentTabName === 'group-lb') { loadGroupLeaderboard && loadGroupLeaderboard(); }
   else if (_currentTabName === 'chat') { chatLoaded = false; loadChat && loadChat(); }
   else if (_currentTabName === 'referral') { loadReferral && loadReferral(); }
   else location.reload();
@@ -2090,7 +2159,7 @@ let currentPage  = 'home';
 let progressLoaded = false, historyLoaded = false, chatLoaded = false;
 let _chatPollTimer = null;
 let _chatLastId    = 0;
-const PAGES = ['home', 'homework', 'progress', 'history', 'chat', 'games', 'referral'];
+const PAGES = ['home', 'homework', 'progress', 'group-lb', 'history', 'chat', 'games', 'referral'];
 const AVATARS = ['🎓','😎','🚀','🌟','🔥','💎','🏆','👑','🦁','🐯','🦊','🐺','🎯','💡','⚡','🌈','🎨','🎵','🏄','🎭','😄','🤩','🥳','🦋'];
 
 /* ── Level perks definition ─────────────────────────────────────── */
@@ -2173,6 +2242,7 @@ function goPage(name) {
   if (name === 'homework')                    loadHomework();
   if (name === 'progress' && !progressLoaded) { progressLoaded = true; loadProgress(); }
   if (name === 'history'  && !historyLoaded)  { historyLoaded  = true; loadHistory(); }
+  if (name === 'group-lb')                    loadGroupLeaderboard();
   if (name === 'chat')                        loadChat();
   if (name === 'games')                       { showGHub(); loadPlaysToday(); }
   if (name === 'referral')                    loadReferral();
@@ -2338,19 +2408,20 @@ async function loadProgress() {
   const el = document.getElementById('progressContent');
   el.innerHTML = '<div class="spinner"></div>';
   try {
-    const [prog, lb, glb] = await Promise.all([
+    const [prog, lb, glb, mlb] = await Promise.all([
       api('/student/progress'),
       api('/student/leaderboard').catch(() => null),
       api('/student/leaderboard/global').catch(() => null),
+      api('/student/leaderboard/monthly').catch(() => null),
     ]);
     updateStatsStrip(prog);
-    renderProgress(prog, lb, glb);
+    renderProgress(prog, lb, glb, mlb);
   } catch {
     el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik yuz berdi</div></div>';
   }
 }
 
-function renderProgress(prog, lb, glb) {
+function renderProgress(prog, lb, glb, mlb) {
   const el = document.getElementById('progressContent');
 
   // XP bar
@@ -2480,9 +2551,10 @@ function renderProgress(prog, lb, glb) {
     <!-- Leaderboard with tabs + podium -->
     <p class="section-title">${_lang==='ru'?'Рейтинг':'Reyting'}</p>
     <div class="card" style="padding:12px 14px">
-      <div class="lb-tabs">
-        <button class="lb-tab active" id="lbTabGroup"  onclick="switchLbTab('group')">👥 ${lb?.group_name || t('prog.grp_lb')}</button>
-        <button class="lb-tab"        id="lbTabGlobal" onclick="switchLbTab('global')">🌍 ${t('prog.global_lb')}</button>
+      <div class="lb-tabs" style="flex-wrap:wrap;gap:4px;">
+        <button class="lb-tab active" id="lbTabGroup"   onclick="switchLbTab('group')">👥 ${lb?.group_name || t('prog.grp_lb')}</button>
+        <button class="lb-tab"        id="lbTabGlobal"  onclick="switchLbTab('global')">🌍 ${t('prog.global_lb')}</button>
+        <button class="lb-tab"        id="lbTabMonthly" onclick="switchLbTab('monthly')">${_lang==='ru'?'📅 В этом мес.':'📅 Bu oy'}</button>
       </div>
       <div class="lb-pane active" id="lbPaneGroup">
         ${podiumHtml(lb?.leaders)}
@@ -2494,15 +2566,21 @@ function renderProgress(prog, lb, glb) {
         ${lbRestHtml(glb?.leaders)}
         ${(!glb?.leaders || glb.leaders.length === 0) ? `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>` : ''}
       </div>
+      <div class="lb-pane" id="lbPaneMonthly">
+        ${buildLbHtml(mlb?.leaders)}
+        ${(!mlb?.leaders || mlb.leaders.length === 0) ? `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>` : ''}
+      </div>
     </div>
   `;
 }
 
 function switchLbTab(tab) {
-  document.getElementById('lbTabGroup').classList.toggle('active',  tab === 'group');
-  document.getElementById('lbTabGlobal').classList.toggle('active', tab === 'global');
-  document.getElementById('lbPaneGroup').classList.toggle('active',  tab === 'group');
-  document.getElementById('lbPaneGlobal').classList.toggle('active', tab === 'global');
+  ['group','global','monthly'].forEach(t2 => {
+    const tabEl  = document.getElementById('lbTab' + t2.charAt(0).toUpperCase() + t2.slice(1));
+    const paneEl = document.getElementById('lbPane' + t2.charAt(0).toUpperCase() + t2.slice(1));
+    if (tabEl)  tabEl.classList.toggle('active',  tab === t2);
+    if (paneEl) paneEl.classList.toggle('active', tab === t2);
+  });
 }
 
 /* ── History ─────────────────────────────────────────────────────── */
@@ -3626,6 +3704,9 @@ async function init() {
       document.getElementById('statAttend').textContent = icons[att?.status] || '—';
     }).catch(() => {});
 
+    // Daily challenge widget
+    loadDailyChallenge();
+
   } catch(e) {
     const classEl = document.getElementById('classCard');
     if (e.status === 401) {
@@ -3844,6 +3925,94 @@ async function submitDirectReg() {
     showDirectRegError('Tarmoq xatosi. Qayta urinib ko\'ring.');
     btn.disabled = false; btn.textContent = '✅ Ariza topshirish';
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   THEME TOGGLE (Dark / Light)
+══════════════════════════════════════════════════════════════════ */
+function applyTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.classList.add('theme-light');
+    document.getElementById('themeBtn').textContent = '☀️';
+  } else {
+    document.documentElement.classList.remove('theme-light');
+    document.getElementById('themeBtn').textContent = '🌙';
+  }
+}
+
+function toggleTheme() {
+  const current = localStorage.getItem('theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  applyTheme(next);
+  playSound(440, 'sine', 0.1);
+}
+
+// Apply saved theme on load (default dark)
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  applyTheme(saved);
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   GROUP LEADERBOARD
+══════════════════════════════════════════════════════════════════ */
+async function loadGroupLeaderboard() {
+  const el = document.getElementById('groupLbContent');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch('/api/student/leaderboard/group', {
+      headers: {'X-Init-Data': window.Telegram?.WebApp?.initData || ''}
+    });
+    const d = await r.json();
+    const leaders = d.leaders || [];
+    if (!leaders.length) {
+      el.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>`;
+      return;
+    }
+    el.innerHTML = leaders.slice(0, 10).map(s => {
+      const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
+      const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
+      const sizBadge = s.is_me ? '<span class="lb-siz-badge">Siz</span>' : '';
+      return `<div class="lb-item lb-item-sm ${s.is_me ? 'is-me' : ''}">
+        <div class="lb-rank ${rankCls}">${rankIcon}</div>
+        <div class="lb-info">
+          <div class="lb-name">${s.full_name}${sizBadge}</div>
+          <div class="lb-sub">Lv.${s.level} · 🔥${s.streak}</div>
+        </div>
+        <div class="lb-xp">${s.xp} XP</div>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${t('toast.error')}</div></div>`;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DAILY CHALLENGE WIDGET
+══════════════════════════════════════════════════════════════════ */
+async function loadDailyChallenge() {
+  try {
+    const r = await fetch('/api/student/daily-challenge', {
+      headers: {'X-Init-Data': window.Telegram?.WebApp?.initData || ''}
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    const widget = document.getElementById('dailyChallengeWidget');
+    if (!widget || !d.task) return;
+    widget.style.display = '';
+    document.getElementById('dcXpBadge').textContent = '+' + (d.xp_reward || 0) + ' XP';
+    document.getElementById('dcTask').textContent = d.task;
+    if (d.completed) {
+      document.getElementById('dcBody').innerHTML = '<div class="dc-done">✅ +' + (d.xp_reward || 0) + ' XP olindi</div>';
+    } else {
+      const progress = d.progress || 0;
+      const total    = d.total || 1;
+      const pct      = Math.min(100, Math.round((progress / total) * 100));
+      document.getElementById('dcProgressFill').style.width = pct + '%';
+      document.getElementById('dcProgressLbl').textContent  = progress + ' / ' + total;
+    }
+  } catch {}
 }
 
 applyLang();

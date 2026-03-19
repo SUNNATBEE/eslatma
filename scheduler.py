@@ -561,6 +561,75 @@ async def check_inactive_students(bot: Bot, db: DatabaseService) -> None:
         logger.info(f"check_inactive_students: {deleted} ta o'quvchi o'chirildi")
 
 
+# ─── Streak reminder: 19:00 da kirmagan o'quvchilarga ────────────────────────
+
+async def send_streak_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Har kuni 19:00 da: bugun hali Mini App ga kirmagan o'quvchilarga
+    streak yo'qolishi haqida ogohlantirish yuboradi.
+    """
+    tz = pytz.timezone(timezone_str)
+    today_str = datetime.now(tz).strftime("%Y-%m-%d")
+
+    try:
+        students = await db.get_students_without_checkin_today(today_str)
+        sent_count = 0
+        for student in students:
+            if not student.user_id:
+                continue
+            streak = student.streak_days or 0
+            if streak < 1:
+                continue  # Streak yo'q — eslatish shart emas
+            try:
+                await bot.send_message(
+                    student.user_id,
+                    f"🔥 <b>Streak xavf ostida!</b>\n\n"
+                    f"Sizda hozirda <b>{streak} kunlik streak</b> bor!\n"
+                    f"Bugun Mini App ga kirmadingiz — streak yo'qolmasligi uchun hoziroq kiring.\n\n"
+                    f"💡 Har kun kirish = ko'proq XP + bonus!",
+                    parse_mode="HTML",
+                )
+                sent_count += 1
+            except Exception:
+                pass
+        logger.info(f"STREAK REMINDER: {sent_count} ta o'quvchiga yuborildi | {today_str}")
+    except Exception as e:
+        logger.exception(f"STREAK REMINDER: Xato: {e}")
+
+
+# ─── Haftalik 7-kun streak bonusi: Dushanba 09:00 ────────────────────────────
+
+async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: str) -> None:
+    """
+    Har Dushanba 09:00 da: 7+ kun ketma-ket streak bo'lgan
+    o'quvchilarga +100 XP bonus beradi.
+    """
+    from database import XP_WEEKLY_BONUS
+    try:
+        students = await db.get_students_with_7day_streak()
+        awarded = 0
+        for student in students:
+            if not student.user_id:
+                continue
+            try:
+                await db.add_xp(student.user_id, XP_WEEKLY_BONUS, "weekly_streak_bonus")
+                updated = await db.get_student(student.user_id)
+                await bot.send_message(
+                    student.user_id,
+                    f"🎉 <b>Haftalik Streak Bonus!</b>\n\n"
+                    f"Ajoyib! Siz <b>7 kun ketma-ket</b> Mini App ga kirdingiz!\n"
+                    f"<b>+{XP_WEEKLY_BONUS} XP</b> bonus berildi 🚀\n\n"
+                    f"Jami XP: <b>{updated.xp if updated else '?'}</b>",
+                    parse_mode="HTML",
+                )
+                awarded += 1
+            except Exception:
+                pass
+        logger.info(f"WEEKLY BONUS: {awarded} ta o'quvchiga +{XP_WEEKLY_BONUS} XP berildi")
+    except Exception as e:
+        logger.exception(f"WEEKLY BONUS: Xato: {e}")
+
+
 # ─── Reschedule helper ───────────────────────────────────────────────────────
 
 def reschedule_reminder(hour: int, minute: int) -> None:
@@ -640,6 +709,28 @@ def setup_scheduler(
         name="Kunlik global reyting xabari",
         replace_existing=True,
         misfire_grace_time=300,
+    )
+
+    # Streak eslatmasi (har kuni 19:00)
+    scheduler.add_job(
+        func=send_streak_reminders,
+        trigger=CronTrigger(hour=19, minute=0, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="streak_reminder",
+        name="Streak eslatmasi (19:00)",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
+    # Haftalik streak bonusi (har Dushanba 09:00)
+    scheduler.add_job(
+        func=send_weekly_streak_bonus,
+        trigger=CronTrigger(day_of_week="mon", hour=9, minute=0, timezone=timezone_str),
+        args=[bot, db, webapp_url],
+        id="weekly_streak_bonus",
+        name="Haftalik 7-kun streak bonusi",
+        replace_existing=True,
+        misfire_grace_time=600,
     )
 
     _scheduler_ref = scheduler

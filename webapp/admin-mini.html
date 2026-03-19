@@ -118,6 +118,26 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 .msg-input-area { display: flex; gap: 8px; align-items: flex-end; }
 .msg-input-area textarea { flex: 1; }
 .msg-send-btn { background: #2196F3; color: #fff; border: none; border-radius: 10px; padding: 12px 16px; cursor: pointer; flex-shrink: 0; }
+/* Warning card */
+.warn-card { background: #111827; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #7a2020; }
+.warn-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.warn-title { font-size: 14px; color: #f44336; font-weight: 600; }
+.warn-badge { background: #f44336; color: #fff; border-radius: 10px; font-size: 11px; padding: 2px 8px; font-weight: 700; }
+.warn-body { margin-top: 12px; display: none; }
+.warn-body.open { display: block; }
+.warn-item { padding: 8px 0; border-bottom: 1px solid #1e2a3a; font-size: 13px; color: #ccc; }
+.warn-item:last-child { border-bottom: none; }
+.warn-section-label { font-size: 12px; color: #f44336; font-weight: 600; margin: 10px 0 6px; }
+/* Attendance toggle actions */
+.att-actions { display: flex; gap: 8px; margin-top: 8px; }
+.att-actions button { flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.att-card-clickable { cursor: pointer; }
+.att-card-clickable:active { opacity: 0.8; }
+/* SVG Chart card */
+.chart-card { background: #111827; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #1e2a3a; }
+.chart-title { font-size: 14px; color: #7eb8f7; font-weight: 600; margin-bottom: 14px; }
+.chart-wrap { overflow-x: auto; }
+.chart-tooltip { position: absolute; background: #222; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 8px; pointer-events: none; white-space: nowrap; z-index: 999; opacity: 0; transition: opacity 0.2s; }
 </style>
 </head>
 <body>
@@ -239,6 +259,10 @@ const T = {
     referral_pending_count: 'Kutilayotgan referallar',
     xp: 'XP', level: 'Daraja', streak: 'Streak',
     attendance_history: 'Davomat tarixi', game_best: 'Eng yaxshi natijalar',
+    warnings: 'Ogohlantirishlar', absent3days: '3+ kun kelmagan',
+    send_homework: 'Uy vazifasi', weekly_chart: 'Haftalik davomat',
+    hw_text_placeholder: 'Uy vazifasi matnini yozing...', hw_send: 'Yuborish',
+    hw_sent: 'Uy vazifasi yuborildi!', click_to_change: 'O\'zgartirish uchun bosing',
   },
   ru: {
     dashboard: 'Главная', students: 'Ученики', groups: 'Группы',
@@ -270,6 +294,10 @@ const T = {
     referral_pending_count: 'Ожидающие рефералы',
     xp: 'XP', level: 'Уровень', streak: 'Серия',
     attendance_history: 'История посещаемости', game_best: 'Лучшие результаты',
+    warnings: 'Предупреждения', absent3days: '3+ дня отсутствовал',
+    send_homework: 'Домашнее задание', weekly_chart: 'Недельная посещаемость',
+    hw_text_placeholder: 'Введите текст домашнего задания...', hw_send: 'Отправить',
+    hw_sent: 'Домашнее задание отправлено!', click_to_change: 'Нажмите для изменения',
   }
 };
 function t(key) { return (T[lang] || T.uz)[key] || key; }
@@ -493,7 +521,130 @@ async function renderDashboard() {
         </button>
       </div>
     </div>
+    <div id="dashWarnings"><div class="loading" style="padding:16px;font-size:13px;">⚠️ ${t('warnings')}...</div></div>
+    <div id="dashChart"><div class="loading" style="padding:16px;font-size:13px;">📊 ${t('weekly_chart')}...</div></div>
   `;
+
+  // Load warnings and chart in parallel after main render
+  loadDashWarnings();
+  loadWeeklyChart();
+}
+
+async function loadDashWarnings() {
+  const data = await api('/api/admin/warnings');
+  const absent3 = data.absent3 || [];
+  const noHw = data.no_homework || [];
+  const total = absent3.length + noHw.length;
+  const el = document.getElementById('dashWarnings');
+  if (!el) return;
+  if (total === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="warn-card">
+      <div class="warn-header" onclick="toggleWarnBody(this)">
+        <span class="warn-title">⚠️ ${t('warnings')}</span>
+        <span class="warn-badge">${total}</span>
+      </div>
+      <div class="warn-body" id="warnBody">
+        ${absent3.length > 0 ? `
+          <div class="warn-section-label">🔴 ${t('absent3days')} (${absent3.length})</div>
+          ${absent3.map(s => `
+            <div class="warn-item">👤 <b>${s.full_name}</b> — ${s.group_name}
+              ${s.days ? `<span style="color:#f44336;font-size:12px;"> (${s.days} kun)</span>` : ''}
+            </div>
+          `).join('')}
+        ` : ''}
+        ${noHw.length > 0 ? `
+          <div class="warn-section-label">📋 ${t('send_homework')} yo'q (${noHw.length})</div>
+          ${noHw.map(s => `
+            <div class="warn-item">📚 <b>${s.full_name || s.group_name}</b>${s.group_name && s.full_name ? ' — ' + s.group_name : ''}</div>
+          `).join('')}
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function toggleWarnBody(header) {
+  const body = header.parentElement.querySelector('.warn-body');
+  if (body) body.classList.toggle('open');
+}
+
+async function loadWeeklyChart() {
+  const data = await api('/api/admin/weekly-stats');
+  const days = data.days || [];
+  const el = document.getElementById('dashChart');
+  if (!el) return;
+  if (days.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="chart-card">
+      <div class="chart-title">📊 ${t('weekly_chart')}</div>
+      ${renderWeeklySVG(days)}
+    </div>
+  `;
+}
+
+function renderWeeklySVG(days) {
+  const W = 280, H = 120, barW = 28, gap = 12;
+  const totalW = days.length * (barW + gap) - gap + 20;
+  const svgW = Math.max(W, totalW);
+  const maxH = 80, labelY = H - 4, barBase = H - 22;
+
+  const defs = `
+    <defs>
+      <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#42a5f5"/>
+        <stop offset="100%" stop-color="#1565C0"/>
+      </linearGradient>
+    </defs>
+  `;
+
+  const bars = days.map((d, i) => {
+    const x = 10 + i * (barW + gap);
+    const pct = Math.max(0, Math.min(100, d.present_pct || 0));
+    const bh = Math.round((pct / 100) * maxH);
+    const by = barBase - bh;
+    const label = d.label || '';
+    const pctLabel = pct + '%';
+    return `
+      <g class="bar-group" data-pct="${pctLabel}" data-label="${label}">
+        <rect x="${x}" y="${by}" width="${barW}" height="${bh}" rx="5" fill="url(#barGrad)" opacity="0.9"/>
+        <text x="${x + barW/2}" y="${labelY}" text-anchor="middle" font-size="10" fill="#666">${label}</text>
+        <rect x="${x}" y="0" width="${barW}" height="${H}" fill="transparent"
+          onmouseover="showChartTip(event,'${pctLabel} — ${label}')"
+          onmouseleave="hideChartTip()"
+          ontouchstart="showChartTip(event,'${pctLabel} — ${label}')"
+          ontouchend="hideChartTip()"
+          style="cursor:pointer;"/>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <div class="chart-wrap" style="position:relative;">
+      <div class="chart-tooltip" id="chartTip"></div>
+      <svg width="100%" viewBox="0 0 ${svgW} ${H}" preserveAspectRatio="xMinYMid meet"
+        style="overflow:visible;display:block;">
+        ${defs}
+        ${bars}
+      </svg>
+    </div>
+  `;
+}
+
+function showChartTip(e, text) {
+  const tip = document.getElementById('chartTip');
+  if (!tip) return;
+  tip.textContent = text;
+  tip.style.opacity = '1';
+  const rect = e.currentTarget.closest('.chart-wrap').getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  tip.style.left = (clientX - rect.left) + 'px';
+  tip.style.top = (clientY - rect.top - 32) + 'px';
+}
+function hideChartTip() {
+  const tip = document.getElementById('chartTip');
+  if (tip) tip.style.opacity = '0';
 }
 
 // ── Students ──────────────────────────────────────────────────────────────────
@@ -624,7 +775,41 @@ async function openGroupSheet(chatId) {
         <button class="msg-send-btn" onclick="sendGroupMessage(${chatId})">📤</button>
       </div>
     </div>
+    <button class="btn btn-outline" style="margin-top:4px;" onclick="openHomeworkSheet('${g.name.replace(/'/g,"\\'")}')">
+      📝 ${t('send_homework')}
+    </button>
   `, g.name);
+}
+
+function openHomeworkSheet(groupName) {
+  // Close current sheet, open homework sheet
+  closeSheet();
+  setTimeout(() => {
+    openSheet(`
+      <div style="color:#7eb8f7;font-size:13px;margin-bottom:6px;">📚 ${groupName}</div>
+      <div class="inline-label" style="margin-bottom:6px;">${t('send_homework')}</div>
+      <textarea class="txt-input" id="hwTextInput" rows="6"
+        placeholder="${t('hw_text_placeholder')}"></textarea>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="sendHomework('${groupName.replace(/'/g,"\\'")}')">
+        📝 ${t('hw_send')}
+      </button>
+    `, '📝 ' + t('send_homework'));
+  }, 320);
+}
+
+async function sendHomework(groupName) {
+  const text = document.getElementById('hwTextInput')?.value.trim();
+  if (!text) { showToast('❌ Matn bo\'sh'); return; }
+  const r = await api('/api/admin/send-homework', {
+    method: 'POST',
+    body: { group_name: groupName, text }
+  });
+  if (r.ok || r.status === 'ok') {
+    showToast('✅ ' + t('hw_sent'));
+    closeSheet();
+  } else {
+    showToast('❌ ' + (r.error || t('error')));
+  }
 }
 async function sendGroupMessage(chatId) {
   const text = document.getElementById('groupMsgInput')?.value.trim();
@@ -655,6 +840,7 @@ function renderAttList() {
 
   document.getElementById('mainContent').innerHTML = `
     <div style="color:#666;font-size:13px;margin-bottom:12px;">📅 ${date}</div>
+    <div style="color:#555;font-size:12px;margin-bottom:8px;">💡 ${t('click_to_change')}</div>
     <div class="chips">
       <div class="chip ${_attFilter==='all'?'active':''}" onclick="_attFilter='all';renderAttList()">Barchasi (${present.length+absent.length+pending.length})</div>
       <div class="chip ${_attFilter==='yes'?'active':''}" onclick="_attFilter='yes';renderAttList()">✅ Keldi (${present.length})</div>
@@ -663,19 +849,62 @@ function renderAttList() {
     </div>
     ${items.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
       items.map(s => `
-        <div class="student-card" style="cursor:default;">
+        <div class="student-card att-card-clickable" id="attcard_${s.user_id}"
+          onclick="toggleAttCard(${s.user_id},'${s.status}','${date}')">
           <div class="student-avatar">👤</div>
           <div class="student-info">
             <div class="student-name">${s.full_name}</div>
             <div class="student-group">${s.group_name}${s.reason?' • <i>'+s.reason+'</i>':''}</div>
+            <div class="att-actions" id="attactions_${s.user_id}" style="display:none;" onclick="event.stopPropagation()">
+              <button style="background:#1b4f1b;color:#4CAF50;"
+                onclick="updateAttStatus(${s.user_id},'yes','${date}')">✅ ${t('att_present')}</button>
+              <button style="background:#4f1b1b;color:#f44336;"
+                onclick="updateAttStatus(${s.user_id},'no','${date}')">❌ ${t('att_absent')}</button>
+            </div>
           </div>
-          <span class="att-badge ${s.status==='yes'?'att-yes':s.status==='no'?'att-no':'att-pending'}">
+          <span class="att-badge ${s.status==='yes'?'att-yes':s.status==='no'?'att-no':'att-pending'}" id="attbadge_${s.user_id}">
             ${s.status==='yes'?'✅':s.status==='no'?'❌':'⏳'}
           </span>
         </div>
       `).join('')
     }
   `;
+}
+
+function toggleAttCard(userId, currentStatus, date) {
+  // Hide all other open action panels first
+  document.querySelectorAll('.att-actions').forEach(el => {
+    if (el.id !== 'attactions_' + userId) el.style.display = 'none';
+  });
+  const actionsEl = document.getElementById('attactions_' + userId);
+  if (!actionsEl) return;
+  const isOpen = actionsEl.style.display === 'flex';
+  actionsEl.style.display = isOpen ? 'none' : 'flex';
+}
+
+async function updateAttStatus(userId, newStatus, date) {
+  // Hide action buttons immediately for feedback
+  const actionsEl = document.getElementById('attactions_' + userId);
+  if (actionsEl) actionsEl.style.display = 'none';
+  const badgeEl = document.getElementById('attbadge_' + userId);
+  if (badgeEl) {
+    badgeEl.className = 'att-badge ' + (newStatus==='yes'?'att-yes':newStatus==='no'?'att-no':'att-pending');
+    badgeEl.textContent = newStatus==='yes'?'✅':newStatus==='no'?'❌':'⏳';
+  }
+  const r = await api('/api/admin/attendance-update', {
+    method: 'POST',
+    body: { user_id: userId, date: date, status: newStatus }
+  });
+  if (r.ok || r.status === 'ok') {
+    showToast('✅ ' + t('status_changed'));
+    // Reload attendance data in background to sync counts
+    const data = await api('/api/admin/attendance');
+    _attData = data;
+  } else {
+    showToast('❌ ' + (r.error || t('error')));
+    // Reload to revert optimistic UI
+    await renderAttendance();
+  }
 }
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────

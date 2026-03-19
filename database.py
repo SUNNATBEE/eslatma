@@ -393,6 +393,8 @@ def _apply_xp_multiplier(level: int, amount: int) -> int:
     return amount * 2 if level >= 6 else amount
 
 
+XP_WEEKLY_BONUS: int = 100  # Haftalik 7-kun streak bonusi
+
 XP_LEVELS: list[tuple[int, int, str]] = [
     (0,    1, "Yangi boshlovchi"),
     (100,  2, "O'quvchi"),
@@ -1805,3 +1807,155 @@ class DatabaseService:
             if not s:
                 return None
             return {"xp": s.xp or 0, "level": s.level or 1, "streak_days": s.streak_days or 0}
+
+    # ── GROUP LEADERBOARD ────────────────────────────────────────────────────────
+
+    async def get_group_leaderboard(self, group_name: str, limit: int = 20) -> list["Student"]:
+        """Guruh ichidagi reyting (XP bo'yicha)."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student)
+                .where(Student.group_name == group_name)
+                .order_by(Student.xp.desc())
+                .limit(limit)
+            )
+            return list(result.scalars().all())
+
+    # ── MONTHLY LEADERBOARD ──────────────────────────────────────────────────────
+
+    async def get_monthly_leaderboard(self, year_month: str, limit: int = 50) -> list[dict]:
+        """Oy bo'yicha o'quvchilar reytingi — o'sha oyda topilgan XP (game_scores dan)."""
+        from sqlalchemy import func as sqlfunc
+        async with self.session_factory() as session:
+            # game_scores dan o'sha oy uchun XP summasi
+            result = await session.execute(
+                select(
+                    GameScore.user_id,
+                    sqlfunc.sum(GameScore.xp_earned).label("monthly_xp"),
+                )
+                .where(GameScore.played_at >= f"{year_month}-01")
+                .where(GameScore.played_at < f"{year_month}-32")
+                .group_by(GameScore.user_id)
+                .order_by(sqlfunc.sum(GameScore.xp_earned).desc())
+                .limit(limit)
+            )
+            rows = result.all()
+            user_ids = [r.user_id for r in rows]
+            if not user_ids:
+                return []
+            stu_result = await session.execute(
+                select(Student).where(Student.user_id.in_(user_ids))
+            )
+            stu_map = {s.user_id: s for s in stu_result.scalars().all()}
+            out = []
+            for i, r in enumerate(rows):
+                s = stu_map.get(r.user_id)
+                if s:
+                    out.append({
+                        "rank": i + 1,
+                        "user_id": s.user_id,
+                        "full_name": s.full_name,
+                        "group_name": s.group_name,
+                        "monthly_xp": r.monthly_xp or 0,
+                        "level": s.level or 1,
+                        "avatar": s.avatar_emoji or "",
+                    })
+            return out
+
+    # ── ADMIN: DAVOMAT O'ZGARTIRISH ──────────────────────────────────────────────
+
+    async def admin_set_attendance(self, user_id: int, date_str: str, status: str) -> bool:
+        """Admin tomonidan o'quvchi davomati o'rnatiladi/o'zgartiriladi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(AttendanceRecord).where(
+                    AttendanceRecord.user_id == user_id,
+                    AttendanceRecord.date_str == date_str,
+                )
+            )
+            rec = result.scalar_one_or_none()
+            if rec:
+                rec.status = status
+            else:
+                session.add(AttendanceRecord(user_id=user_id, date_str=date_str, status=status))
+            await session.commit()
+            return True
+
+    # ── ADMIN: OGOHLANTIRISHLAR ──────────────────────────────────────────────────
+
+    async def get_absent_streak_students(self, days: int = 3) -> list[dict]:
+        """N kun ketma-ket kelmagan o'quvchilar ro'yxati."""
+        from datetime import date, timedelta
+        today = date.today()
+        check_dates = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
+        async with self.session_factory() as session:
+            students = (await session.execute(select(Student))).scalars().all()
+            result = []
+            for s in students:
+                absent_all = True
+                for d in check_dates:
+                    att = (await session.execute(
+                        select(AttendanceRecord).where(
+                            AttendanceRecord.user_id == s.user_id,
+                            AttendanceRecord.date_str == d,
+                        )
+                    )).scalar_one_or_none()
+                    if not att or att.status == "yes":
+                        absent_all = False
+                        break
+                if absent_all:
+                    result.append({
+                        "user_id": s.user_id,
+                        "full_name": s.full_name,
+                        "group_name": s.group_name,
+                        "telegram_username": s.telegram_username or "",
+                    })
+            return result
+
+    # ── ADMIN: HAFTALIK DAVOMAT STATISTIKASI ─────────────────────────────────────
+
+    async def get_weekly_attendance_stats(self, days: int = 7) -> list[dict]:
+        """Oxirgi N kun uchun davomat foizi."""
+        from datetime import date, timedelta
+        today = date.today()
+        students_count = len((await self.get_all_students()))
+        result = []
+        day_names = ["Yak", "Dush", "Sesh", "Chor", "Pay", "Juma", "Shan"]
+        for i in range(days - 1, -1, -1):
+            d = today - timedelta(days=i)
+            date_str = d.strftime("%Y-%m-%d")
+            records = await self.get_attendance_by_date(date_str)
+            present = sum(1 for r in records if r.status == "yes")
+            pct = round((present / students_count * 100) if students_count else 0)
+            result.append({
+                "date": date_str,
+                "label": day_names[d.weekday() % 7] if d.weekday() < 7 else day_names[6],
+                "present": present,
+                "total": students_count,
+                "pct": pct,
+            })
+        return result
+
+    # ── STREAK REMINDER ──────────────────────────────────────────────────────────
+
+    async def get_students_without_checkin_today(self, today_str: str) -> list["Student"]:
+        """Bugun hali Mini App ga kirmagan o'quvchilar (streak eslatmasi uchun)."""
+        async with self.session_factory() as session:
+            # DailyMood yoki streak_date dan bugun kirmagan o'quvchilar
+            result = await session.execute(
+                select(Student).where(
+                    Student.last_streak_date != today_str,
+                    Student.user_id != None,
+                )
+            )
+            return list(result.scalars().all())
+
+    # ── WEEKLY BONUS CHECK ────────────────────────────────────────────────────────
+
+    async def get_students_with_7day_streak(self) -> list["Student"]:
+        """7 kun ketma-ket streak bo'lgan o'quvchilar (haftalik bonus uchun)."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Student).where(Student.streak_days >= 7)
+            )
+            return list(result.scalars().all())

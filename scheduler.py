@@ -496,10 +496,11 @@ async def send_leaderboard_broadcast(
         f"👇 Reyting va Mini App haqida to'liq ma'lumot uchun tugmani bosing."
     )
 
+    student_url = webapp_url.rstrip("/") + "/student.html"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="📊 Reytingni ko'rish / Посмотреть рейтинг",
-            callback_data="guide:show",
+            url=student_url,
         )],
     ])
 

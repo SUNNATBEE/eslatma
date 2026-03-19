@@ -1750,6 +1750,11 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)
+        # Root path dan ham ochilsin: /student.html, /admin.html va h.k.
+        for _fname in ["student.html", "admin.html", "curator.html", "guide.html", "games.html"]:
+            _fpath = os.path.join(webapp_dir, _fname)
+            if os.path.isfile(_fpath):
+                app.router.add_get(f"/{_fname}", lambda r, p=_fpath: web.FileResponse(p))
     return app
 
 

@@ -16,7 +16,13 @@ def kb_admin_panel() -> InlineKeyboardMarkup:
     if WEBAPP_URL:
         builder.row(
             InlineKeyboardButton(
-                text="🖥 Admin Panel (Mini App)",
+                text="🛠 Admin Mini App",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/admin-mini.html"),
+            )
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="🖥 Admin Panel (eski)",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/admin.html"),
             )
         )

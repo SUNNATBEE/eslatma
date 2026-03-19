@@ -908,25 +908,32 @@ _GUIDE_RU = """🎓 <b>Mars IT Mini App — Полное руководство<
 
 @router.callback_query(F.data == "guide:show")
 async def cb_guide_show(callback: CallbackQuery, bot: Bot) -> None:
-    """Reyting xabaridan 'Reytingni ko'rish' tugmasi — DM orqali to'liq qo'llanma."""
-    await callback.answer()  # spinner o'chirish
-
-    lang = (callback.from_user.language_code or "uz").lower()
-    is_ru = lang.startswith("ru")
-    guide_text = _GUIDE_RU if is_ru else _GUIDE_UZ
-
-    if is_ru:
-        btn_text  = "📱 Открыть Mini App"
-        alert_msg = "📩 Руководство отправлено вам в личные сообщения!"
-        fail_msg  = "⚠️ Сначала запустите бота: нажмите /start в личных сообщениях с ботом."
-    else:
-        btn_text  = "📱 Mini Appni ochish"
-        alert_msg = "📩 Qo'llanma shaxsiy xabaringizga yuborildi!"
-        fail_msg  = "⚠️ Avval botni ishga tushiring: botga shaxsiy xabarda /start yuboring."
-
+    """Reyting xabaridan 'Reytingni ko'rish' tugmasi — DM orqali Mini App ochish."""
     if not WEBAPP_URL:
         await callback.answer("⚠️ Mini App URL sozlanmagan", show_alert=True)
         return
+
+    lang = (callback.from_user.language_code or "uz").lower()
+    is_ru = lang.startswith("ru")
+
+    if is_ru:
+        btn_text  = "📊 Открыть Mini App — Рейтинг"
+        msg_text  = (
+            "🏆 <b>Хочешь посмотреть рейтинг?</b>\n\n"
+            "Нажми кнопку ниже — откроется Mini App!\n"
+            "Там рейтинг, задания, игры и инструкция (<b>кнопка ?</b> вверху)."
+        )
+        alert_msg = "📱 Mini App shaxsiy xabarda tayyor!"
+        fail_msg  = "⚠️ Сначала запустите бота: нажмите /start в личных сообщениях."
+    else:
+        btn_text  = "📊 Mini App — Reytingni ko'rish"
+        msg_text  = (
+            "🏆 <b>Reytingni ko'rmoqchimisiz?</b>\n\n"
+            "Pastdagi tugmani bosing — Mini App ochiladi!\n"
+            "U yerda reyting, vazifalar, o'yinlar va qo'llanma (<b>? tugmasi</b> yuqorida) bor."
+        )
+        alert_msg = "📱 Mini App shaxsiy xabarda tayyor!"
+        fail_msg  = "⚠️ Avval botni ishga tushiring: botga /start yuboring."
 
     mini_app_url = WEBAPP_URL.rstrip("/") + "/student.html"
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
@@ -937,7 +944,7 @@ async def cb_guide_show(callback: CallbackQuery, bot: Bot) -> None:
     try:
         await bot.send_message(
             chat_id=callback.from_user.id,
-            text=guide_text,
+            text=msg_text,
             parse_mode="HTML",
             reply_markup=kb,
         )

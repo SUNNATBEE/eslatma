@@ -920,6 +920,11 @@
           <div class="mc-label" data-i18n="menu.games">O'yinlar</div>
           <div class="mc-sub" data-i18n="menu.games.sub">XP + reyting</div>
         </div>
+        <div class="menu-card" onclick="openGuide()" style="grid-column:1/-1;background:linear-gradient(135deg,rgba(82,136,193,.18),rgba(58,124,191,.1));border:1.5px solid rgba(82,136,193,.35);">
+          <div class="mc-icon">📖</div>
+          <div class="mc-label" data-i18n="menu.guide">Qo'llanma</div>
+          <div class="mc-sub" data-i18n="menu.guide.sub">Mini App ishlatish bo'yicha yo'riqnoma</div>
+        </div>
       </div>
     </div>
 
@@ -1505,7 +1510,7 @@ const PAGES = ['home', 'homework', 'progress', 'history', 'chat', 'games'];
 const AVATARS = ['🎓','😎','🚀','🌟','🔥','💎','🏆','👑','🦁','🐯','🦊','🐺','🎯','💡','⚡','🌈','🎨','🎵','🏄','🎭','😄','🤩','🥳','🦋'];
 
 /* ── Level perks definition ─────────────────────────────────────── */
-const LEVEL_PERKS = {
+const LEVEL_PERKS_UZ = {
   1: { emoji:'🎯', name:"Yangi boshlovchi", bonus: null,         perks:['✅ Davomat belgilash','📚 Uy vazifasini ko\'rish','💬 Chat + 🎨 Avatar'] },
   2: { emoji:'⭐', name:"O\'quvchi",         bonus:'+50 XP',     perks:['⭐ Streak bonuslari oshdi','📊 Guruh reytingida ko\'rinish'] },
   3: { emoji:'🌟', name:"Faol o\'quvchi",   bonus:'+100 XP',    perks:['🌍 Global reyting kirish','🔥 7-kun streak: 2x bonus'] },
@@ -1514,6 +1519,17 @@ const LEVEL_PERKS = {
   6: { emoji:'⚡', name:"Yulduz o\'quvchi", bonus:'+300 XP',    perks:['⚡ 2x XP MULTIPLIER!','Barcha XP ikki barobar oshadi'] },
   7: { emoji:'👑', name:"Super qahramon",   bonus:'🎁 Telegram Premium!', perks:['👑 LEGEND unvoni','Barcha imkoniyatlar ochiq','1 oylik Telegram Premium 🎁'] },
 };
+const LEVEL_PERKS_RU = {
+  1: { emoji:'🎯', name:"Новичок",           bonus: null,         perks:['✅ Отмечать посещаемость','📚 Просматривать задания','💬 Чат + 🎨 Аватар'] },
+  2: { emoji:'⭐', name:"Ученик",            bonus:'+50 XP',     perks:['⭐ Повышенные бонусы серии','📊 Отображение в рейтинге группы'] },
+  3: { emoji:'🌟', name:"Активный ученик",   bonus:'+100 XP',    perks:['🌍 Доступ к глобальному рейтингу','🔥 Серия 7 дней: 2x бонус'] },
+  4: { emoji:'💎', name:"Знаток",            bonus:'+150 XP',    perks:['🏅 VIP значок в чате','📊 Подробная статистика'] },
+  5: { emoji:'🏆', name:"Отличник",          bonus:'+200 XP',    perks:['🌟 Жёлтое имя в рейтинге','💫 Серия 30 дней: макс. бонус'] },
+  6: { emoji:'⚡', name:"Звёздный ученик",   bonus:'+300 XP',    perks:['⚡ 2x XP МНОЖИТЕЛЬ!','Весь XP умножается на 2'] },
+  7: { emoji:'👑', name:"Суперчемпион",      bonus:'🎁 Telegram Premium!', perks:['👑 Звание LEGEND','Все возможности открыты','1 месяц Telegram Premium 🎁'] },
+};
+function getLevelPerks() { return _lang === 'ru' ? LEVEL_PERKS_RU : LEVEL_PERKS_UZ; }
+const LEVEL_PERKS = new Proxy({}, { get: (_, k) => getLevelPerks()[k] });
 
 const LEVEL_UP_BONUS = {2:50, 3:100, 4:150, 5:200, 6:300, 7:500};
 const LVL_ICONS = {1:'🎯',2:'⭐',3:'🌟',4:'💎',5:'🏆',6:'⚡',7:'👑'};
@@ -1527,17 +1543,27 @@ const PERK_TEXT = {
 };
 
 /* ── Achievements definition ─────────────────────────────────────── */
-const ACHIEVEMENTS = [
-  { id:'first_step',  icon:'🎯', name:"Birinchi qadam",      desc:"Ilk marta kirish",             check: p => p.xp > 0 },
-  { id:'streak_7',    icon:'🔥', name:"Haftalik faollik",    desc:"7 kun ketma-ket",              check: p => p.streak_days >= 7 },
-  { id:'streak_30',   icon:'💎', name:"Oylik qahramon",      desc:"30 kun ketma-ket",             check: p => p.streak_days >= 30 },
-  { id:'attend_5',    icon:'✅', name:"Davomat yulduzi",     desc:"5 marta darsga kelish",        check: p => p.attend_count >= 5 },
-  { id:'attend_20',   icon:'🌟', name:"Devomad qahramoni",   desc:"20 marta darsga kelish",       check: p => p.attend_count >= 20 },
-  { id:'hw_conf_5',   icon:'📚', name:"Vazifa qahramoni",    desc:"5 marta tasdiqlash",           check: p => p.hw_conf_count >= 5 },
-  { id:'level_3',     icon:'📈', name:"Faol o'quvchi",       desc:"3-darajaga yetish",            check: p => p.level >= 3 },
-  { id:'level_5',     icon:'🏆', name:"A'lochi",             desc:"5-darajaga yetish",            check: p => p.level >= 5 },
-  { id:'level_7',     icon:'👑', name:"Super qahramon",      desc:"7-darajaga yetish",            check: p => p.level >= 7 },
+const _ACH_DATA = [
+  { id:'first_step',  icon:'🎯', uz:["Birinchi qadam","Ilk marta kirish"],         ru:["Первый шаг","Первый вход"],                   check: p => p.xp > 0 },
+  { id:'streak_7',    icon:'🔥', uz:["Haftalik faollik","7 kun ketma-ket"],         ru:["Недельная активность","7 дней подряд"],        check: p => p.streak_days >= 7 },
+  { id:'streak_30',   icon:'💎', uz:["Oylik qahramon","30 kun ketma-ket"],          ru:["Месячный герой","30 дней подряд"],             check: p => p.streak_days >= 30 },
+  { id:'attend_5',    icon:'✅', uz:["Davomat yulduzi","5 marta darsga kelish"],   ru:["Звезда посещаемости","5 раз на урок"],         check: p => p.attend_count >= 5 },
+  { id:'attend_20',   icon:'🌟', uz:["Davomat qahramoni","20 marta darsga kelish"],ru:["Герой посещаемости","20 раз на урок"],         check: p => p.attend_count >= 20 },
+  { id:'hw_conf_5',   icon:'📚', uz:["Vazifa qahramoni","5 marta tasdiqlash"],     ru:["Герой заданий","5 подтверждений"],             check: p => p.hw_conf_count >= 5 },
+  { id:'level_3',     icon:'📈', uz:["Faol o'quvchi","3-darajaga yetish"],         ru:["Активный ученик","Достичь 3 уровня"],         check: p => p.level >= 3 },
+  { id:'level_5',     icon:'🏆', uz:["A'lochi","5-darajaga yetish"],               ru:["Отличник","Достичь 5 уровня"],                check: p => p.level >= 5 },
+  { id:'level_7',     icon:'👑', uz:["Super qahramon","7-darajaga yetish"],        ru:["Суперчемпион","Достичь 7 уровня"],            check: p => p.level >= 7 },
 ];
+function getAchievements() {
+  return _ACH_DATA.map(a => ({
+    ...a,
+    name: (_lang === 'ru' ? a.ru[0] : a.uz[0]),
+    desc: (_lang === 'ru' ? a.ru[1] : a.uz[1]),
+  }));
+}
+const ACHIEVEMENTS = new Proxy([], {
+  get: (_, k) => k === 'map' ? fn => getAchievements().map(fn) : getAchievements()[k],
+});
 
 /* ── Pages ───────────────────────────────────────────────────────── */
 function goPage(name) {
@@ -1755,11 +1781,11 @@ function renderProgress(prog, lb, glb) {
     const pct = Math.min(100, Math.round((curXP - prevLvlXp) / (nxtXP - prevLvlXp) * 100));
     xpBarHtml = `
       <div class="xp-bar-wrap">
-        <div class="xp-bar-info"><span>${curXP} XP</span><span>Keyingi: ${nxtXP} XP</span></div>
+        <div class="xp-bar-info"><span>${curXP} XP</span><span>${t('prog.next')} ${nxtXP} XP</span></div>
         <div class="xp-bar"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
       </div>`;
   } else {
-    xpBarHtml = `<div class="xp-bar-wrap"><div class="xp-bar-info"><span>${curXP} XP</span><span>Max daraja!</span></div><div class="xp-bar"><div class="xp-bar-fill" style="width:100%"></div></div></div>`;
+    xpBarHtml = `<div class="xp-bar-wrap"><div class="xp-bar-info"><span>${curXP} XP</span><span>${t('prog.max')}</span></div><div class="xp-bar"><div class="xp-bar-fill" style="width:100%"></div></div></div>`;
   }
 
   // Achievements
@@ -1775,7 +1801,7 @@ function renderProgress(prog, lb, glb) {
   // Leaderboard builder helper
   function buildLbHtml(leaders) {
     if (!leaders || !leaders.length)
-      return '<div class="empty" style="padding:20px"><div class="empty-text">Hali reyting ma\'lumoti yo\'q</div></div>';
+      return `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>`;
     return leaders.map(s => {
       const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
       const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
@@ -1796,7 +1822,7 @@ function renderProgress(prog, lb, glb) {
   const perksHtml = Object.entries(LEVEL_PERKS).map(([lvl, p]) => {
     const n = parseInt(lvl);
     const cls = n === curLvl ? 'current' : n < curLvl ? 'done' : 'locked';
-    const tag = n === curLvl ? 'Hozir' : n < curLvl ? '✓ Ochilgan' : `${n}-daraja`;
+    const tag = n === curLvl ? t('prog.now') : n < curLvl ? t('prog.unlocked') : `${n}-${_lang==='ru'?'ур.':'daraja'}`;
     return `<div class="perk-card ${cls}">
       <div class="perk-card-tag">${tag}</div>
       <div class="perk-card-icon">${p.emoji}</div>
@@ -1837,15 +1863,15 @@ function renderProgress(prog, lb, glb) {
     <div class="level-card">
       <div class="level-card-num">${curLvl}</div>
       <div style="position:relative; z-index:1">
-        <div class="level-card-label">${lvlIcon} ${curLvl}-daraja</div>
+        <div class="level-card-label">${lvlIcon} ${curLvl}-${_lang==='ru'?'ур.':'daraja'}</div>
         <div class="level-card-name">${lvlName}</div>
-        ${curLvl === 7 ? '<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:3px">👑 MAX DARAJA — LEGEND!</div>' : ''}
+        ${curLvl === 7 ? `<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:3px">👑 ${_lang==='ru'?'МАКС УРОВЕНЬ — LEGEND!':'MAX DARAJA — LEGEND!'}</div>` : ''}
         ${xpBarHtml}
       </div>
     </div>
 
     <!-- Level perks scroll -->
-    <p class="section-title">Daraja imkoniyatlari</p>
+    <p class="section-title">${_lang==='ru'?'Возможности уровня':'Daraja imkoniyatlari'}</p>
     <div class="perks-scroll">${perksHtml}</div>
 
     <!-- Streak -->
@@ -1853,34 +1879,34 @@ function renderProgress(prog, lb, glb) {
       <div class="streak-icon">🔥</div>
       <div>
         <div class="streak-num">${prog.streak_days || 0}</div>
-        <div class="streak-lbl">kun ketma-ket kirish</div>
+        <div class="streak-lbl">${_lang==='ru'?'дней подряд':'kun ketma-ket kirish'}</div>
       </div>
       <div style="margin-left:auto; text-align:right;">
-        <div style="font-size:12px; color:var(--sub)">Jami davomat</div>
+        <div style="font-size:12px; color:var(--sub)">${_lang==='ru'?'Всего посещений':'Jami davomat'}</div>
         <div style="font-size:20px; font-weight:800; color:var(--success)">${prog.attend_count || 0} ✅</div>
       </div>
     </div>
 
     <!-- Achievements -->
-    <p class="section-title">Yutuqlar</p>
+    <p class="section-title">${t('prog.achievements')}</p>
     <div class="ach-grid">${achHtml}</div>
 
     <!-- Leaderboard with tabs + podium -->
-    <p class="section-title">Reyting</p>
+    <p class="section-title">${_lang==='ru'?'Рейтинг':'Reyting'}</p>
     <div class="card" style="padding:12px 14px">
       <div class="lb-tabs">
-        <button class="lb-tab active" id="lbTabGroup"  onclick="switchLbTab('group')">👥 ${lb?.group_name || 'Guruh'}</button>
-        <button class="lb-tab"        id="lbTabGlobal" onclick="switchLbTab('global')">🌍 Global</button>
+        <button class="lb-tab active" id="lbTabGroup"  onclick="switchLbTab('group')">👥 ${lb?.group_name || t('prog.grp_lb')}</button>
+        <button class="lb-tab"        id="lbTabGlobal" onclick="switchLbTab('global')">🌍 ${t('prog.global_lb')}</button>
       </div>
       <div class="lb-pane active" id="lbPaneGroup">
         ${podiumHtml(lb?.leaders)}
         ${lbRestHtml(lb?.leaders)}
-        ${(!lb?.leaders || lb.leaders.length === 0) ? '<div class="empty" style="padding:20px"><div class="empty-text">Hali reyting yo\'q</div></div>' : ''}
+        ${(!lb?.leaders || lb.leaders.length === 0) ? `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>` : ''}
       </div>
       <div class="lb-pane" id="lbPaneGlobal">
         ${podiumHtml(glb?.leaders)}
         ${lbRestHtml(glb?.leaders)}
-        ${(!glb?.leaders || glb.leaders.length === 0) ? '<div class="empty" style="padding:20px"><div class="empty-text">Hali reyting yo\'q</div></div>' : ''}
+        ${(!glb?.leaders || glb.leaders.length === 0) ? `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>` : ''}
       </div>
     </div>
   `;
@@ -2069,6 +2095,24 @@ const T = {
     'game.memory':"Memory Match", 'game.memory.sub':"+15 XP",
     'game.chess':"Shaxmat (AI)", 'game.chess.sub':"+5–20 XP",
     'game.multi':"Multiplayer Yozish", 'game.multi.sub':"+20 XP g'alaba",
+    /* Guide */
+    'menu.guide':"Qo'llanma", 'menu.guide.sub':"Mini App ishlatish bo'yicha yo'riqnoma",
+    /* Progress dynamic */
+    'prog.next':"Keyingisi:", 'prog.max':"Maksimal daraja!",
+    'prog.no_data':"Hali reyting ma'lumoti yo'q",
+    'prog.now':"Hozir", 'prog.unlocked':"✓ Ochilgan",
+    'prog.grp_lb':"Guruh reytingi", 'prog.global_lb':"Global reyting",
+    'prog.achievements':"Yutuqlar",
+    /* Homework dynamic */
+    'hw.no_hw':"Hozircha uy vazifasi yo'q", 'hw.view_bot':"Botda ko'rish",
+    'hw.confirm_btn':"✅ Ko'rdim va tushundim", 'hw.confirmed':"✅ Tasdiqlangan",
+    /* History dynamic */
+    'hist.no_hist':"Uy vazifalar tarixi yo'q",
+    /* Toast */
+    'toast.att_yes':"✅ Javob qabul qilindi! +10 XP 🎉",
+    'toast.att_no':"❌ Javob yuborildi",
+    'toast.hw_conf':"✅ Tasdiqlandi! +15 XP 🎉",
+    'toast.checkin':"✅ +5 XP — kunlik kirish bonusi!",
   },
   ru: {
     /* Menu */
@@ -2114,6 +2158,24 @@ const T = {
     'game.memory':"Пары карточек", 'game.memory.sub':"+15 XP",
     'game.chess':"Шахматы (AI)", 'game.chess.sub':"+5–20 XP",
     'game.multi':"Мультиплеер Печать", 'game.multi.sub':"+20 XP победа",
+    /* Guide */
+    'menu.guide':"Инструкция", 'menu.guide.sub':"Руководство по использованию Mini App",
+    /* Progress dynamic */
+    'prog.next':"Следующий:", 'prog.max':"Максимальный уровень!",
+    'prog.no_data':"Данных рейтинга пока нет",
+    'prog.now':"Сейчас", 'prog.unlocked':"✓ Открыто",
+    'prog.grp_lb':"Рейтинг группы", 'prog.global_lb':"Глобальный рейтинг",
+    'prog.achievements':"Достижения",
+    /* Homework dynamic */
+    'hw.no_hw':"Домашних заданий пока нет", 'hw.view_bot':"Открыть в боте",
+    'hw.confirm_btn':"✅ Я посмотрел и понял", 'hw.confirmed':"✅ Подтверждено",
+    /* History dynamic */
+    'hist.no_hist':"История домашних заданий пуста",
+    /* Toast */
+    'toast.att_yes':"✅ Ответ принят! +10 XP 🎉",
+    'toast.att_no':"❌ Ответ отправлен",
+    'toast.hw_conf':"✅ Подтверждено! +15 XP 🎉",
+    'toast.checkin':"✅ +5 XP — бонус за ежедневный вход!",
   },
 };
 let _lang = localStorage.getItem('app_lang') || 'uz';

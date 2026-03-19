@@ -784,8 +784,11 @@
           </button>
         </div>
         <div id="testSendResult" style="display:none;padding:0 16px 6px;font-size:13px;font-weight:700;text-align:center;color:var(--success)"></div>
-        <div id="testDeleteRow" style="display:none;padding:0 16px 12px;">
-          <button id="testDeleteBtn" class="test-btn" style="background:rgba(220,53,69,.15);color:#f87171;border:1px solid rgba(220,53,69,.3);" onclick="doDeleteTestMsg()">🗑 Yuborilgan test xabarni o'chirish</button>
+        <div id="testDeleteRow" style="display:none;padding:0 16px 6px;">
+          <button id="testDeleteBtn" class="test-btn" style="background:rgba(220,53,69,.15);color:#f87171;border:1px solid rgba(220,53,69,.3);" onclick="doDeleteTestMsg()">🗑 Bu test xabarni o'chirish</button>
+        </div>
+        <div style="padding:6px 16px 12px;">
+          <button class="test-btn" style="background:rgba(220,53,69,.1);color:#f87171;border:1px solid rgba(220,53,69,.25);font-size:12px;" onclick="doDeleteAllTestMessages()">🗑 Barcha guruhlardagi oxirgi test xabarlarni o'chirish</button>
         </div>
       </div>
 
@@ -1937,6 +1940,17 @@ async function doDeleteTestMsg() {
   } catch(e) {
     btn.disabled = false; btn.textContent = '🗑 Yuborilgan test xabarni o\'chirish';
     toast('⚠️ O\'chirib bo\'lmadi: ' + e.message);
+  }
+}
+
+async function doDeleteAllTestMessages() {
+  if (!confirm('Barcha guruhlardagi oxirgi test xabarlarni o\'chirish?')) return;
+  try {
+    const data = await api('/admin/delete-test-messages', { method: 'POST', body: '{}' });
+    toast(`🗑 ${data.deleted} ta xabar o'chirildi${data.errors ? ', ' + data.errors + ' xato' : ''}`);
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } catch (e) {
+    toast('⚠️ ' + e.message);
   }
 }
 

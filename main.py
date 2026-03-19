@@ -931,6 +931,24 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
+    async def api_admin_delete_test_messages(request: web.Request) -> web.Response:
+        """Barcha guruhlardagi oxirgi yuborilgan test xabarlarni o'chiradi."""
+        user_id = _admin_auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        groups = await db.get_groups_with_message()
+        deleted, errors = 0, 0
+        for group in groups:
+            if not group.last_message_id:
+                continue
+            try:
+                await bot.delete_message(chat_id=group.chat_id, message_id=group.last_message_id)
+                deleted += 1
+            except Exception:
+                errors += 1
+            await db.clear_message_id(group.chat_id)
+        return web.json_response({"ok": True, "deleted": deleted, "errors": errors})
+
     async def api_admin_curator_stats(request: web.Request) -> web.Response:
         """Admin: kuratorlar ro'yxati va aktivlik statistikasi."""
         user_id = _admin_auth(request)
@@ -1692,9 +1710,10 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/admin/auto-msg",         api_admin_auto_msg_set)
     app.router.add_get("/api/admin/auto-msg-preview",  api_admin_auto_msg_preview)
     app.router.add_get("/api/admin/inactive",          api_admin_inactive)
-    app.router.add_post("/api/admin/test-send",        api_admin_test_send)
-    app.router.add_post("/api/admin/test-leaderboard", api_admin_test_leaderboard)
-    app.router.add_post("/api/admin/delete-message",   api_admin_delete_message)
+    app.router.add_post("/api/admin/test-send",           api_admin_test_send)
+    app.router.add_post("/api/admin/test-leaderboard",    api_admin_test_leaderboard)
+    app.router.add_post("/api/admin/delete-message",      api_admin_delete_message)
+    app.router.add_post("/api/admin/delete-test-messages", api_admin_delete_test_messages)
     app.router.add_get("/api/admin/curator-stats",     api_admin_curator_stats)
     app.router.add_get("/api/admin/button-stats",      api_admin_button_stats)
     app.router.add_get("/api/curator/me",         api_curator_me)

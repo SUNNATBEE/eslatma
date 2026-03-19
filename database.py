@@ -385,24 +385,45 @@ class AdminProfile(Base):
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
 
 # Level oshganda beriladigan bonus XP
-LEVEL_UP_BONUS: dict[int, int] = {2: 50, 3: 100, 4: 150, 5: 200, 6: 300, 7: 500}
+LEVEL_UP_BONUS: dict[int, int] = {
+    2: 50,   3: 100,  4: 150,  5: 200,  6: 300,  7: 500,
+    8: 600,  9: 700,  10: 1000,
+    11: 1200, 12: 1500, 13: 2000, 14: 2500, 15: 3000,
+    16: 3500, 17: 4000, 18: 5000, 19: 6000, 20: 8000,
+}
 
 
 def _apply_xp_multiplier(level: int, amount: int) -> int:
-    """6+ darajada barcha XP 2 barobarga oshadi."""
-    return amount * 2 if level >= 6 else amount
+    """Darajaga qarab XP multiplier: 6+=2x, 10+=3x, 15+=4x."""
+    if level >= 15: return amount * 4
+    if level >= 10: return amount * 3
+    if level >= 6:  return amount * 2
+    return amount
 
 
 XP_WEEKLY_BONUS: int = 100  # Haftalik 7-kun streak bonusi
 
 XP_LEVELS: list[tuple[int, int, str]] = [
-    (0,    1, "Yangi boshlovchi"),
-    (100,  2, "O'quvchi"),
-    (300,  3, "Faol o'quvchi"),
-    (600,  4, "Bilimdon"),
-    (1000, 5, "A'lochi"),
-    (1500, 6, "Yulduz o'quvchi"),
-    (2500, 7, "Super qahramon"),
+    (0,     1,  "Yangi boshlovchi"),
+    (100,   2,  "O'quvchi"),
+    (250,   3,  "Faol o'quvchi"),
+    (500,   4,  "Bilimdon"),
+    (800,   5,  "A'lochi"),
+    (1200,  6,  "Yulduz o'quvchi"),
+    (1800,  7,  "Ustoz"),
+    (2500,  8,  "Mohir"),
+    (3500,  9,  "Tajribali"),
+    (5000,  10, "Expert"),
+    (6500,  11, "Master"),
+    (8500,  12, "Grand Master"),
+    (11000, 13, "Chempion"),
+    (14000, 14, "Super Chempion"),
+    (18000, 15, "Professor"),
+    (22000, 16, "Elita"),
+    (28000, 17, "Legenda"),
+    (35000, 18, "Super Legenda"),
+    (43000, 19, "Milliy Qahramon"),
+    (52000, 20, "Kosmik Daho"),
 ]
 
 

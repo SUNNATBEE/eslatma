@@ -165,8 +165,14 @@
     .chess-board{display:grid;grid-template-columns:repeat(8,1fr);border-radius:8px;overflow:hidden;margin-bottom:8px;touch-action:none;}
     .chess-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
       font-size:clamp(14px,4.5vw,26px);cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
-    .chess-cell.light{background:#f0d9b5;}.chess-cell.dark{background:#b58863;}
+    .chess-cell.light{background:#f0f0f0;}.chess-cell.dark{background:#2c2c2c;}
+    .chess-cell.light span{color:#111;text-shadow:0 0 2px rgba(255,255,255,.5);}
+    .chess-cell.dark  span{color:#f0f0f0;text-shadow:0 0 2px rgba(0,0,0,.8);}
     .chess-cell.selected{background:#7fc97f !important;}.chess-cell.possible{background:#7fc9c9 !important;}
+    .chess-cell.light .cp-w{color:#fff;text-shadow:0 0 2px #000,0 0 4px #000;}
+    .chess-cell.dark  .cp-w{color:#fff;text-shadow:0 0 2px rgba(0,0,0,.4);}
+    .chess-cell.light .cp-b{color:#111;text-shadow:none;}
+    .chess-cell.dark  .cp-b{color:#eee;text-shadow:0 0 2px rgba(0,0,0,.8);}
     .g-info-row{display:flex;gap:8px;margin-bottom:8px;}
     .g-info-box{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
     .g-info-val{font-size:16px;font-weight:800;}.g-info-lbl{font-size:10px;color:var(--sub);}
@@ -203,7 +209,8 @@
       text-align:center;font-size:14px;font-weight:700;margin-top:10px;}
     .ts-lbl{font-size:10px;color:var(--sub);margin-top:2px;}
     .typing-text-box{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;
-      font-size:15px;line-height:1.8;letter-spacing:.3px;margin-bottom:10px;min-height:70px;}
+      font-size:15px;line-height:2;letter-spacing:.3px;margin-bottom:10px;min-height:80px;
+      word-break:break-word;white-space:normal;}
     .quiz-info-row{display:flex;justify-content:space-between;margin-bottom:10px;font-size:12px;font-weight:700;}
     .quiz-cat-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
     .quiz-cat-tab{padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;
@@ -1817,9 +1824,11 @@ function showLimitModal(gameType) {
   // Show a nice modal-like toast with countdown
   const el = document.createElement('div');
   el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a2035;border:1px solid #f44336;border-radius:16px;padding:24px 28px;z-index:99999;text-align:center;max-width:300px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.6)';
-  el.innerHTML = `<div style="font-size:40px;margin-bottom:12px">⏳</div>
-    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px">Limit tugadi!</div>
-    <div style="font-size:13px;color:#aaa;margin-bottom:16px">3/3 o'yinni o'ynab bo'ldingiz.<br><span style="color:#FF9800;font-weight:700" id="limitCountdownTxt">${timeStr}</span>dan keyin ochiladi.</div>
+  el.innerHTML = `<div style="font-size:40px;margin-bottom:10px">⏳</div>
+    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px">Limit tugadi!</div>
+    <div style="font-size:13px;color:#aaa;margin-bottom:6px">3/3 o'yinni o'ynab bo'ldingiz</div>
+    <div style="font-size:12px;color:#888;margin-bottom:6px">Ochilishi:</div>
+    <div id="limitCountdownTxt" style="font-size:26px;font-weight:900;color:#FF9800;margin-bottom:16px;line-height:1.2">${timeStr}</div>
     <button onclick="this.parentElement.remove();clearInterval(_limitCountdownTimers['__modal'])" style="background:#f44336;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">OK</button>`;
   document.body.appendChild(el);
   // Live countdown in modal
@@ -2193,35 +2202,82 @@ const AVATARS = ['🎓','😎','🚀','🌟','🔥','💎','🏆','👑','🦁',
 
 /* ── Level perks definition ─────────────────────────────────────── */
 const LEVEL_PERKS_UZ = {
-  1: { emoji:'🎯', name:"Yangi boshlovchi", bonus: null,         perks:['✅ Davomat belgilash','📚 Uy vazifasini ko\'rish','💬 Chat + 🎨 Avatar'] },
-  2: { emoji:'⭐', name:"O\'quvchi",         bonus:'+50 XP',     perks:['⭐ Streak bonuslari oshdi','📊 Guruh reytingida ko\'rinish'] },
-  3: { emoji:'🌟', name:"Faol o\'quvchi",   bonus:'+100 XP',    perks:['🌍 Global reyting kirish','🔥 7-kun streak: 2x bonus'] },
-  4: { emoji:'💎', name:"Bilimdon",          bonus:'+150 XP',    perks:['🏅 Chat da VIP belgisi','📊 Batafsil statistika'] },
-  5: { emoji:'🏆', name:"A\'lochi",          bonus:'+200 XP',    perks:['🌟 Reyting da sariq ism','💫 30-kun streak: max bonus'] },
-  6: { emoji:'⚡', name:"Yulduz o\'quvchi", bonus:'+300 XP',    perks:['⚡ 2x XP MULTIPLIER!','Barcha XP ikki barobar oshadi'] },
-  7: { emoji:'👑', name:"Super qahramon",   bonus:'🎁 Telegram Premium!', perks:['👑 LEGEND unvoni','Barcha imkoniyatlar ochiq','1 oylik Telegram Premium 🎁'] },
+  1:  { emoji:'🎯', name:"Yangi boshlovchi", bonus:null,                    perks:['✅ Davomat belgilash','📚 Uy vazifasini ko\'rish','💬 Chat + 🎨 Avatar'] },
+  2:  { emoji:'⭐', name:"O\'quvchi",        bonus:'+50 XP',               perks:['⭐ Streak bonuslari oshdi','📊 Guruh reytingida ko\'rinish'] },
+  3:  { emoji:'🌟', name:"Faol o\'quvchi",  bonus:'+100 XP',              perks:['🌍 Global reyting kirish','🔥 7-kun streak: 2x bonus'] },
+  4:  { emoji:'💎', name:"Bilimdon",         bonus:'+150 XP',              perks:['🏅 Chat da VIP belgisi','📊 Batafsil statistika'] },
+  5:  { emoji:'🏆', name:"A\'lochi",         bonus:'+200 XP',              perks:['🌟 Reyting da sariq ism','💫 30-kun streak: max bonus'] },
+  6:  { emoji:'⚡', name:"Yulduz o\'quvchi",bonus:'+300 XP',              perks:['⚡ 2x XP MULTIPLIER!','Barcha XP ikki barobar oshadi'] },
+  7:  { emoji:'🎓', name:"Ustoz",            bonus:'+500 XP',              perks:['🎓 Ustoz nishoni ochildi','🎁 Maxsus profil chegarasi'] },
+  8:  { emoji:'🔥', name:"Mohir",            bonus:'+600 XP',              perks:['🔥 Animatsiyali profil','🏅 Mohir unvoni'] },
+  9:  { emoji:'💫', name:"Tajribali",        bonus:'+700 XP',              perks:['💫 Maxsus chat emoji','🔰 Tajribali nishoni'] },
+  10: { emoji:'🚀', name:"Expert",           bonus:'+1000 XP',             perks:['🚀 3x XP MULTIPLIER!','Expert badge + maxsus rang'] },
+  11: { emoji:'🛡', name:"Master",           bonus:'+1200 XP',             perks:['🛡 Master ramkasi','💡 O\'yinlarda bonus XP'] },
+  12: { emoji:'🌠', name:"Grand Master",     bonus:'+1500 XP',             perks:['🌠 Grand Master unvoni','🏆 Maxsus reyting belgisi'] },
+  13: { emoji:'🏅', name:"Chempion",         bonus:'+2000 XP',             perks:['🏅 Chempion toji','👑 Ajoyib profil dizayni'] },
+  14: { emoji:'⚔️',name:"Super Chempion",   bonus:'+2500 XP',             perks:['⚔️ Legendary border','🌟 XP bonus kuchaydi'] },
+  15: { emoji:'🎓', name:"Professor",        bonus:'+3000 XP',             perks:['🎓 Professor unvoni','4x XP MULTIPLIER!'] },
+  16: { emoji:'🔮', name:"Elita",            bonus:'+3500 XP',             perks:['🔮 Elite animatsiya','👁 Maxsus ko\'rinish'] },
+  17: { emoji:'🌈', name:"Legenda",          bonus:'+4000 XP',             perks:['🌈 Legenda unvoni','🔊 Maxsus ovoz effektlari'] },
+  18: { emoji:'💎', name:"Super Legenda",    bonus:'+5000 XP',             perks:['💎 Diamond ramka','🌟 Hammadan ustun'] },
+  19: { emoji:'🦅', name:"Milliy Qahramon", bonus:'+6000 XP',             perks:['🦅 Milliy unvon','🏆 Abadiy rekord'] },
+  20: { emoji:'🌌', name:"Kosmik Daho",      bonus:'🎁 Telegram Premium!', perks:['🌌 MAX DARAJA!','Barcha imkoniyatlar ochiq','1 oylik Telegram Premium 🎁'] },
 };
 const LEVEL_PERKS_RU = {
-  1: { emoji:'🎯', name:"Новичок",           bonus: null,         perks:['✅ Отмечать посещаемость','📚 Просматривать задания','💬 Чат + 🎨 Аватар'] },
-  2: { emoji:'⭐', name:"Ученик",            bonus:'+50 XP',     perks:['⭐ Повышенные бонусы серии','📊 Отображение в рейтинге группы'] },
-  3: { emoji:'🌟', name:"Активный ученик",   bonus:'+100 XP',    perks:['🌍 Доступ к глобальному рейтингу','🔥 Серия 7 дней: 2x бонус'] },
-  4: { emoji:'💎', name:"Знаток",            bonus:'+150 XP',    perks:['🏅 VIP значок в чате','📊 Подробная статистика'] },
-  5: { emoji:'🏆', name:"Отличник",          bonus:'+200 XP',    perks:['🌟 Жёлтое имя в рейтинге','💫 Серия 30 дней: макс. бонус'] },
-  6: { emoji:'⚡', name:"Звёздный ученик",   bonus:'+300 XP',    perks:['⚡ 2x XP МНОЖИТЕЛЬ!','Весь XP умножается на 2'] },
-  7: { emoji:'👑', name:"Суперчемпион",      bonus:'🎁 Telegram Premium!', perks:['👑 Звание LEGEND','Все возможности открыты','1 месяц Telegram Premium 🎁'] },
+  1:  { emoji:'🎯', name:"Новичок",           bonus:null,                    perks:['✅ Отмечать посещаемость','📚 Просматривать задания','💬 Чат + 🎨 Аватар'] },
+  2:  { emoji:'⭐', name:"Ученик",            bonus:'+50 XP',               perks:['⭐ Повышенные бонусы серии','📊 Рейтинг группы'] },
+  3:  { emoji:'🌟', name:"Активный ученик",   bonus:'+100 XP',              perks:['🌍 Глобальный рейтинг','🔥 Серия 7 дней: 2x бонус'] },
+  4:  { emoji:'💎', name:"Знаток",            bonus:'+150 XP',              perks:['🏅 VIP значок в чате','📊 Подробная статистика'] },
+  5:  { emoji:'🏆', name:"Отличник",          bonus:'+200 XP',              perks:['🌟 Жёлтое имя в рейтинге','💫 Серия 30 дней: макс. бонус'] },
+  6:  { emoji:'⚡', name:"Звёздный ученик",   bonus:'+300 XP',              perks:['⚡ 2x XP МНОЖИТЕЛЬ!','Весь XP умножается на 2'] },
+  7:  { emoji:'🎓', name:"Наставник",         bonus:'+500 XP',              perks:['🎓 Значок наставника','🎁 Особая рамка профиля'] },
+  8:  { emoji:'🔥', name:"Умелый",            bonus:'+600 XP',              perks:['🔥 Анимированный профиль','🏅 Звание умелого'] },
+  9:  { emoji:'💫', name:"Опытный",           bonus:'+700 XP',              perks:['💫 Особый эмодзи чата','🔰 Значок опытного'] },
+  10: { emoji:'🚀', name:"Эксперт",           bonus:'+1000 XP',             perks:['🚀 3x XP МНОЖИТЕЛЬ!','Значок эксперта + особый цвет'] },
+  11: { emoji:'🛡', name:"Мастер",            bonus:'+1200 XP',             perks:['🛡 Рамка мастера','💡 Бонус XP в играх'] },
+  12: { emoji:'🌠', name:"Гранд-мастер",      bonus:'+1500 XP',             perks:['🌠 Звание гранд-мастера','🏆 Особый знак рейтинга'] },
+  13: { emoji:'🏅', name:"Чемпион",           bonus:'+2000 XP',             perks:['🏅 Корона чемпиона','👑 Особый дизайн профиля'] },
+  14: { emoji:'⚔️',name:"Супер-чемпион",     bonus:'+2500 XP',             perks:['⚔️ Легендарная рамка','🌟 Усиленный XP бонус'] },
+  15: { emoji:'🎓', name:"Профессор",         bonus:'+3000 XP',             perks:['🎓 Звание профессора','4x XP МНОЖИТЕЛЬ!'] },
+  16: { emoji:'🔮', name:"Элита",             bonus:'+3500 XP',             perks:['🔮 Элитная анимация','👁 Особый вид профиля'] },
+  17: { emoji:'🌈', name:"Легенда",           bonus:'+4000 XP',             perks:['🌈 Звание легенды','🔊 Особые звуковые эффекты'] },
+  18: { emoji:'💎', name:"Супер-легенда",     bonus:'+5000 XP',             perks:['💎 Бриллиантовая рамка','🌟 Выше всех'] },
+  19: { emoji:'🦅', name:"Нац. герой",        bonus:'+6000 XP',             perks:['🦅 Национальное звание','🏆 Вечный рекорд'] },
+  20: { emoji:'🌌', name:"Космический гений", bonus:'🎁 Telegram Premium!', perks:['🌌 МАКС. УРОВЕНЬ!','Все возможности открыты','1 месяц Telegram Premium 🎁'] },
 };
 function getLevelPerks() { return _lang === 'ru' ? LEVEL_PERKS_RU : LEVEL_PERKS_UZ; }
 const LEVEL_PERKS = new Proxy({}, { get: (_, k) => getLevelPerks()[k] });
 
-const LEVEL_UP_BONUS = {2:50, 3:100, 4:150, 5:200, 6:300, 7:500};
-const LVL_ICONS = {1:'🎯',2:'⭐',3:'🌟',4:'💎',5:'🏆',6:'⚡',7:'👑'};
+const LEVEL_UP_BONUS = {
+  2:50, 3:100, 4:150, 5:200, 6:300, 7:500,
+  8:600, 9:700, 10:1000,
+  11:1200, 12:1500, 13:2000, 14:2500, 15:3000,
+  16:3500, 17:4000, 18:5000, 19:6000, 20:8000
+};
+const LVL_ICONS = {
+  1:'🎯',2:'⭐',3:'🌟',4:'💎',5:'🏆',6:'⚡',7:'🎓',8:'🔥',9:'💫',10:'🚀',
+  11:'🛡',12:'🌠',13:'🏅',14:'⚔️',15:'🎓',16:'🔮',17:'🌈',18:'💎',19:'🦅',20:'🌌'
+};
 const PERK_TEXT = {
-  2:"💬 Chat + 🎨 Emoji avatar ochildi!",
-  3:"⭐ Streak bonuslari oshdi!",
+  2:"⭐ Streak bonuslari oshdi!",
+  3:"🌍 Global reyting ochildi!",
   4:"💎 VIP belgisi + batafsil statistika!",
   5:"🏆 Reyting da sariq ism!",
   6:"⚡ 2x XP multiplikator faollashdi!",
-  7:"👑 LEGEND! Admin bilan bog'laning — Telegram Premium kutmoqda!",
+  7:"🎓 Ustoz nishoni ochildi!",
+  8:"🔥 Mohir animatsiyali profil!",
+  9:"💫 Maxsus chat emoji ochildi!",
+  10:"🚀 3x XP multiplikator faollashdi!",
+  11:"🛡 Master ramkasi ochildi!",
+  12:"🌠 Grand Master unvoni!",
+  13:"🏅 Chempion toji!",
+  14:"⚔️ Legendary border!",
+  15:"🎓 Professor - 4x XP faollashdi!",
+  16:"🔮 Elite animatsiya!",
+  17:"🌈 Legenda unvoni!",
+  18:"💎 Diamond ramka!",
+  19:"🦅 Milliy Qahramon!",
+  20:"🌌 KOSMIK DAHO - MAX DARAJA! Admin bilan bog'laning — Telegram Premium kutmoqda!",
 };
 
 /* ── Achievements definition ─────────────────────────────────────── */
@@ -3010,14 +3066,14 @@ const TYPING_TEXTS_RU = [
   "алгоритм это способ решения проблемы шаг за шагом. правильный алгоритм ускоряет программу.",
   "фронтенд разработчики создают внешний вид веб-страниц. html css и javascript их основные инструменты.",
 ];
-let _tTimer = null, _tSec = 60, _tStarted = false, _tText = '', _tChars = [], _tIdx = 0, _tCorrect = 0;
+let _tTimer = null, _tSec = 60, _tStarted = false, _tText = '', _tChars = [], _tIdx = 0, _tCorrect = 0, _tTyped = [];
 function typingStart() {
   if (checkDailyLimit('typing')) { showLimitModal('Typing'); return; }
   recordPlay('typing').catch(()=>{});
   const texts = _lang === 'ru' ? TYPING_TEXTS_RU : TYPING_TEXTS_UZ;
   _tText = texts[Math.floor(Math.random() * texts.length)];
   _tChars = _tText.split('');
-  _tIdx = 0; _tCorrect = 0; _tSec = 60; _tStarted = false;
+  _tIdx = 0; _tCorrect = 0; _tSec = 60; _tStarted = false; _tTyped = [];
   document.getElementById('tWpm').textContent = '0';
   document.getElementById('tTimer').textContent = '60';
   document.getElementById('tAcc').textContent = '100';
@@ -3032,9 +3088,9 @@ function _renderTypingText() {
   const box = document.getElementById('typingText');
   box.innerHTML = _tChars.map((ch, i) => {
     let cls = '';
-    if (i < _tIdx) cls = (ch === _tChars[i]) ? 'correct' : 'wrong';
-    if (i === _tIdx) cls = 'current';
-    return `<span class="typing-char ${cls}">${ch === ' ' ? '&nbsp;' : ch}</span>`;
+    if (i < _tIdx) cls = _tTyped[i] ? 'correct' : 'wrong';
+    else if (i === _tIdx) cls = 'current';
+    return `<span class="typing-char ${cls}">${ch}</span>`;
   }).join('');
   // Scroll current into view
   const cur = box.querySelector('.current');
@@ -3054,7 +3110,9 @@ function typingInput(e) {
   const typed = e.target.value;
   const ch = typed[typed.length - 1];
   if (_tIdx < _tChars.length) {
-    if (ch === _tChars[_tIdx]) _tCorrect++;
+    const correct = ch === _tChars[_tIdx];
+    _tTyped[_tIdx] = correct;
+    if (correct) _tCorrect++;
     _tIdx++;
     e.target.value = '';
     _renderTypingText();
@@ -3071,7 +3129,7 @@ function typingEnd() {
   document.getElementById('tWpm').textContent = wpm;
   document.getElementById('tAcc').textContent = acc;
   document.getElementById('typingInput').disabled = true;
-  const xp = wpm >= 60 ? 25 : wpm >= 40 ? 15 : wpm >= 20 ? 10 : 5;
+  const xp = acc === 100 ? 30 : Math.max(5, Math.round(30 * acc / 100));
   const res = document.getElementById('typingResult');
   res.style.display = '';
   res.innerHTML = `${t('game.typing.result')}: <b>${wpm} WPM</b>, ${t('game.aniqlik')}: <b>${acc}%</b><br>+<b>${xp} ${t('game.xp.earned')}</b>!`;
@@ -3613,7 +3671,7 @@ function chessRender() {
     if (_chessSel === sq) cls += ' selected';
     if (_chessPossible.includes(sq)) cls += ' possible';
     const piece = b[r][c];
-    const sym = piece ? CHESS_UNICODE[(piece.color==='w'?'w':'b')+piece.type.toUpperCase()] : '';
+    const sym = piece ? `<span class="cp-${piece.color}">${CHESS_UNICODE[(piece.color==='w'?'w':'b')+piece.type.toUpperCase()]}</span>` : '';
     html += `<div class="${cls}" data-sq="${sq}" onclick="chessClick('${sq}')">${sym}</div>`;
   }
   board.innerHTML = html;

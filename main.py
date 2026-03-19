@@ -1524,13 +1524,12 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         return web.json_response({"ok": True})
 
     async def api_student_leaderboard_global(request: web.Request) -> web.Response:
-        """Barcha guruhlar global reytingi (XP bo'yicha top 50)."""
-        user_id = _auth(request)
+        """Barcha guruhlar global reytingi (XP bo'yicha top 50).
+        Student va admin-mini.html dan ham chaqiriladi."""
+        # Admin-mini va student ikkalasi uchun ham ishlaydi
+        user_id = _mini_admin_auth(request) or _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        student = await db.get_student(user_id)
-        if not student:
-            return web.json_response({"error": "Not registered"}, status=404)
         from database import _level_name
         leaders = await db.get_global_leaderboard(limit=50)
         result = []
@@ -1767,8 +1766,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         })
 
     async def api_game_leaderboard(request: web.Request) -> web.Response:
-        """O'yin bo'yicha global top-10."""
-        user_id = _auth(request)
+        """O'yin bo'yicha global top-10. Student va admin-mini.html dan ham chaqiriladi."""
+        user_id = _mini_admin_auth(request) or _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         game_type = request.rel_url.query.get("type", "typing")

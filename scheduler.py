@@ -460,7 +460,7 @@ async def send_leaderboard_broadcast(
       - Reytingni to'liq ko'rish
       - Reyting oshirish
     """
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
     if not webapp_url:
         logger.warning("LEADERBOARD BROADCAST: WEBAPP_URL sozlanmagan — o'tkazib yuborildi")
@@ -498,18 +498,25 @@ async def send_leaderboard_broadcast(
         f"👇 Reyting va Mini App haqida to'liq ma'lumot uchun tugmani bosing."
     )
 
+    # WebAppInfo ishlatiladi — oddiy brauzer emas, Telegram Mini App sifatida ochiladi
     student_url = webapp_url.rstrip("/") + "/student.html"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="📊 Reytingni ko'rish / Посмотреть рейтинг",
-            url=student_url,
+            web_app=WebAppInfo(url=student_url),
         )],
     ])
 
+    # Faqat aktiv O'QUVCHI guruhlariga yuboramiz (ota-ona guruhlar emas)
     groups = await db.get_all_groups()
     ok, fail = 0, 0
     for group in groups:
         if not group.is_active:
+            continue
+        if group.audience != AudienceType.STUDENT:
+            logger.debug(
+                f"LEADERBOARD BROADCAST: '{group.name}' — PARENT guruh, o'tkazib yuborildi"
+            )
             continue
         try:
             await bot.send_message(
@@ -700,13 +707,16 @@ def setup_scheduler(
         misfire_grace_time=300,
     )
 
-    # Kunlik global reyting broadcast (har kuni 21:05)
+    # Global reyting broadcast (har 3 kunda bir marta, 21:05 da)
+    # IntervalTrigger(days=3) — har 3 kunda bir marta ishga tushadi.
+    # Birinchi ishga tushish: start_date ko'rsatilmasa botni qayta ishga
+    # tushirgan vaqtdan boshlanadi, shu bois misfire_grace_time=300 (5 daqiqa).
     scheduler.add_job(
         func=send_leaderboard_broadcast,
-        trigger=CronTrigger(hour=21, minute=5, timezone=timezone_str),
+        trigger=IntervalTrigger(days=3, timezone=timezone_str),
         args=[bot, db, webapp_url, timezone_str],
         id="daily_leaderboard_broadcast",
-        name="Kunlik global reyting xabari",
+        name="3 kunlik global reyting xabari",
         replace_existing=True,
         misfire_grace_time=300,
     )
@@ -736,6 +746,6 @@ def setup_scheduler(
     _scheduler_ref = scheduler
     logger.info(
         f"Scheduler sozlandi: har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} + "
-        f"har 10 daqiqada dars/davomat eslatmasi + 21:05 reyting broadcast ({timezone_str})"
+        f"har 10 daqiqada dars/davomat eslatmasi + har 3 kunda reyting broadcast ({timezone_str})"
     )
     return scheduler

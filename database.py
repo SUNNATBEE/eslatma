@@ -1606,7 +1606,7 @@ class DatabaseService:
         return {
             "count":       count,
             "blocked":     blocked,
-            "seconds_left": secs if blocked else secs,
+            "seconds_left": secs,
             "plays_left":  max(0, self._PLAY_LIMIT - count),
         }
 

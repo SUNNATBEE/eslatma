@@ -332,13 +332,17 @@ function _authHeaders() {
 
 // ── API ───────────────────────────────────────────────────────────────────────
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    ...opts,
-    headers: { ..._authHeaders(), ...(opts.headers || {}) },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
-  if (res.status === 401) { showLoginPage(); return {}; }
-  return res.json();
+  try {
+    const res = await fetch(path, {
+      ...opts,
+      headers: { ..._authHeaders(), ...(opts.headers || {}) },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    if (res.status === 401) { showLoginPage(); return {}; }
+    try { return await res.json(); } catch(e) { return { error: 'Server xatosi' }; }
+  } catch(e) {
+    return { error: 'Tarmoq xatosi' };
+  }
 }
 
 // ── Login / Logout ────────────────────────────────────────────────────────────
@@ -439,15 +443,25 @@ function showTab(tab, force = false) {
 async function renderTab(tab) {
   const content = document.getElementById('mainContent');
   content.innerHTML = `<div class="loading">${t('loading')}</div>`;
-  switch(tab) {
-    case 'dashboard':   await renderDashboard(); break;
-    case 'students':    await renderStudents(); break;
-    case 'groups':      await renderGroups(); break;
-    case 'attendance':  await renderAttendance(); break;
-    case 'leaderboard': await renderLeaderboard(); break;
-    case 'curators':    await renderCurators(); break;
-    case 'referral':    await renderReferral(); break;
-    case 'settings':    await renderSettings(); break;
+  try {
+    switch(tab) {
+      case 'dashboard':   await renderDashboard(); break;
+      case 'students':    await renderStudents(); break;
+      case 'groups':      await renderGroups(); break;
+      case 'attendance':  await renderAttendance(); break;
+      case 'leaderboard': await renderLeaderboard(); break;
+      case 'curators':    await renderCurators(); break;
+      case 'referral':    await renderReferral(); break;
+      case 'settings':    await renderSettings(); break;
+    }
+  } catch(e) {
+    console.error('Tab render xatosi [' + tab + ']:', e);
+    content.innerHTML = `<div class="card" style="text-align:center;padding:24px;">
+      <div style="font-size:40px;margin-bottom:12px;">❌</div>
+      <div style="color:#f44336;font-weight:700;margin-bottom:8px;">Yuklab bo'lmadi</div>
+      <div style="color:#aaa;font-size:13px;margin-bottom:16px;">${e?.message || 'Noma\'lum xato'}</div>
+      <button class="btn btn-primary" onclick="showTab('${tab}',true)">🔄 Qayta urinish</button>
+    </div>`;
   }
 }
 
@@ -532,7 +546,7 @@ async function renderDashboard() {
 
 async function loadDashWarnings() {
   const data = await api('/api/admin/warnings');
-  const absent3 = data.absent3 || [];
+  const absent3 = data.absent_3days || data.absent3 || [];
   const noHw = data.no_homework || [];
   const total = absent3.length + noHw.length;
   const el = document.getElementById('dashWarnings');
@@ -549,7 +563,7 @@ async function loadDashWarnings() {
           <div class="warn-section-label">🔴 ${t('absent3days')} (${absent3.length})</div>
           ${absent3.map(s => `
             <div class="warn-item">👤 <b>${s.full_name}</b> — ${s.group_name}
-              ${s.days ? `<span style="color:#f44336;font-size:12px;"> (${s.days} kun)</span>` : ''}
+              ${(s.absent_days || s.days) ? `<span style="color:#f44336;font-size:12px;"> (${s.absent_days || s.days} kun)</span>` : ''}
             </div>
           `).join('')}
         ` : ''}
@@ -1137,11 +1151,11 @@ async function confirmRejectRef(id) {
 let _reminderH = 20, _reminderM = 0;
 async function renderSettings() {
   const [profile, reminder] = await Promise.all([
-    api('/api/admin/profile'),
-    api('/api/admin/reminder-time'),
+    api('/api/admin/profile').catch(() => ({})),
+    api('/api/admin/reminder-time').catch(() => ({})),
   ]);
-  _reminderH = reminder.hour || 20;
-  _reminderM = reminder.minute || 0;
+  _reminderH = reminder?.hour ?? 20;
+  _reminderM = reminder?.minute ?? 0;
   document.getElementById('mainContent').innerHTML = `
     <!-- Session info + Logout -->
     ${_sessionUser ? `

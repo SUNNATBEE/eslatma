@@ -95,7 +95,7 @@ async def reg_enter_password(
     if not cred:
         db_cred = await db.get_student_credential(mars_id)
         if db_cred:
-            cred = {"password": db_cred.password, "name": db_cred.full_name, "group": db_cred.group_name}
+            cred = {"password": db_cred.password, "name": db_cred.name, "group": db_cred.group_name}
 
     if not cred:
         await message.answer(

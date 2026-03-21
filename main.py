@@ -368,6 +368,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         if not cred or cred["password"] != password:
             return web.json_response({"error": "Login yoki parol noto'g'ri"}, status=403)
         await db.set_curator_session(user_id, login)
+        await db.update_curator_last_active(user_id)
         return web.json_response({
             "ok":        True,
             "full_name": cred["full_name"],

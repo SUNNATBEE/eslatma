@@ -715,17 +715,30 @@
     .chat-send-btn:active { opacity: .8; }
 
     /* ── Leaderboard tabs ── */
-    .lb-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .lb-tabs-wrap {
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      margin-bottom: 10px; padding-bottom: 2px;
+    }
+    .lb-tabs-wrap::-webkit-scrollbar { display: none; }
+    .lb-tabs { display: flex; gap: 6px; width: max-content; min-width: 100%; }
     .lb-tab {
-      flex: 1; padding: 8px; border-radius: 8px; border: none;
-      font-size: 12px; font-weight: 700; cursor: pointer;
+      padding: 7px 12px; border-radius: 8px; border: none;
+      font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
       -webkit-tap-highlight-color: transparent;
       background: rgba(255,255,255,.07); color: var(--sub);
-      transition: background .15s, color .15s;
+      transition: background .15s, color .15s; flex-shrink: 0;
     }
     .lb-tab.active { background: var(--accent); color: #fff; }
     .lb-pane { display: none; }
     .lb-pane.active { display: block; }
+    /* O'yin leaderboard alohida row stili (ball ko'rinishi) */
+    .lb-item-game {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .lb-item-game:last-child { border-bottom: none; }
+    .lb-item-game.is-me { background: rgba(82,136,193,.10); border-radius: 8px; padding: 9px 8px; margin: 0 -8px; }
+    .lb-score { font-size: 14px; font-weight: 800; color: var(--warn); margin-left: auto; white-space: nowrap; }
 
     /* ── Level-up overlay ── */
     .levelup-overlay {
@@ -1035,153 +1048,125 @@
 
       <!-- Games Hub -->
       <div id="gHub">
-        <p class="section-title" data-i18n="games.title">🕹 O'yinlar — XP yig'ish</p>
+        <p class="section-title" data-i18n="games.title">Dasturlash O'yinlari — XP yig'ish</p>
         <div class="menu-grid">
-          <div class="menu-card" onclick="showGame('gTyping')">
-            <div class="mc-icon">⌨️</div>
-            <div class="mc-label" data-i18n="game.typing">Terilish tezligi</div>
-            <div class="mc-sub" data-i18n="game.typing.sub">+5–25 XP</div>
-          </div>
           <div class="menu-card" onclick="showGame('gQuiz')">
             <div class="mc-icon">🧠</div>
-            <div class="mc-label" data-i18n="game.quiz">Quiz</div>
-            <div class="mc-sub" data-i18n="game.quiz.sub">+5 XP / savol</div>
+            <div class="mc-label">Dasturlash Testi</div>
+            <div class="mc-sub">+2 XP / to'g'ri javob</div>
           </div>
-          <div class="menu-card" onclick="showGame('gG2048')">
-            <div class="mc-icon">🎮</div>
-            <div class="mc-label" data-i18n="game.2048">2048</div>
-            <div class="mc-sub" data-i18n="game.2048.sub">+10–30 XP</div>
-          </div>
-          <div class="menu-card" onclick="showGame('gMemory')">
-            <div class="mc-icon">🃏</div>
-            <div class="mc-label" data-i18n="game.memory">Memory Match</div>
-            <div class="mc-sub" data-i18n="game.memory.sub">+15 XP</div>
-          </div>
-          <div class="menu-card" onclick="showGame('gChess')">
-            <div class="mc-icon">♟️</div>
-            <div class="mc-label" data-i18n="game.chess">Shaxmat (AI)</div>
-            <div class="mc-sub" data-i18n="game.chess.sub">+5–20 XP</div>
-          </div>
-          <div class="menu-card" onclick="showGame('gMulti')">
-            <div class="mc-icon">🏁</div>
-            <div class="mc-label" data-i18n="game.multi">Multiplayer Yozish</div>
-            <div class="mc-sub" data-i18n="game.multi.sub">+20 XP g'alaba</div>
-          </div>
-          <div class="menu-card" onclick="startBlockBlast()">
-            <div class="mc-icon">🧱</div>
-            <div class="mc-label">Block Blast</div>
+          <div class="menu-card" onclick="showGame('gCssDuel')">
+            <div class="mc-icon">🎨</div>
+            <div class="mc-label">CSS Duel</div>
             <div class="mc-sub">+10–30 XP</div>
           </div>
+          <div class="menu-card" onclick="showGame('gBugHunter')">
+            <div class="mc-icon">🐛</div>
+            <div class="mc-label">Bug Hunter</div>
+            <div class="mc-sub">+15–40 XP</div>
+          </div>
+          <div class="menu-card" onclick="showGame('gCodeOrder')">
+            <div class="mc-icon">🔀</div>
+            <div class="mc-label">Code Order</div>
+            <div class="mc-sub">+10–35 XP</div>
+          </div>
+          <div class="menu-card" onclick="showGame('gTagMatch')">
+            <div class="mc-icon">🏷</div>
+            <div class="mc-label">Tag Match</div>
+            <div class="mc-sub">+10–25 XP</div>
+          </div>
+          <div class="menu-card" onclick="showGame('gSelectorQuiz')">
+            <div class="mc-icon">🎯</div>
+            <div class="mc-label">Selector Quiz</div>
+            <div class="mc-sub">+10–25 XP</div>
+          </div>
         </div>
+        <p style="text-align:center;font-size:12px;color:var(--sub);margin-top:8px;">
+          Barcha o'yinlar — <b>games.html</b> da to'liq versiyada mavjud
+        </p>
       </div>
 
-      <!-- Typing Speed -->
-      <div id="gTyping" style="display:none">
-        <div class="game-header">
-          <button class="game-back-btn" onclick="showGHub()">← Orqaga</button>
-          <span class="game-title">⌨️ Terilish tezligi</span>
-        </div>
-        <div class="typing-stats">
-          <div class="typing-stat"><div class="typing-stat-val" id="tWpm">0</div><div class="ts-lbl">WPM</div></div>
-          <div class="typing-stat"><div class="typing-stat-val" id="tTimer">60</div><div class="ts-lbl">Soniya</div></div>
-          <div class="typing-stat"><div class="typing-stat-val" id="tAcc">100</div><div class="ts-lbl">Aniqlik%</div></div>
-        </div>
-        <div class="typing-text-box" id="typingText"></div>
-        <textarea class="typing-input" id="typingInput" placeholder="Bu yerga yozing..." disabled></textarea>
-        <button class="game-btn" id="typingStartBtn" onclick="typingStart()">▶ Boshlash</button>
-        <div class="game-result" id="typingResult" style="display:none"></div>
-      </div>
-
-      <!-- Quiz -->
+      <!-- Quiz (Dasturlash Testi) mini view -->
       <div id="gQuiz" style="display:none">
         <div class="game-header">
-          <button class="game-back-btn" onclick="showGHub()">← Orqaga</button>
-          <span class="game-title">🧠 Quiz</span>
+          <button class="game-back-btn" onclick="showGHub()">Orqaga</button>
+          <span class="game-title">🧠 Dasturlash Testi</span>
         </div>
-        <div class="quiz-cat-tabs" id="quizCatTabs"></div>
-        <div class="quiz-info-row" id="quizInfoRow" style="display:none">
-          <span>Savol: <b id="qNum">1</b>/10</span>
-          <span>XP: <b id="qXp">0</b></span>
-          <span>⏱ <b id="qTimer">30</b>s</span>
+        <div style="text-align:center;padding:20px 10px;">
+          <div style="font-size:40px;margin-bottom:12px;">🧠</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px;">To'liq o'yin games.html da</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:16px;">30 ta savol, 10 ta tanlangan · Timer · XP</div>
+          <button class="game-btn" onclick="openGamesPage()">O'yin sahifasini ochish</button>
         </div>
-        <div class="quiz-timer" id="quizTimerBar" style="display:none">
-          <div class="quiz-timer-bar"><div class="quiz-timer-fill" id="quizTimerFill" style="width:100%"></div></div>
-        </div>
-        <div class="quiz-card" id="quizCard" style="display:none">
-          <div class="quiz-q" id="quizQ"></div>
-          <div id="quizOpts"></div>
-        </div>
-        <div class="game-result" id="quizResult" style="display:none"></div>
-        <button class="game-btn" id="quizStartBtn" onclick="quizStart()">▶ Boshlash</button>
       </div>
 
-      <!-- 2048 -->
-      <div id="gG2048" style="display:none">
+      <!-- CSS Duel mini view -->
+      <div id="gCssDuel" style="display:none">
         <div class="game-header">
-          <button class="game-back-btn" onclick="showGHub()">← Orqaga</button>
-          <span class="game-title">🎮 2048</span>
+          <button class="game-back-btn" onclick="showGHub()">Orqaga</button>
+          <span class="game-title">🎨 CSS Duel</span>
         </div>
-        <div class="g2048-info">
-          <div class="g2048-score-box"><div class="g2048-score-lbl">Score</div><div class="g2048-score-val" id="g2048Score">0</div></div>
-          <div class="g2048-score-box"><div class="g2048-score-lbl">Best</div><div class="g2048-score-val" id="g2048Best">0</div></div>
+        <div style="text-align:center;padding:20px 10px;">
+          <div style="font-size:40px;margin-bottom:12px;">🎨</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px;">CSS chiqishini toping!</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:16px;">15 ta savol, kod snippet · 20 soniya timer</div>
+          <button class="game-btn" onclick="openGamesPage()">O'yin sahifasini ochish</button>
         </div>
-        <div class="g2048-board" id="g2048Board"></div>
-        <button class="game-btn" onclick="g2048Init()">🔄 Yangi o'yin</button>
-        <div class="game-result" id="g2048Result" style="display:none"></div>
       </div>
 
-      <!-- Memory Match -->
-      <div id="gMemory" style="display:none">
+      <!-- Bug Hunter mini view -->
+      <div id="gBugHunter" style="display:none">
         <div class="game-header">
-          <button class="game-back-btn" onclick="showGHub()">← Orqaga</button>
-          <span class="game-title">🃏 Memory Match</span>
+          <button class="game-back-btn" onclick="showGHub()">Orqaga</button>
+          <span class="game-title">🐛 Bug Hunter</span>
         </div>
-        <div class="memory-info">
-          <span>Urinish: <b id="memMoves">0</b></span>
-          <span>Topildi: <b id="memFound">0</b>/8</span>
-          <span>⏱ <b id="memTimer">0</b>s</span>
+        <div style="text-align:center;padding:20px 10px;">
+          <div style="font-size:40px;margin-bottom:12px;">🐛</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px;">Koddagi xatoni toping!</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:16px;">12 ta kod snippet · Satr raqamini ko'rsating</div>
+          <button class="game-btn" onclick="openGamesPage()">O'yin sahifasini ochish</button>
         </div>
-        <div class="memory-board" id="memBoard"></div>
-        <button class="game-btn" id="memStartBtn" onclick="memInit()">▶ Boshlash</button>
-        <div class="game-result" id="memResult" style="display:none"></div>
       </div>
 
-      <!-- Chess -->
-      <div id="gChess" style="display:none">
+      <!-- Code Order mini view -->
+      <div id="gCodeOrder" style="display:none">
         <div class="game-header">
-          <button class="game-back-btn" onclick="showGHub()">← Orqaga</button>
-          <span class="game-title">♟️ Shaxmat (AI)</span>
+          <button class="game-back-btn" onclick="showGHub()">Orqaga</button>
+          <span class="game-title">🔀 Code Order</span>
         </div>
-        <div class="chess-status" id="chessStatus">Boshlash uchun tugmani bosing</div>
-        <div class="chess-board" id="chessBoard"></div>
-        <button class="game-btn" onclick="chessInit()" style="margin-top:10px">▶ Yangi o'yin</button>
-        <div class="game-result" id="chessResult" style="display:none"></div>
+        <div style="text-align:center;padding:20px 10px;">
+          <div style="font-size:40px;margin-bottom:12px;">🔀</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px;">Kod satrlarini tartiblang!</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:16px;">8 ta puzzle · Drag-and-drop · JS/HTML</div>
+          <button class="game-btn" onclick="openGamesPage()">O'yin sahifasini ochish</button>
+        </div>
       </div>
 
-      <!-- Multiplayer Race -->
-      <div id="gMulti" style="display:none">
+      <!-- Tag Match mini view -->
+      <div id="gTagMatch" style="display:none">
         <div class="game-header">
-          <button class="game-back-btn" onclick="multiBack()">← Orqaga</button>
-          <span class="game-title">🏁 Multiplayer Yozish</span>
+          <button class="game-back-btn" onclick="showGHub()">Orqaga</button>
+          <span class="game-title">🏷 Tag Match</span>
         </div>
-        <div id="multiLobby">
-          <p style="text-align:center;color:var(--sub);margin:12px 0 16px">Raqib bilan yozish musobaqasi!</p>
-          <button class="game-btn" onclick="multiCreate()" style="margin-bottom:8px">🚀 Yangi xona yaratish</button>
-          <button class="game-btn" onclick="multiJoinList()" style="background:var(--bg2);color:var(--fg);margin-top:0">🔍 Ochiq xonalar</button>
-          <div id="multiRoomList" style="margin-top:12px"></div>
+        <div style="text-align:center;padding:20px 10px;">
+          <div style="font-size:40px;margin-bottom:12px;">🏷</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px;">HTML teg vazifasini toping!</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:16px;">15 ta teg · 25 soniya timer</div>
+          <button class="game-btn" onclick="openGamesPage()">O'yin sahifasini ochish</button>
         </div>
-        <div id="multiGame" style="display:none">
-          <div class="race-bar-wrap race-bar-p1">
-            <span style="font-size:11px;color:var(--sub)">Siz</span>
-            <div class="race-bar"><div class="race-bar-fill" id="mP1Bar" style="width:0%"></div></div>
-          </div>
-          <div class="race-bar-wrap race-bar-p2" style="margin-bottom:10px">
-            <span style="font-size:11px;color:var(--sub)" id="mOpName">Raqib</span>
-            <div class="race-bar"><div class="race-bar-fill" id="mP2Bar" style="width:0%"></div></div>
-          </div>
-          <div class="race-text-box" id="multiText"></div>
-          <textarea class="typing-input" id="multiInput" placeholder="Bu yerga yozing..." oninput="multiProgress()"></textarea>
-          <div class="game-result" id="multiResult" style="display:none"></div>
+      </div>
+
+      <!-- Selector Quiz mini view -->
+      <div id="gSelectorQuiz" style="display:none">
+        <div class="game-header">
+          <button class="game-back-btn" onclick="showGHub()">Orqaga</button>
+          <span class="game-title">🎯 Selector Quiz</span>
+        </div>
+        <div style="text-align:center;padding:20px 10px;">
+          <div style="font-size:40px;margin-bottom:12px;">🎯</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px;">CSS Selector elementini toping!</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:16px;">15 ta selector · 25 soniya timer</div>
+          <button class="game-btn" onclick="openGamesPage()">O'yin sahifasini ochish</button>
         </div>
       </div>
 
@@ -2158,7 +2143,7 @@ function startBlockBlastGame() {
 
 async function startBlockBlast() {
   const limited = checkDailyLimit('block_blast');
-  if (limited) { showLimitModal('Block Blast'); return; }
+  if (limited) { showLimitModal('block_blast'); return; }
   await recordPlay('block_blast');
   const page = document.getElementById('blockBlastPage');
   page.style.display = 'block';
@@ -2636,10 +2621,18 @@ function renderProgress(prog, lb, glb, mlb) {
     <!-- Leaderboard with tabs + podium -->
     <p class="section-title">${_lang==='ru'?'Рейтинг':'Reyting'}</p>
     <div class="card" style="padding:12px 14px">
-      <div class="lb-tabs" style="flex-wrap:wrap;gap:4px;">
-        <button class="lb-tab active" id="lbTabGroup"   onclick="switchLbTab('group')">👥 ${lb?.group_name || t('prog.grp_lb')}</button>
-        <button class="lb-tab"        id="lbTabGlobal"  onclick="switchLbTab('global')">🌍 ${t('prog.global_lb')}</button>
-        <button class="lb-tab"        id="lbTabMonthly" onclick="switchLbTab('monthly')">${_lang==='ru'?'📅 В этом мес.':'📅 Bu oy'}</button>
+      <div class="lb-tabs-wrap">
+        <div class="lb-tabs">
+          <button class="lb-tab active" id="lbTabGroup"         onclick="switchLbTab('group')">👥 ${lb?.group_name || t('prog.grp_lb')}</button>
+          <button class="lb-tab"        id="lbTabGlobal"        onclick="switchLbTab('global')">🌍 ${t('prog.global_lb')}</button>
+          <button class="lb-tab"        id="lbTabMonthly"       onclick="switchLbTab('monthly')">${_lang==='ru'?'📅 В этом мес.':'📅 Bu oy'}</button>
+          <button class="lb-tab"        id="lbTabQuiz"          onclick="switchLbTab('quiz')">🧠 Quiz</button>
+          <button class="lb-tab"        id="lbTabCss_duel"      onclick="switchLbTab('css_duel')">🎨 CSS Duel</button>
+          <button class="lb-tab"        id="lbTabBug_hunter"    onclick="switchLbTab('bug_hunter')">🐛 Bug Hunter</button>
+          <button class="lb-tab"        id="lbTabCode_order"    onclick="switchLbTab('code_order')">🔀 Code Order</button>
+          <button class="lb-tab"        id="lbTabTag_match"     onclick="switchLbTab('tag_match')">🏷 Tag Match</button>
+          <button class="lb-tab"        id="lbTabSelector_quiz" onclick="switchLbTab('selector_quiz')">🎯 Selector</button>
+        </div>
       </div>
       <div class="lb-pane active" id="lbPaneGroup">
         ${podiumHtml(lb?.leaders)}
@@ -2655,17 +2648,75 @@ function renderProgress(prog, lb, glb, mlb) {
         ${buildLbHtml(mlb?.leaders)}
         ${(!mlb?.leaders || mlb.leaders.length === 0) ? `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>` : ''}
       </div>
+      <div class="lb-pane" id="lbPaneQuiz">          <div class="spinner"></div></div>
+      <div class="lb-pane" id="lbPaneCss_duel">      <div class="spinner"></div></div>
+      <div class="lb-pane" id="lbPaneBug_hunter">    <div class="spinner"></div></div>
+      <div class="lb-pane" id="lbPaneCode_order">    <div class="spinner"></div></div>
+      <div class="lb-pane" id="lbPaneTag_match">     <div class="spinner"></div></div>
+      <div class="lb-pane" id="lbPaneSelector_quiz"> <div class="spinner"></div></div>
     </div>
   `;
 }
 
-function switchLbTab(tab) {
-  ['group','global','monthly'].forEach(t2 => {
-    const tabEl  = document.getElementById('lbTab' + t2.charAt(0).toUpperCase() + t2.slice(1));
-    const paneEl = document.getElementById('lbPane' + t2.charAt(0).toUpperCase() + t2.slice(1));
+// O'yin tab identifikatorini camelCase ga aylantiradi: 'css_duel' -> 'Css_duel'
+function _lbTabId(name) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+// Barcha leaderboard tab nomlari
+const _LB_TABS = ['group','global','monthly','quiz','css_duel','bug_hunter','code_order','tag_match','selector_quiz'];
+// O'yin tab lari (XP emas, ball bo'yicha)
+const _GAME_LB_TABS = ['quiz','css_duel','bug_hunter','code_order','tag_match','selector_quiz'];
+// Qaysi game taблari allaqachon yuklanganligi
+const _gameLbLoaded = {};
+
+async function switchLbTab(tab) {
+  _LB_TABS.forEach(t2 => {
+    const tabEl  = document.getElementById('lbTab'  + _lbTabId(t2));
+    const paneEl = document.getElementById('lbPane' + _lbTabId(t2));
     if (tabEl)  tabEl.classList.toggle('active',  tab === t2);
     if (paneEl) paneEl.classList.toggle('active', tab === t2);
   });
+  // O'yin tabiga birinchi marta kirilsa — API dan yukla
+  if (_GAME_LB_TABS.includes(tab) && !_gameLbLoaded[tab]) {
+    _gameLbLoaded[tab] = true;
+    await loadGameLeaderboard(tab);
+  }
+}
+
+// O'yin reytingini API dan yuklab, pane ga chizadi
+async function loadGameLeaderboard(gameType) {
+  const paneEl = document.getElementById('lbPane' + _lbTabId(gameType));
+  if (!paneEl) return;
+  paneEl.innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await api('/game/leaderboard?game_type=' + encodeURIComponent(gameType));
+    const rows = data.leaders || [];
+    const myId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 0;
+    if (!rows.length) {
+      paneEl.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>`;
+      return;
+    }
+    const scoreLabel = { quiz:'ball', css_duel:'ball', bug_hunter:'ball', code_order:'ball', tag_match:'ball', selector_quiz:'ball' };
+    paneEl.innerHTML = rows.map((s, i) => {
+      const rank = i + 1;
+      const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+      const rankCls  = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+      const isMe = s.user_id === myId;
+      const av = s.avatar || (s.full_name ? s.full_name.charAt(0).toUpperCase() : '?');
+      return `<div class="lb-item-game ${isMe ? 'is-me' : ''}">
+        <div class="lb-rank ${rankCls}" style="min-width:28px;text-align:center;font-size:${rank<=3?'18':'14'}px;font-weight:800">${rankIcon}</div>
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0">${av}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.full_name}${isMe ? ' 👈' : ''}</div>
+          ${s.group_name ? `<div style="font-size:11px;color:var(--sub)">${s.group_name}</div>` : ''}
+        </div>
+        <div class="lb-score">${s.score} ${scoreLabel[gameType] || ''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    paneEl.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik</div></div>`;
+  }
 }
 
 /* ── History ─────────────────────────────────────────────────────── */
@@ -3010,15 +3061,13 @@ function applyLang() {
 /* ══════════════════════════════════════════════════════════════════
    GAMES — navigation
 ══════════════════════════════════════════════════════════════════ */
-const GAME_VIEWS = ['gHub','gTyping','gQuiz','gG2048','gMemory','gChess','gMulti'];
+const GAME_VIEWS = ['gHub','gQuiz','gCssDuel','gBugHunter','gCodeOrder','gTagMatch','gSelectorQuiz'];
 function showGHub() {
   GAME_VIEWS.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
   document.getElementById('gHub').style.display = '';
-  // Stop any running game timers
-  typingStop(); quizStop(); memStop(); multiStop();
 }
 function showGame(id) {
   GAME_VIEWS.forEach(v => {
@@ -3027,10 +3076,14 @@ function showGame(id) {
   });
   const el = document.getElementById(id);
   if (el) el.style.display = '';
-  if (id === 'gG2048') g2048Init();
-  if (id === 'gChess')  chessInit();
-  if (id === 'gQuiz')   quizSetupCats();
-  if (id === 'gMulti')  multiReset();
+}
+function openGamesPage() {
+  const WEBAPP_URL = window.location.origin;
+  if (window.Telegram?.WebApp) {
+    window.Telegram.WebApp.openLink(WEBAPP_URL + '/games.html');
+  } else {
+    window.open(WEBAPP_URL + '/games.html', '_blank');
+  }
 }
 
 /* ── Save game score to backend ── */
@@ -3068,7 +3121,7 @@ const TYPING_TEXTS_RU = [
 ];
 let _tTimer = null, _tSec = 60, _tStarted = false, _tText = '', _tChars = [], _tIdx = 0, _tCorrect = 0, _tTyped = [];
 function typingStart() {
-  if (checkDailyLimit('typing')) { showLimitModal('Typing'); return; }
+  if (checkDailyLimit('typing')) { showLimitModal('typing'); return; }
   recordPlay('typing').catch(()=>{});
   const texts = _lang === 'ru' ? TYPING_TEXTS_RU : TYPING_TEXTS_UZ;
   _tText = texts[Math.floor(Math.random() * texts.length)];
@@ -3426,7 +3479,7 @@ function quizSetCat(cat) {
   });
 }
 function quizStart() {
-  if (checkDailyLimit('quiz')) { showLimitModal('Quiz'); return; }
+  if (checkDailyLimit('quiz')) { showLimitModal('quiz'); return; }
   recordPlay('quiz').catch(()=>{});
   _qQuestions = [...QUIZ_QUESTIONS[_qCat]].sort(() => Math.random() - .5).slice(0, 10);
   _qIdx = 0; _qXp = 0;
@@ -3591,7 +3644,7 @@ function g2048GameOver(win) {
 const MEM_EMOJIS = ['🐍','⚛️','🐘','🦀','⚡','🔥','💎','🌟','🎯','🏆','🚀','🎮'];
 let _memFlipped = [], _memMatched = 0, _memMoves = 0, _memLocked = false, _memTimer = null, _memSec = 0;
 function memInit() {
-  if (checkDailyLimit('memory')) { showLimitModal('Memory'); return; }
+  if (checkDailyLimit('memory')) { showLimitModal('memory'); return; }
   recordPlay('memory').catch(()=>{});
   _memFlipped = []; _memMatched = 0; _memMoves = 0; _memLocked = false; _memSec = 0;
   document.getElementById('memMoves').textContent = '0';

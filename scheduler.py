@@ -47,6 +47,8 @@ def get_tomorrow_info(timezone_str: str) -> TomorrowInfo:
     tomorrow = datetime.now(tz) + timedelta(days=1)
     day      = tomorrow.day
     # Weekday bo'yicha: 0,2,4 = Du,Ch,J = ODD; 1,3,5 = Se,Pa,Sh = EVEN
+    # Yakshanba (6) — dars yo'q, is_odd=False (EVEN) qaytariladi,
+    # lekin send_daily_reminders() Yakshanba uchun yubormasligi kerak.
     is_odd   = tomorrow.weekday() in (0, 2, 4)
     return TomorrowInfo(
         date       = tomorrow,
@@ -99,7 +101,16 @@ async def send_daily_reminders(
     logger.info("=" * 55)
 
     try:
-        info   = get_tomorrow_info(timezone_str)
+        info = get_tomorrow_info(timezone_str)
+
+        # Ertangi kun Yakshanba bo'lsa — dars yo'q, yubormaymiz
+        if info.date.weekday() == 6:
+            logger.info(
+                f"SCHEDULER: Ertangi kun Yakshanba ({info.date_str}) — "
+                f"dars yo'q, xabar yuborilmadi"
+            )
+            return
+
         groups = await db.get_groups_by_type(info.group_type)
 
         # Toq/juft kun o'chirilgan bo'lsa — to'xtatamiz
@@ -455,10 +466,9 @@ async def send_leaderboard_broadcast(
     timezone_str: str,
 ) -> None:
     """
-    Har kuni 21:00 da barcha aktiv guruhlarga global top-5 reyting yuboradi.
-    Xabarda 2 ta Mini App tugmasi bo'ladi:
-      - Reytingni to'liq ko'rish
-      - Reyting oshirish
+    Har 3 kunda bir marta barcha aktiv o'quvchi guruhlariga global top-5 reyting yuboradi.
+    Faqat AudienceType.STUDENT guruhlarga yuboriladi (PARENT guruhlar o'tkazib yuboriladi).
+    Xabarda Mini App tugmasi bo'ladi (WebAppInfo — brauzerda emas, Mini App da ochiladi).
     """
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
@@ -535,14 +545,15 @@ async def send_leaderboard_broadcast(
 
 # ─── 7 kun nofaol o'quvchilarni o'chirish ────────────────────────────────────
 
-async def check_inactive_students(bot: Bot, db: DatabaseService) -> None:
+async def check_inactive_students(bot: Bot, db: DatabaseService, timezone_str: str = "Asia/Tashkent") -> None:
     """
     Har kuni 21:00 da ishga tushadi.
     Ro'yxatdan o'tganiga 7 kundan oshgan va 7 kun davomida faol bo'lmagan
     o'quvchilarni o'chirib, ularga ogohlantirish xabari yuboradi.
     """
-    from datetime import timedelta
-    cutoff = datetime.now() - timedelta(days=7)
+    # Toshkent vaqti bo'yicha cutoff — UTC da ishlayotgan serverlarda xato bo'lmasligi uchun
+    tz = pytz.timezone(timezone_str)
+    cutoff = datetime.now(tz).replace(tzinfo=None) - timedelta(days=7)
     students = await db.get_inactive_students(days=7)
 
     deleted = 0
@@ -700,7 +711,7 @@ def setup_scheduler(
     scheduler.add_job(
         func=check_inactive_students,
         trigger=CronTrigger(hour=21, minute=0, timezone=timezone_str),
-        args=[bot, db],
+        args=[bot, db, timezone_str],
         id="inactive_students_cleanup",
         name="Nofaol o'quvchilarni tozalash",
         replace_existing=True,

@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <title>Mars IT — O'yinlar</title>
+  <title>Mars IT — Dasturlash O'yinlari</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Chess.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -69,7 +67,7 @@
       border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:30px auto;}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* ═══════════════ HOME PAGE ═════════════════════════════════════════ */
+    /* HOME — game grid */
     .game-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
     .game-card{background:var(--bg2);border-radius:var(--radius);padding:16px 12px;
       text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;
@@ -82,31 +80,13 @@
     .game-card.featured{grid-column:span 2;display:flex;align-items:center;gap:12px;text-align:left;}
     .game-card.featured .game-card-icon{font-size:44px;flex-shrink:0;}
 
-    /* ═══════════════ TYPING GAME ═══════════════════════════════════════ */
-    .typing-text-wrap{background:rgba(255,255,255,.04);border-radius:10px;padding:14px;
-      font-size:16px;line-height:2;letter-spacing:.3px;margin-bottom:12px;min-height:80px;
-      word-break:break-word;white-space:normal;}
-    .typing-char{transition:background .05s;}
-    .typing-char.correct{color:var(--success);}
-    .typing-char.wrong{color:var(--danger);background:rgba(224,92,92,.15);border-radius:2px;}
-    .typing-char.current{background:var(--accent);color:#fff;border-radius:2px;}
-    .typing-input{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);
-      border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;outline:none;
-      -webkit-appearance:none;font-family:monospace;}
-    .typing-input:focus{border-color:var(--accent);}
-    .typing-stats{display:flex;gap:8px;margin-bottom:12px;}
-    .typing-stat{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
-    .typing-stat-val{font-size:20px;font-weight:900;color:var(--accent);}
-    .typing-stat-lbl{font-size:10px;color:var(--sub);margin-top:2px;}
-    .typing-progress-bar{width:100%;height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:12px;overflow:hidden;}
-    .typing-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--success));border-radius:3px;transition:width .1s;}
-
-    /* ═══════════════ QUIZ GAME ════════════════════════════════════════ */
+    /* QUIZ styles */
     .quiz-question{font-size:16px;font-weight:700;margin-bottom:16px;line-height:1.5;}
     .quiz-opt{width:100%;text-align:left;padding:13px 14px;background:rgba(255,255,255,.06);
       border:1.5px solid rgba(255,255,255,.08);border-radius:10px;color:var(--text);
       font-size:13px;cursor:pointer;margin-bottom:8px;-webkit-tap-highlight-color:transparent;
-      transition:all .15s;}
+      transition:all .15s;display:block;}
+    .quiz-opt:active{opacity:.8;}
     .quiz-opt.correct{background:rgba(76,175,125,.2);border-color:var(--success);color:var(--success);}
     .quiz-opt.wrong{background:rgba(224,92,92,.12);border-color:var(--danger);color:var(--danger);}
     .quiz-opt.show-correct{background:rgba(76,175,125,.12);border-color:var(--success);}
@@ -117,84 +97,43 @@
     .quiz-result-row{display:flex;justify-content:space-between;padding:8px 0;
       border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;}
 
-    /* ═══════════════ 2048 GAME ════════════════════════════════════════ */
-    .g2048-info{display:flex;gap:8px;margin-bottom:10px;}
-    .g2048-score-box{flex:1;background:var(--bg2);border-radius:8px;padding:8px;text-align:center;}
-    .g2048-score-lbl{font-size:9px;color:var(--sub);text-transform:uppercase;font-weight:700;}
-    .g2048-score-val{font-size:22px;font-weight:900;}
-    .g2048-board{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
-      background:rgba(255,255,255,.06);border-radius:12px;padding:8px;margin-bottom:10px;
-      touch-action:none;user-select:none;}
-    .g2048-cell{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;
-      font-size:18px;font-weight:900;background:rgba(255,255,255,.05);transition:background .1s;}
-    .g2048-cell[data-val="2"]{background:#eee4da;color:#776e65;}
-    .g2048-cell[data-val="4"]{background:#ede0c8;color:#776e65;}
-    .g2048-cell[data-val="8"]{background:#f2b179;color:#fff;}
-    .g2048-cell[data-val="16"]{background:#f59563;color:#fff;}
-    .g2048-cell[data-val="32"]{background:#f67c5f;color:#fff;}
-    .g2048-cell[data-val="64"]{background:#f65e3b;color:#fff;}
-    .g2048-cell[data-val="128"]{background:#edcf72;color:#fff;font-size:15px;}
-    .g2048-cell[data-val="256"]{background:#edcc61;color:#fff;font-size:14px;}
-    .g2048-cell[data-val="512"]{background:#edc850;color:#fff;font-size:13px;}
-    .g2048-cell[data-val="1024"]{background:#edc53f;color:#fff;font-size:11px;}
-    .g2048-cell[data-val="2048"]{background:#edc22e;color:#fff;font-size:11px;}
+    /* CODE SNIPPET box */
+    .code-box{background:#0d1520;border:1px solid rgba(255,255,255,.1);border-radius:10px;
+      padding:14px;font-family:'Courier New',monospace;font-size:13px;line-height:1.7;
+      margin-bottom:14px;overflow-x:auto;white-space:pre;color:#e2e8f0;}
+    .code-line{display:block;padding:1px 0;}
+    .code-line.bug-line{background:rgba(224,92,92,.15);border-left:3px solid var(--danger);padding-left:6px;color:var(--danger);}
+    .code-line-num{color:#4a5568;margin-right:10px;user-select:none;font-size:11px;}
 
-    /* 2048 game-over overlay */
-    .g2048-wrap{position:relative;}
-    .g2048-overlay{position:absolute;inset:0;background:rgba(0,0,0,.82);border-radius:12px;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;gap:8px;}
-    .g2048-overlay-icon{font-size:52px;}
-    .g2048-overlay-title{font-size:26px;font-weight:900;color:#fff;}
-    .g2048-overlay-sub{font-size:14px;color:rgba(255,255,255,.65);}
-    .g2048-overlay-score{font-size:22px;font-weight:800;color:var(--gold);}
-    /* Typing lang selector */
-    .typ-lang-row{display:flex;gap:6px;margin-bottom:10px;}
-    .typ-lang-btn{flex:1;padding:7px 4px;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;
-      background:rgba(255,255,255,.05);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;
-      -webkit-tap-highlight-color:transparent;transition:all .15s;}
-    .typ-lang-btn.active{border-color:var(--accent);background:rgba(82,136,193,.18);color:var(--accent);}
-    /* ═══════════════ MEMORY MATCH ═════════════════════════════════════ */
-    .memory-board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
-    .mem-card{aspect-ratio:1;border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;
-      font-size:22px;display:flex;align-items:center;justify-content:center;
-      background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.07);
-      transition:all .2s;user-select:none;}
-    .mem-card.flipped,.mem-card.matched{background:var(--accent);border-color:transparent;}
-    .mem-card.matched{background:var(--success);cursor:default;}
-    .mem-card:not(.flipped):not(.matched) > span{visibility:hidden;}
-    .memory-info{display:flex;gap:10px;margin-bottom:10px;}
-    .mem-info-box{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
-    .mem-info-val{font-size:20px;font-weight:900;}
-    .mem-info-lbl{font-size:10px;color:var(--sub);}
+    /* BUG HUNTER line buttons */
+    .bug-line-btn{width:100%;text-align:left;padding:9px 12px;
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+      border-radius:8px;color:var(--text);font-family:'Courier New',monospace;
+      font-size:12px;cursor:pointer;margin-bottom:6px;-webkit-tap-highlight-color:transparent;
+      transition:all .15s;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .bug-line-btn.correct{background:rgba(76,175,125,.2);border-color:var(--success);color:var(--success);}
+    .bug-line-btn.wrong{background:rgba(224,92,92,.12);border-color:var(--danger);color:var(--danger);}
 
-    /* ═══════════════ CHESS GAME ════════════════════════════════════════ */
-    .chess-board{display:grid;grid-template-columns:repeat(8,1fr);
-      border-radius:8px;overflow:hidden;margin-bottom:10px;touch-action:none;}
-    .chess-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-      font-size:clamp(16px,5vw,28px);cursor:pointer;-webkit-tap-highlight-color:transparent;
-      position:relative;user-select:none;}
-    .chess-cell.light{background:#f0f0f0;}
-    .chess-cell.dark{background:#2c2c2c;}
-    .chess-cell.selected{background:#7fc97f !important;}
-    .chess-cell.possible{background:#7fc9c9 !important;}
-    .chess-cell.last-move{background:#cdd16f !important;}
-    /* Dona ranglari: oq va qora */
-    .cp-w{color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,.9);font-weight:900;}
-    .cp-b{color:#111;text-shadow:0 0 2px rgba(255,255,255,.4),0 1px 2px rgba(0,0,0,.3);font-weight:900;}
-    .chess-cell.light .cp-w{color:#fff;text-shadow:0 0 2px #000,0 0 4px #000,0 1px 4px rgba(0,0,0,.9);}
-    .chess-cell.dark  .cp-w{color:#fff;text-shadow:0 0 2px rgba(0,0,0,.5);}
-    .chess-cell.light .cp-b{color:#111;text-shadow:none;}
-    .chess-cell.dark  .cp-b{color:#eee;text-shadow:0 0 2px rgba(0,0,0,.8);}
-    .chess-ai-thinking{font-size:12px;color:var(--warn);text-align:center;padding:4px;animation:pulse .8s ease infinite;}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-    .chess-info{display:flex;gap:8px;margin-bottom:10px;}
-    .chess-stat{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
-    .chess-stat-val{font-size:16px;font-weight:800;}
-    .chess-stat-lbl{font-size:10px;color:var(--sub);}
-    .chess-msg{text-align:center;font-size:14px;font-weight:700;padding:10px;
-      border-radius:10px;margin-bottom:10px;background:rgba(255,255,255,.07);}
+    /* CODE ORDER drag */
+    .code-order-area{background:#0d1520;border:1px solid rgba(255,255,255,.1);border-radius:10px;
+      padding:10px;min-height:60px;margin-bottom:10px;}
+    .code-order-line{padding:9px 12px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.08);
+      border-radius:8px;font-family:'Courier New',monospace;font-size:12px;cursor:grab;
+      margin-bottom:6px;-webkit-tap-highlight-color:transparent;user-select:none;
+      transition:background .15s;}
+    .code-order-line.dragging{opacity:.5;background:rgba(82,136,193,.25);border-color:var(--accent);}
+    .code-order-line.correct-pos{background:rgba(76,175,125,.2);border-color:var(--success);}
+    .code-order-line.wrong-pos{background:rgba(224,92,92,.12);border-color:var(--danger);}
+    .co-drop-zone{height:44px;border:2px dashed rgba(255,255,255,.15);border-radius:8px;
+      margin-bottom:6px;transition:border-color .15s;}
+    .co-drop-zone.over{border-color:var(--accent);background:rgba(82,136,193,.1);}
 
-    /* ═══════════════ PROFILE MODAL ════════════════════════════════════ */
+    /* TAG MATCH / SELECTOR QUIZ — same as quiz opts */
+    .tag-preview{background:#0d1520;border-radius:8px;padding:12px;margin-bottom:12px;
+      font-family:'Courier New',monospace;font-size:14px;text-align:center;
+      color:#93c5fd;font-weight:700;}
+
+    /* PROFILE MODAL */
     .profile-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
       display:flex;align-items:flex-end;justify-content:center;}
     .profile-modal{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:480px;
@@ -208,161 +147,129 @@
     .profile-stat{background:var(--bg2);border-radius:10px;padding:10px;text-align:center;}
     .profile-stat-val{font-size:20px;font-weight:900;color:var(--accent);}
     .profile-stat-lbl{font-size:10px;color:var(--sub);margin-top:2px;}
-    .profile-games{background:var(--bg2);border-radius:10px;padding:12px;}
-    /* ═══════════════ BLOCK BLAST (BB) ════════════════════════════════ */
-    /* (Canvas-based, full-page overlay — see #blockBlastPage) */
 
-    /* ═══════════════ MULTIPLAYER ═══════════════════════════════════════ */
-    .room-card{background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:8px;
-      display:flex;align-items:center;gap:10px;}
-    .room-av{width:36px;height:36px;border-radius:50%;background:var(--accent);
-      display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;}
-    .room-name{font-size:13px;font-weight:700;}
-    .room-sub{font-size:11px;color:var(--sub);}
-    .room-join-btn{margin-left:auto;padding:7px 14px;background:var(--success);color:#fff;
-      border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;}
-    .race-text{font-size:16px;line-height:1.9;letter-spacing:.3px;
-      background:rgba(255,255,255,.04);border-radius:10px;padding:14px;margin-bottom:12px;}
-    .race-p1,.race-p2{margin-bottom:8px;}
-    .race-pname{font-size:11px;color:var(--sub);margin-bottom:3px;font-weight:700;}
-    .race-bar{height:12px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;}
-    .race-bar-fill{height:100%;border-radius:6px;transition:width .3s;}
-    .race-p1 .race-bar-fill{background:var(--accent);}
-    .race-p2 .race-bar-fill{background:var(--warn);}
+    /* XP MODAL */
+    @keyframes xpPop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 
-    /* ═══════════════ XP MODAL ══════════════════════════════════════════ */
-    @keyframes xpPop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+    /* GAME LB BUTTONS */
+    .game-lb-btn{background:#1e2a3a;color:#aaa;border:1px solid #2a3a4a;border-radius:20px;
+      padding:6px 14px;font-size:12px;cursor:pointer;white-space:nowrap;}
+    .game-lb-btn.active{background:#2196F3;color:#fff;border-color:#2196F3;}
 
-    /* ═══════════════ QUIZ FIX ══════════════════════════════════════════ */
-    .quiz-opt { display: block !important; width: 100%; }
+    /* Progress bar for quiz */
+    .quiz-prog-row{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-bottom:4px;}
+    .quiz-prog-bar{width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-bottom:12px;overflow:hidden;}
+    .quiz-prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
 
-    /* ═══════════════ GAME LEADERBOARD BUTTONS ══════════════════════════ */
-    .game-lb-btn { background:#1e2a3a; color:#aaa; border:1px solid #2a3a4a; border-radius:20px; padding:6px 14px; font-size:12px; cursor:pointer; white-space:nowrap; }
-    .game-lb-btn.active { background:#2196F3; color:#fff; border-color:#2196F3; }
+    /* CSS Duel output preview */
+    .css-duel-preview{background:#fff;border-radius:8px;padding:14px;margin-bottom:10px;min-height:60px;
+      display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:14px;}
+    .css-duel-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .css-duel-opt{padding:10px 8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.08);
+      border-radius:10px;color:var(--text);font-size:12px;cursor:pointer;text-align:center;
+      -webkit-tap-highlight-color:transparent;transition:all .15s;font-weight:600;}
+    .css-duel-opt.correct{background:rgba(76,175,125,.2);border-color:var(--success);color:var(--success);}
+    .css-duel-opt.wrong{background:rgba(224,92,92,.12);border-color:var(--danger);color:var(--danger);}
+    .css-duel-opt.show-correct{background:rgba(76,175,125,.12);border-color:var(--success);}
+
+    /* game result card */
+    .game-result-card{background:var(--bg2);border-radius:var(--radius);padding:24px 16px;
+      text-align:center;margin-bottom:12px;}
+    .result-score{font-size:52px;font-weight:900;color:var(--gold);line-height:1;}
+    .result-sub{font-size:14px;color:var(--sub);margin:6px 0 14px;}
+    .result-xp{font-size:16px;font-weight:800;color:var(--success);margin-bottom:16px;}
   </style>
 </head>
 <body>
 <div id="app">
   <div class="header">
-    <div class="header-title">🕹 O'yinlar</div>
+    <div class="header-title">Dasturlash O'yinlari</div>
     <div class="xp-badge" id="hdrXp">0 XP</div>
     <div style="font-size:11px;color:var(--sub);margin-left:4px" id="hdrLvl">Lv.1</div>
     <button id="soundBtn" onclick="toggleSound()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;">🔊</button>
     <button onclick="refreshGames()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;" title="Yangilash">🔄</button>
-    <button id="gLangUz" onclick="setGameLang('uz')" style="border:none;background:rgba(255,255,255,.08);border-radius:6px;padding:3px 7px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text)" class="active">🇺🇿</button>
-    <button id="gLangRu" onclick="setGameLang('ru')" style="border:none;background:rgba(255,255,255,.08);border-radius:6px;padding:3px 7px;font-size:11px;font-weight:700;cursor:pointer;color:var(--sub)">🇷🇺</button>
   </div>
 
   <div class="content" id="content">
 
-    <!-- HOME -->
+    <!-- HOME PAGE -->
     <div class="page active" id="page-home">
-      <p class="section-title" data-tsec="choose_game">O'yinni tanlang</p>
+      <p class="section-title">O'yinni tanlang</p>
       <div class="game-grid">
-        <div class="game-card featured" onclick="goPage('typing')">
-          <div class="game-card-icon">⌨️</div>
-          <div>
-            <div class="game-card-name" id="game-card-typing-name">Typing Speed</div>
-            <div class="game-card-desc" id="game-card-typing-desc">Yozish tezligini o'lchaymiz — WPM</div>
-            <div class="game-card-xp">+5…25 XP</div>
-            <div id="badge_typing" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
-          </div>
-        </div>
-        <div class="game-card" onclick="goPage('quiz')">
+        <div class="game-card featured" onclick="goPage('quiz')">
           <div class="game-card-icon">🧠</div>
-          <div class="game-card-name" id="game-card-quiz-name">Code Quiz</div>
-          <div class="game-card-desc" id="game-card-quiz-desc">Dasturlash savollari</div>
-          <div class="game-card-xp">+5 XP/savol</div>
-          <div id="badge_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
-        </div>
-        <div class="game-card" onclick="goPage('g2048')">
-          <div class="game-card-icon">🔢</div>
-          <div class="game-card-name" id="game-card-2048-name">2048</div>
-          <div class="game-card-desc" id="game-card-2048-desc">Klassik raqamlar o'yini</div>
-          <div class="game-card-xp">+10…30 XP</div>
-          <div id="badge_2048" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
-        </div>
-        <div class="game-card" onclick="goPage('memory')">
-          <div class="game-card-icon">🃏</div>
-          <div class="game-card-name" id="game-card-mem-name">Memory</div>
-          <div class="game-card-desc" id="game-card-mem-desc">Karta juftlashtir</div>
-          <div class="game-card-xp">+15 XP</div>
-          <div id="badge_memory" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
-        </div>
-        <div class="game-card" onclick="goPage('chess')">
-          <div class="game-card-icon">♟</div>
-          <div class="game-card-name" id="game-card-chess-name">Shaxmat</div>
-          <div class="game-card-desc" id="game-card-chess-desc">Bot bilan o'ynash</div>
-          <div class="game-card-xp">+20 XP (g'alaba)</div>
-          <div id="badge_chess" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
-        </div>
-        <div class="game-card" onclick="startBlockBlast()">
-          <div class="game-card-icon">🟥</div>
-          <div class="game-card-name">Block Blast</div>
-          <div class="game-card-desc">8×8 grid puzzle</div>
-          <div class="game-card-xp">+10…30 XP</div>
-          <div id="badge_block_blast" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
-        </div>
-        <div class="game-card featured" onclick="goPage('multi')" style="border-color:rgba(245,158,11,.3);">
-          <div class="game-card-icon">🏁</div>
           <div>
-            <div class="game-card-name" id="game-card-race-name">Typing Race 🔥</div>
-            <div class="game-card-desc" id="game-card-race-desc">2 o'yinchi — kim tez yozadi?</div>
-            <div class="game-card-xp" id="game-card-race-xp">G'alaba: +20 XP · Yutqazish: +5 XP</div>
+            <div class="game-card-name">Dasturlash Testi</div>
+            <div class="game-card-desc">JS, Python, SQL, Git, CSS savollari</div>
+            <div class="game-card-xp">+2 XP / to'g'ri javob (max 20)</div>
+            <div id="badge_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
           </div>
+        </div>
+        <div class="game-card" onclick="goPage('css_duel')">
+          <div class="game-card-icon">🎨</div>
+          <div class="game-card-name">CSS Duel</div>
+          <div class="game-card-desc">CSS chiqishini top</div>
+          <div class="game-card-xp">+10–30 XP</div>
+          <div id="badge_css_duel" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+        </div>
+        <div class="game-card" onclick="goPage('bug_hunter')">
+          <div class="game-card-icon">🐛</div>
+          <div class="game-card-name">Bug Hunter</div>
+          <div class="game-card-desc">Koddagi xatoni top</div>
+          <div class="game-card-xp">+15–40 XP</div>
+          <div id="badge_bug_hunter" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+        </div>
+        <div class="game-card" onclick="goPage('code_order')">
+          <div class="game-card-icon">🔀</div>
+          <div class="game-card-name">Code Order</div>
+          <div class="game-card-desc">Kod satrlarini tartiblash</div>
+          <div class="game-card-xp">+10–35 XP</div>
+          <div id="badge_code_order" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+        </div>
+        <div class="game-card" onclick="goPage('tag_match')">
+          <div class="game-card-icon">🏷</div>
+          <div class="game-card-name">Tag Match</div>
+          <div class="game-card-desc">HTML tag vazifasini top</div>
+          <div class="game-card-xp">+10–25 XP</div>
+          <div id="badge_tag_match" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+        </div>
+        <div class="game-card" onclick="goPage('selector_quiz')">
+          <div class="game-card-icon">🎯</div>
+          <div class="game-card-name">Selector Quiz</div>
+          <div class="game-card-desc">CSS selector elementini top</div>
+          <div class="game-card-xp">+10–25 XP</div>
+          <div id="badge_selector_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
         </div>
       </div>
 
-      <p class="section-title" data-tsec="my_records">Mening rekordlarim</p>
+      <p class="section-title">Mening rekordlarim</p>
       <div class="card" id="myBestScores"><div class="spinner"></div></div>
 
-      <p class="section-title" id="topPlayersTitle">🏆 Top o'yinchilar</p>
+      <p class="section-title">Top o'yinchilar</p>
       <div class="card">
-        <div id="gameLeaderboardSelector" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0;margin-bottom:12px;">
-          <button class="game-lb-btn active" onclick="loadGameLeaderboard('typing')" data-game="typing">⌨️ Typing</button>
-          <button class="game-lb-btn" onclick="loadGameLeaderboard('quiz')" data-game="quiz">❓ Quiz</button>
-          <button class="game-lb-btn" onclick="loadGameLeaderboard('chess')" data-game="chess">♟ Chess</button>
-          <button class="game-lb-btn" onclick="loadGameLeaderboard('2048')" data-game="2048">🎲 2048</button>
-          <button class="game-lb-btn" onclick="loadGameLeaderboard('memory')" data-game="memory">🧠 Memory</button>
-          <button class="game-lb-btn" onclick="loadGameLeaderboard('block_blast')" data-game="block_blast">🟥 Block Blast</button>
+        <div id="gameLeaderboardSelector" style="display:flex;gap:8px;overflow-x:auto;padding:4px 0;margin-bottom:12px;">
+          <button class="game-lb-btn active" onclick="loadGameLeaderboard('quiz')" data-game="quiz">🧠 Test</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('css_duel')" data-game="css_duel">🎨 CSS Duel</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('bug_hunter')" data-game="bug_hunter">🐛 Bug Hunter</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('code_order')" data-game="code_order">🔀 Code Order</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('tag_match')" data-game="tag_match">🏷 Tag Match</button>
+          <button class="game-lb-btn" onclick="loadGameLeaderboard('selector_quiz')" data-game="selector_quiz">🎯 Selector</button>
         </div>
         <div id="gameLbList"><div class="spinner"></div></div>
       </div>
     </div>
 
-    <!-- TYPING -->
-    <div class="page" id="page-typing">
-      <div class="typ-lang-row">
-        <button class="typ-lang-btn active" id="typLangUz" onclick="setTypingLang('uz')">🇺🇿 O'zbek</button>
-        <button class="typ-lang-btn" id="typLangRu" onclick="setTypingLang('ru')">🇷🇺 Русский</button>
-        <button class="typ-lang-btn" id="typLangEn" onclick="setTypingLang('en')">🇬🇧 English</button>
-      </div>
-      <div class="typing-stats">
-        <div class="typing-stat"><div class="typing-stat-val" id="typWpm">0</div><div class="typing-stat-lbl">WPM</div></div>
-        <div class="typing-stat"><div class="typing-stat-val" id="typAcc">100%</div><div class="typing-stat-lbl" data-t="accuracy">Aniqlik</div></div>
-        <div class="typing-stat"><div class="typing-stat-val" id="typTimer">60</div><div class="typing-stat-lbl" data-t="time">Vaqt</div></div>
-      </div>
-      <div class="typing-progress-bar"><div class="typing-progress-fill" id="typProg" style="width:0%"></div></div>
-      <div class="typing-text-wrap" id="typText"></div>
-      <input class="typing-input" id="typInput" placeholder="Yozishni boshlang..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onTypingInput()" />
-      <div id="typResult" style="display:none">
-        <div class="card" style="text-align:center;padding:20px">
-          <div style="font-size:48px;font-weight:900;color:var(--gold)" id="typFinalWpm">0</div>
-          <div style="font-size:14px;color:var(--sub);margin-bottom:12px">WPM · <span id="typFinalAcc"></span> <span data-t="accuracy">aniqlik</span></div>
-          <div style="font-size:13px;color:var(--success);font-weight:700;margin-bottom:14px" id="typXpMsg"></div>
-          <button class="btn btn-primary" onclick="startTyping()" data-t="play_again">Qayta o'ynash</button>
-          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px" data-t="back">← Orqaga</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- QUIZ -->
+    <!-- DASTURLASH TESTI (Quiz) -->
     <div class="page" id="page-quiz">
       <div id="quizGame">
+        <div class="quiz-prog-row">
+          <span id="quizQNum">1/10</span>
+          <span>XP: <b id="quizXpSoFar">0</b></span>
+        </div>
+        <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="quizProgFill" style="width:10%"></div></div>
         <div class="quiz-timer">
           <span style="font-size:12px;color:var(--sub);width:28px" id="quizTimerNum">30</span>
           <div class="quiz-timer-bar"><div class="quiz-timer-fill" id="quizTimerFill" style="width:100%"></div></div>
-          <span style="font-size:12px;color:var(--sub)" id="quizQNum">1/10</span>
         </div>
         <div class="card">
           <div class="quiz-question" id="quizQ">Savol yuklanmoqda...</div>
@@ -370,101 +277,165 @@
         </div>
       </div>
       <div id="quizResult" style="display:none">
-        <div class="card" style="text-align:center;padding:20px 16px">
-          <div style="font-size:18px;font-weight:800;margin-bottom:8px" id="quizDoneTitle">Test yakunlandi!</div>
-          <div class="quiz-score-big" id="quizFinalScore">0</div>
-          <div style="font-size:13px;color:var(--sub);margin:6px 0 14px">ball · <span id="quizFinalXp"></span></div>
-          <div id="quizResultRows"></div>
-          <button class="btn btn-primary" onclick="startQuiz()" style="margin-top:12px">Qayta o'ynash</button>
-          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">← Orqaga</button>
+        <div class="game-result-card">
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Dasturlash Testi yakunlandi!</div>
+          <div class="result-score" id="quizFinalScore">0</div>
+          <div class="result-sub">ball</div>
+          <div class="result-xp" id="quizFinalXp"></div>
+          <div id="quizResultRows" style="text-align:left;margin-bottom:14px;"></div>
+          <button class="btn btn-primary" onclick="startQuiz()">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">Orqaga</button>
         </div>
       </div>
     </div>
 
-    <!-- 2048 -->
-    <div class="page" id="page-g2048">
-      <div class="g2048-info">
-        <div class="g2048-score-box"><div class="g2048-score-lbl" data-t="ball">Ball</div><div class="g2048-score-val" id="s2048Score">0</div></div>
-        <div class="g2048-score-box"><div class="g2048-score-lbl" data-t="record">Rekord</div><div class="g2048-score-val" id="s2048Best">0</div></div>
-        <div class="g2048-score-box"><div class="g2048-score-lbl" data-t="max_tile">Katak</div><div class="g2048-score-val" id="s2048Max">0</div></div>
-      </div>
-      <div class="g2048-wrap">
-        <div class="g2048-board" id="board2048" ontouchstart="t2048Start(event)" ontouchend="t2048End(event)"></div>
-        <div class="g2048-overlay" id="g2048Overlay" style="display:none">
-          <div class="g2048-overlay-icon">😔</div>
-          <div class="g2048-overlay-title">Game Over!</div>
-          <div class="g2048-overlay-sub" id="g2048OverlaySub">Oyin tugadi</div>
-          <div class="g2048-overlay-score" id="g2048OverlayScore"></div>
-          <button onclick="init2048()" style="margin-top:8px;background:var(--accent);color:#fff;border:none;padding:11px 28px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer" data-t="new_game">Yangi o'yin</button>
+    <!-- CSS DUEL -->
+    <div class="page" id="page-css_duel">
+      <div id="cssDuelGame">
+        <div class="quiz-prog-row">
+          <span id="cssDuelQNum">1/10</span>
+          <span>XP: <b id="cssDuelXpSoFar">0</b></span>
+        </div>
+        <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="cssDuelProgFill" style="width:10%"></div></div>
+        <div class="quiz-timer">
+          <span style="font-size:12px;color:var(--sub);width:28px" id="cssDuelTimerNum">20</span>
+          <div class="quiz-timer-bar"><div class="quiz-timer-fill" id="cssDuelTimerFill" style="width:100%"></div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:12px;color:var(--sub);margin-bottom:6px;">Quyidagi CSS kodi qanday ko'rinish beradi?</div>
+          <div class="code-box" id="cssDuelCode"></div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Natijani tanlang:</div>
+          <div class="css-duel-opts" id="cssDuelOpts"></div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn btn-ghost" onclick="init2048()" style="flex:1" data-t="new_game">Yangi o'yin</button>
-        <button class="btn btn-ghost" onclick="goPage('home')" style="flex:1" data-t="back">← Orqaga</button>
+      <div id="cssDuelResult" style="display:none">
+        <div class="game-result-card">
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px">CSS Duel yakunlandi!</div>
+          <div class="result-score" id="cssDuelFinalScore">0</div>
+          <div class="result-sub">ball</div>
+          <div class="result-xp" id="cssDuelFinalXp"></div>
+          <button class="btn btn-primary" onclick="startCssDuel()">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">Orqaga</button>
+        </div>
       </div>
     </div>
 
-    <!-- MEMORY -->
-    <div class="page" id="page-memory">
-      <div class="memory-info">
-        <div class="mem-info-box"><div class="mem-info-val" id="memMoves">0</div><div class="mem-info-lbl">Harakatlar</div></div>
-        <div class="mem-info-box"><div class="mem-info-val" id="memPairs">0/8</div><div class="mem-info-lbl">Juftlar</div></div>
-        <div class="mem-info-box"><div class="mem-info-val" id="memTimer">0</div><div class="mem-info-lbl">Soniya</div></div>
+    <!-- BUG HUNTER -->
+    <div class="page" id="page-bug_hunter">
+      <div id="bugHunterGame">
+        <div class="quiz-prog-row">
+          <span id="bugQNum">1/8</span>
+          <span>XP: <b id="bugXpSoFar">0</b></span>
+        </div>
+        <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="bugProgFill" style="width:12.5%"></div></div>
+        <div class="quiz-timer">
+          <span style="font-size:12px;color:var(--sub);width:28px" id="bugTimerNum">30</span>
+          <div class="quiz-timer-bar"><div class="quiz-timer-fill" id="bugTimerFill" style="width:100%"></div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;color:var(--sub);margin-bottom:8px;">Quyidagi kodda xato bor. Xato qaysi satrda?</div>
+          <div class="code-box" id="bugCode"></div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Xato satrni tanlang:</div>
+          <div id="bugOpts"></div>
+        </div>
       </div>
-      <div class="memory-board" id="memBoard"></div>
-      <button class="btn btn-ghost" onclick="initMemory()">Yangi o'yin</button>
-      <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">← Orqaga</button>
+      <div id="bugHunterResult" style="display:none">
+        <div class="game-result-card">
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Bug Hunter yakunlandi!</div>
+          <div class="result-score" id="bugFinalScore">0</div>
+          <div class="result-sub">ball</div>
+          <div class="result-xp" id="bugFinalXp"></div>
+          <button class="btn btn-primary" onclick="startBugHunter()">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">Orqaga</button>
+        </div>
+      </div>
     </div>
 
-    <!-- CHESS -->
-    <div class="page" id="page-chess">
-      <div class="chess-info">
-        <div class="chess-stat"><div class="chess-stat-val" id="chessStatus">Sizning navbat</div><div class="chess-stat-lbl">Holat</div></div>
-        <div class="chess-stat"><div class="chess-stat-val" id="chessMoves">0</div><div class="chess-stat-lbl">Harakatlar</div></div>
+    <!-- CODE ORDER -->
+    <div class="page" id="page-code_order">
+      <div id="codeOrderGame">
+        <div class="quiz-prog-row">
+          <span id="coQNum">1/6</span>
+          <span>XP: <b id="coXpSoFar">0</b></span>
+        </div>
+        <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="coProgFill" style="width:16.6%"></div></div>
+        <div class="card">
+          <div style="font-size:13px;color:var(--sub);margin-bottom:10px;" id="coTaskDesc">Kod satrlarini to'g'ri tartibga soling:</div>
+          <div id="coLines"></div>
+          <button class="btn btn-primary" onclick="checkCodeOrder()" style="margin-top:8px">Tekshirish</button>
+        </div>
       </div>
-      <div class="chess-msg" id="chessMsg">Dona bosib boshlang ♟</div>
-      <div class="chess-board" id="chessBoard"></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-ghost" onclick="initChess()" style="flex:1">Yangi o'yin</button>
-        <button class="btn btn-ghost" onclick="goPage('home')" style="flex:1">← Orqaga</button>
+      <div id="codeOrderResult" style="display:none">
+        <div class="game-result-card">
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Code Order yakunlandi!</div>
+          <div class="result-score" id="coFinalScore">0</div>
+          <div class="result-sub">ball</div>
+          <div class="result-xp" id="coFinalXp"></div>
+          <button class="btn btn-primary" onclick="startCodeOrder()">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">Orqaga</button>
+        </div>
       </div>
     </div>
 
-    <!-- MULTIPLAYER -->
-    <div class="page" id="page-multi">
-      <div id="multiLobby">
-        <p class="section-title">Typing Race — Multiplayer</p>
-        <button class="btn btn-primary" onclick="createRoom()" id="createRoomBtn">🎯 Xona yaratish</button>
-        <button class="btn btn-ghost" onclick="loadRooms()" style="margin-top:8px" id="refreshRoomsBtn">🔄 Xonalarni yangilash</button>
-        <div style="margin-top:14px">
-          <p class="section-title" data-tsec="open_rooms">Ochiq xonalar</p>
-          <div id="roomsList"><div class="spinner"></div></div>
+    <!-- TAG MATCH -->
+    <div class="page" id="page-tag_match">
+      <div id="tagMatchGame">
+        <div class="quiz-prog-row">
+          <span id="tmQNum">1/10</span>
+          <span>XP: <b id="tmXpSoFar">0</b></span>
+        </div>
+        <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="tmProgFill" style="width:10%"></div></div>
+        <div class="quiz-timer">
+          <span style="font-size:12px;color:var(--sub);width:28px" id="tmTimerNum">25</span>
+          <div class="quiz-timer-bar"><div class="quiz-timer-fill" id="tmTimerFill" style="width:100%"></div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:12px;color:var(--sub);margin-bottom:6px;">Quyidagi HTML teg haqida savol:</div>
+          <div class="tag-preview" id="tmTagDisplay">&lt;div&gt;</div>
+          <div class="quiz-question" id="tmQ">Savol...</div>
+          <div id="tmOpts"></div>
         </div>
       </div>
-      <div id="multiWaiting" style="display:none">
-        <div class="card" style="text-align:center;padding:20px">
-          <div style="font-size:32px;margin-bottom:8px">⏳</div>
-          <div style="font-size:16px;font-weight:800;margin-bottom:6px" id="waitingPlayerText">O'yinchi kutilmoqda</div>
-          <div style="font-size:13px;color:var(--sub);margin-bottom:14px"><span id="roomIdLabel">Xona ID</span>: <b id="waitRoomId">—</b></div>
-          <div class="spinner"></div>
-          <button class="btn btn-ghost" onclick="cancelRoom()" style="margin-top:14px" id="cancelBtn">Bekor qilish</button>
+      <div id="tagMatchResult" style="display:none">
+        <div class="game-result-card">
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Tag Match yakunlandi!</div>
+          <div class="result-score" id="tmFinalScore">0</div>
+          <div class="result-sub">ball</div>
+          <div class="result-xp" id="tmFinalXp"></div>
+          <button class="btn btn-primary" onclick="startTagMatch()">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">Orqaga</button>
         </div>
       </div>
-      <div id="multiGame" style="display:none">
-        <div class="chess-info" style="margin-bottom:8px">
-          <div class="chess-stat"><div class="chess-stat-val" id="raceTimer">60</div><div class="chess-stat-lbl">Vaqt</div></div>
-          <div class="chess-stat"><div class="chess-stat-val" id="raceStatus">Boshlang!</div><div class="chess-stat-lbl">Holat</div></div>
+    </div>
+
+    <!-- SELECTOR QUIZ -->
+    <div class="page" id="page-selector_quiz">
+      <div id="selectorGame">
+        <div class="quiz-prog-row">
+          <span id="sqQNum">1/10</span>
+          <span>XP: <b id="sqXpSoFar">0</b></span>
         </div>
-        <div class="race-p1">
-          <div class="race-pname" id="raceP1Name">—</div>
-          <div class="race-bar"><div class="race-bar-fill" id="raceP1Bar" style="width:0%"></div></div>
+        <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="sqProgFill" style="width:10%"></div></div>
+        <div class="quiz-timer">
+          <span style="font-size:12px;color:var(--sub);width:28px" id="sqTimerNum">25</span>
+          <div class="quiz-timer-bar"><div class="quiz-timer-fill" id="sqTimerFill" style="width:100%"></div></div>
         </div>
-        <div class="race-p2" style="margin-bottom:12px">
-          <div class="race-pname" id="raceP2Name">—</div>
-          <div class="race-bar"><div class="race-bar-fill" id="raceP2Bar" style="width:0%"></div></div>
+        <div class="card">
+          <div style="font-size:12px;color:var(--sub);margin-bottom:6px;">Quyidagi CSS selector qaysi elementni tanlaydi?</div>
+          <div class="tag-preview" id="sqSelectorDisplay">.btn</div>
+          <div class="quiz-question" id="sqQ">Savol...</div>
+          <div id="sqOpts"></div>
         </div>
-        <div class="race-text" id="raceText"></div>
-        <input class="typing-input" id="raceInput" placeholder="Yozishni boshlang..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onRaceInput()" />
+      </div>
+      <div id="selectorResult" style="display:none">
+        <div class="game-result-card">
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Selector Quiz yakunlandi!</div>
+          <div class="result-score" id="sqFinalScore">0</div>
+          <div class="result-sub">ball</div>
+          <div class="result-xp" id="sqFinalXp"></div>
+          <button class="btn btn-primary" onclick="startSelectorQuiz()">Qayta o'ynash</button>
+          <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">Orqaga</button>
+        </div>
       </div>
     </div>
 
@@ -480,23 +451,19 @@
       <div class="profile-stats">
         <div class="profile-stat"><div class="profile-stat-val" id="pmXp">0</div><div class="profile-stat-lbl">XP</div></div>
         <div class="profile-stat"><div class="profile-stat-val" id="pmLevel">1</div><div class="profile-stat-lbl">Level</div></div>
-        <div class="profile-stat"><div class="profile-stat-val" id="pmStreak">0</div><div class="profile-stat-lbl" id="pmStreakLbl">Streak</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="pmStreak">0</div><div class="profile-stat-lbl">Streak</div></div>
       </div>
-      <div class="profile-stats" style="margin-bottom:16px">
-        <div class="profile-stat"><div class="profile-stat-val" id="pmAttend">0</div><div class="profile-stat-lbl" id="pmAttendLbl">Davomat</div></div>
-        <div class="profile-stat"><div class="profile-stat-val" id="pmHw">0</div><div class="profile-stat-lbl" id="pmHwLbl">Uy ishi</div></div>
-        <div class="profile-stat"><div class="profile-stat-val" id="pmRank">#—</div><div class="profile-stat-lbl" id="pmRankLbl">Reyting</div></div>
-      </div>
-      <div class="profile-games" id="pmGames"></div>
+      <div style="background:var(--bg2);border-radius:10px;padding:12px;" id="pmGames"></div>
     </div>
   </div>
 
   <div class="tabbar">
-    <div class="tab-item active" id="tab-home"   onclick="goPage('home')"><div class="tab-icon">🏠</div><div class="tab-label">Bosh</div></div>
-    <div class="tab-item"        id="tab-typing" onclick="goPage('typing')"><div class="tab-icon">⌨️</div><div class="tab-label">Typing</div></div>
-    <div class="tab-item"        id="tab-quiz"   onclick="goPage('quiz')"><div class="tab-icon">🧠</div><div class="tab-label">Quiz</div></div>
-    <div class="tab-item"        id="tab-chess"  onclick="goPage('chess')"><div class="tab-icon">♟</div><div class="tab-label">Shaxmat</div></div>
-    <div class="tab-item"        id="tab-multi"  onclick="goPage('multi')"><div class="tab-icon">🏁</div><div class="tab-label">Race</div></div>
+    <div class="tab-item active" id="tab-home"        onclick="goPage('home')"><div class="tab-icon">🏠</div><div class="tab-label">Bosh</div></div>
+    <div class="tab-item"        id="tab-quiz"        onclick="goPage('quiz')"><div class="tab-icon">🧠</div><div class="tab-label">Test</div></div>
+    <div class="tab-item"        id="tab-css_duel"    onclick="goPage('css_duel')"><div class="tab-icon">🎨</div><div class="tab-label">CSS</div></div>
+    <div class="tab-item"        id="tab-bug_hunter"  onclick="goPage('bug_hunter')"><div class="tab-icon">🐛</div><div class="tab-label">Bug</div></div>
+    <div class="tab-item"        id="tab-code_order"  onclick="goPage('code_order')"><div class="tab-icon">🔀</div><div class="tab-label">Order</div></div>
+    <div class="tab-item"        id="tab-tag_match"   onclick="goPage('tag_match')"><div class="tab-icon">🏷</div><div class="tab-label">Tag</div></div>
   </div>
 </div>
 
@@ -506,55 +473,32 @@
 <div id="xpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#1e2a3a;border-radius:20px;padding:32px 24px;text-align:center;max-width:320px;width:90%;animation:xpPop 0.4s ease;">
     <div id="xpModalIcon" style="font-size:56px;margin-bottom:8px;">🎉</div>
-    <div id="xpModalTitle" style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">G'alaba!</div>
+    <div id="xpModalTitle" style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">Bajarildi!</div>
     <div id="xpModalXp" style="font-size:36px;font-weight:800;color:#ffd700;margin-bottom:4px;">+20 XP</div>
     <div id="xpModalTotal" style="color:#aaa;font-size:14px;margin-bottom:16px;">Jami: 350 XP</div>
     <div style="background:#0d1a2a;border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px;">
       <div id="xpModalBar" style="height:100%;background:linear-gradient(90deg,#4CAF50,#8BC34A);transition:width 0.8s ease;width:0%;"></div>
     </div>
-    <div id="xpModalLevel" style="color:#7eb8f7;font-size:13px;margin-bottom:20px;">Lv.3 O'quvchi</div>
+    <div id="xpModalLevel" style="color:#7eb8f7;font-size:13px;margin-bottom:20px;">Lv.3</div>
     <button onclick="closeXpModal()" style="background:#4CAF50;color:#fff;border:none;border-radius:12px;padding:12px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;">OK</button>
   </div>
 </div>
 
-<!-- Block Blast Page -->
-<div id="blockBlastPage" style="display:none;position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow:auto;">
-  <div style="display:flex;align-items:center;padding:16px;gap:12px;">
-    <button onclick="closeBlockBlast()" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;">←</button>
-    <h2 style="color:#fff;margin:0;flex:1;">Block Blast</h2>
-    <div style="color:#fff;">Score: <span id="bbScore">0</span></div>
-  </div>
-  <canvas id="bbCanvas" style="display:block;margin:0 auto;touch-action:none;"></canvas>
-  <div id="bbPieces" style="display:flex;justify-content:center;gap:16px;padding:16px;"></div>
-  <div id="bbGameOver" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;flex-direction:column;gap:16px;">
-    <div style="font-size:48px;">💥</div>
-    <div style="color:#fff;font-size:24px;font-weight:700;">O'yin tugadi!</div>
-    <div style="color:#ffd700;font-size:20px;">Score: <span id="bbFinalScore">0</span></div>
-    <button onclick="startBlockBlastGame()" style="background:#4CAF50;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;cursor:pointer;">Qayta o'ynash</button>
-    <button onclick="closeBlockBlast()" style="background:#333;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;cursor:pointer;">Chiqish</button>
-  </div>
-</div>
-
 <script>
-/* ── Telegram WebApp ─────────────────────────────────────────────────── */
+/* ── Telegram WebApp ── */
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color'); }
 const INIT_DATA = tg?.initData || '';
 const BASE_URL  = window.location.origin;
 
-// ── Sound System ────────────────────────────────────────────────────────────
+/* ── Sound System ── */
 let _soundOn = localStorage.getItem('soundOn') !== 'false';
 let _ac = null;
-function _getAC() {
-  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
-  return _ac;
-}
+function _getAC() { if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)(); return _ac; }
 function playSound(freq, type='sine', dur=0.15, vol=0.3) {
   if (!_soundOn) return;
   try {
-    const ac = _getAC();
-    const o = ac.createOscillator();
-    const g = ac.createGain();
+    const ac = _getAC(), o = ac.createOscillator(), g = ac.createGain();
     o.connect(g); g.connect(ac.destination);
     o.type = type; o.frequency.value = freq;
     g.gain.setValueAtTime(vol, ac.currentTime);
@@ -563,7 +507,7 @@ function playSound(freq, type='sine', dur=0.15, vol=0.3) {
   } catch(e) {}
 }
 function playSoundSeq(freqs, dur=0.1) {
-  freqs.forEach((f, i) => setTimeout(() => playSound(f, 'sine', dur), i * dur * 1000));
+  freqs.forEach((f,i) => setTimeout(() => playSound(f,'sine',dur), i*dur*1000));
 }
 function toggleSound() {
   _soundOn = !_soundOn;
@@ -572,32 +516,30 @@ function toggleSound() {
   if (btn) btn.textContent = _soundOn ? '🔊' : '🔇';
 }
 
-// ── Daily Game Limits ────────────────────────────────────────────────────────
-let _playsToday = {}; // {gameType: {count, blocked, seconds_left, plays_left}}
+/* ── Daily Game Limits ── */
+let _playsToday = {};
 const PLAY_LIMIT = 3;
-let _badgeTimers = {}; // countdown interval refs per game
+let _badgeTimers = {};
 
 function _fmtCountdown(secs) {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
-  return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+  return [h,m,s].map(v => String(v).padStart(2,'0')).join(':');
 }
 
 async function loadPlaysToday() {
   try {
-    const initData = window.Telegram?.WebApp?.initData || '';
-    const r = await fetch('/api/game/plays-today', {headers: {'X-Init-Data': initData}});
+    const r = await fetch('/api/game/plays-today', {headers:{'X-Init-Data':INIT_DATA}});
     if (r.ok) _playsToday = await r.json();
     updateGameCardBadges();
   } catch(e) {}
 }
 
 async function recordPlay(gameType) {
-  const initData = window.Telegram?.WebApp?.initData || '';
   const r = await fetch('/api/game/record-play', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','X-Init-Data': initData},
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Init-Data':INIT_DATA},
     body: JSON.stringify({game_type: gameType})
   });
   const data = await r.json();
@@ -618,7 +560,6 @@ function checkDailyLimit(gameType) {
 let _glTimer = null;
 function showLimitModal(gameType) {
   const secs = _playsToday[gameType]?.seconds_left || 0;
-  const timeStr = _fmtCountdown(secs);
   document.getElementById('gameLimitModal')?.remove();
   clearInterval(_glTimer);
   const el = document.createElement('div');
@@ -628,24 +569,22 @@ function showLimitModal(gameType) {
     <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px">Limit tugadi!</div>
     <div style="font-size:13px;color:#aaa;margin-bottom:6px">3/3 o'yinni o'ynab bo'ldingiz</div>
     <div style="font-size:12px;color:#888;margin-bottom:6px">Ochilishi:</div>
-    <div id="gLimitTxt" style="font-size:26px;font-weight:900;color:#FF9800;margin-bottom:16px;line-height:1.2">${timeStr}</div>
+    <div id="gLimitTxt" style="font-size:26px;font-weight:900;color:#FF9800;margin-bottom:16px;">${_fmtCountdown(secs)}</div>
     <button onclick="document.getElementById('gameLimitModal')?.remove();clearInterval(_glTimer)" style="background:#f44336;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">OK</button>`;
   document.body.appendChild(el);
   let s = secs;
   _glTimer = setInterval(() => {
     s--;
     const txt = document.getElementById('gLimitTxt');
-    if (!txt || s <= 0) { clearInterval(_glTimer); if (txt) { txt.textContent = 'Hozir ochilmoqda...'; } loadPlaysToday(); return; }
+    if (!txt || s <= 0) { clearInterval(_glTimer); if (txt) txt.textContent = 'Hozir ochilmoqda...'; loadPlaysToday(); return; }
     txt.textContent = _fmtCountdown(s);
   }, 1000);
 }
 
 function updateGameCardBadges() {
-  const gameTypes = ['typing', 'quiz', 'chess', '2048', 'memory', 'block_blast'];
-  // Clear old timers
+  const gameTypes = ['quiz','css_duel','bug_hunter','code_order','tag_match','selector_quiz'];
   Object.values(_badgeTimers).forEach(t => clearInterval(t));
   _badgeTimers = {};
-
   gameTypes.forEach(gt => {
     const badge = document.getElementById('badge_' + gt);
     if (!badge) return;
@@ -657,7 +596,7 @@ function updateGameCardBadges() {
           badge.textContent = PLAY_LIMIT + '/' + PLAY_LIMIT + ' qoldi';
           badge.style.color = '#4CAF50';
           clearInterval(_badgeTimers[gt]);
-          loadPlaysToday(); // Auto-refresh when unlocked
+          loadPlaysToday();
           return;
         }
         badge.textContent = '🔒 ' + _fmtCountdown(secsLeft);
@@ -674,7 +613,7 @@ function updateGameCardBadges() {
   });
 }
 
-// ── XP Modal ─────────────────────────────────────────────────────────────────
+/* ── XP Modal ── */
 function showXpModal(icon, title, xpEarned, totalXp, levelName, levelXp, nextXp) {
   const el = document.getElementById('xpModal');
   el.style.display = 'flex';
@@ -685,132 +624,115 @@ function showXpModal(icon, title, xpEarned, totalXp, levelName, levelXp, nextXp)
   document.getElementById('xpModalLevel').textContent = levelName;
   const pct = nextXp ? Math.min(100, Math.round((totalXp / nextXp) * 100)) : 100;
   setTimeout(() => { document.getElementById('xpModalBar').style.width = pct + '%'; }, 100);
-  playSoundSeq([523, 659, 784], 0.12);
+  playSoundSeq([523,659,784], 0.12);
 }
 function closeXpModal() {
   document.getElementById('xpModal').style.display = 'none';
 }
 
-// ── Per-Game Leaderboard ──────────────────────────────────────────────────────
-let _currentGameLb = 'typing';
+/* ── Per-Game Leaderboard ── */
+let _currentGameLb = 'quiz';
 async function loadGameLeaderboard(gameType) {
   _currentGameLb = gameType;
   document.querySelectorAll('.game-lb-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.game === gameType);
   });
-  const initData = window.Telegram?.WebApp?.initData || '';
   try {
-    const r = await fetch('/api/game/leaderboard?type=' + gameType, {headers: {'X-Init-Data': initData}});
+    const r = await fetch('/api/game/leaderboard?type=' + gameType, {headers:{'X-Init-Data':INIT_DATA}});
     const data = await r.json();
     const leaders = data.leaders || [];
     const el = document.getElementById('gameLbList');
     if (!el) return;
-    if (leaders.length === 0) { el.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Hali natija yo\'q</div>'; return; }
-    el.innerHTML = leaders.map((l, i) => `
+    if (!leaders.length) { el.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Hali natija yo\'q</div>'; return; }
+    el.innerHTML = leaders.map((l,i) => `
       <div style="display:flex;align-items:center;gap:12px;background:#1e2a3a;border-radius:10px;padding:12px;margin-bottom:8px;">
         <div style="font-size:18px;font-weight:700;color:${i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'#666'};min-width:24px;">${i+1}</div>
         <div style="font-size:24px;">${l.avatar || '👤'}</div>
-        <div style="flex:1;"><div style="color:#fff;font-weight:600;">${l.full_name}</div><div style="color:#666;font-size:12px;">${l.group_name}</div></div>
+        <div style="flex:1;"><div style="color:#fff;font-weight:600;">${l.full_name}</div><div style="color:#666;font-size:12px;">${l.group_name || ''}</div></div>
         <div style="color:#ffd700;font-weight:700;">${l.score}</div>
-      </div>
-    `).join('');
+      </div>`).join('');
   } catch(e) {}
 }
 
-// ── Refresh ───────────────────────────────────────────────────────────────────
+/* ── API helpers ── */
+async function api(path, opts={}) {
+  try {
+    const res = await fetch(BASE_URL + '/api' + path, {
+      headers:{'X-Init-Data':INIT_DATA,'Content-Type':'application/json',...(opts.headers||{})},
+      ...opts,
+    });
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({error:res.statusText}));
+      const e = new Error(b.error || res.statusText); e.status = res.status; throw e;
+    }
+    return res.json();
+  } catch(e) { throw e; }
+}
+
+function toast(msg, dur=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
 function refreshGames() {
   playSound(400);
   loadPlaysToday();
   if (_currentGameLb) loadGameLeaderboard(_currentGameLb);
 }
 
-/* ── API ─────────────────────────────────────────────────────────────── */
-async function api(path, opts = {}) {
-  const res = await fetch(BASE_URL + '/api' + path, {
-    headers: { 'X-Init-Data': INIT_DATA, 'Content-Type': 'application/json', ...(opts.headers||{}) },
-    ...opts,
-  });
-  if (!res.ok) {
-    const b = await res.json().catch(() => ({ error: res.statusText }));
-    const e = new Error(b.error || res.statusText); e.status = res.status; throw e;
-  }
-  return res.json();
-}
-
-/* ── Toast ───────────────────────────────────────────────────────────── */
-function toast(msg, dur = 2500) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
-}
-
-/* ── State ───────────────────────────────────────────────────────────── */
+/* ── State & navigation ── */
 let me = null;
 let currentPage = 'home';
-const PAGES = ['home','typing','quiz','g2048','memory','chess','multi'];
+const ALL_PAGES = ['home','quiz','css_duel','bug_hunter','code_order','tag_match','selector_quiz'];
 
 function goPage(name) {
-  PAGES.forEach(p => {
+  ALL_PAGES.forEach(p => {
     document.getElementById('page-' + p)?.classList.remove('active');
     document.getElementById('tab-' + p)?.classList.remove('active');
   });
   document.getElementById('page-' + name)?.classList.add('active');
   document.getElementById('tab-'  + name)?.classList.add('active');
   currentPage = name;
-  const content = document.getElementById('content');
-  content.scrollTop = 0;
-  if (name === 'home')   { loadPlaysToday(); loadGameLeaderboard(_currentGameLb || 'typing'); }
-  if (name === 'typing') { if (checkDailyLimit('typing')) { showLimitModal('typing'); goPage('home'); } else startTyping(); }
-  if (name === 'quiz')   { if (checkDailyLimit('quiz'))   { showLimitModal('quiz');   goPage('home'); } else startQuiz(); }
-  if (name === 'g2048')  { if (checkDailyLimit('2048'))   { showLimitModal('2048');   goPage('home'); } else init2048(); }
-  if (name === 'memory') { if (checkDailyLimit('memory')) { showLimitModal('memory'); goPage('home'); } else initMemory(); }
-  if (name === 'chess')  { if (checkDailyLimit('chess'))  { showLimitModal('chess');  goPage('home'); } else initChess(); }
-  if (name === 'multi')  { loadRooms(); showMultiLobby(); }
+  document.getElementById('content').scrollTop = 0;
+  if (name === 'home')         { loadPlaysToday(); loadGameLeaderboard(_currentGameLb || 'quiz'); }
+  if (name === 'quiz')         { if (checkDailyLimit('quiz'))         { showLimitModal('quiz');         goPage('home'); } else startQuiz(); }
+  if (name === 'css_duel')     { if (checkDailyLimit('css_duel'))     { showLimitModal('css_duel');     goPage('home'); } else startCssDuel(); }
+  if (name === 'bug_hunter')   { if (checkDailyLimit('bug_hunter'))   { showLimitModal('bug_hunter');   goPage('home'); } else startBugHunter(); }
+  if (name === 'code_order')   { if (checkDailyLimit('code_order'))   { showLimitModal('code_order');   goPage('home'); } else startCodeOrder(); }
+  if (name === 'tag_match')    { if (checkDailyLimit('tag_match'))    { showLimitModal('tag_match');    goPage('home'); } else startTagMatch(); }
+  if (name === 'selector_quiz'){ if (checkDailyLimit('selector_quiz')){ showLimitModal('selector_quiz');goPage('home'); } else startSelectorQuiz(); }
 }
 
-/* ── Init ────────────────────────────────────────────────────────────── */
-async function loadTopPlayers() {
-  const el = document.getElementById('topPlayersCard');
+/* ── saveScore helper ── */
+async function saveScore(game_type, score, xp_earned) {
   try {
-    const data = await api('/student/leaderboard/global');
-    const leaders = (data.leaders || []).slice(0, 10);
-    if (!leaders.length) { el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:10px;font-size:13px">—</div>'; return; }
-    const medals = ['🥇','🥈','🥉'];
-    el.innerHTML = leaders.map((p,i) => {
-      const medal = medals[i] || `#${p.rank}`;
-      const av = p.avatar || '👤';
-      return `<div onclick="openProfile(${p.user_id || 0})" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;-webkit-tap-highlight-color:transparent">
-        <div style="width:26px;text-align:center;font-size:14px;font-weight:800">${medal}</div>
-        <div style="font-size:18px">${av}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.full_name}${p.is_me ? ' ⭐' : ''}</div>
-          <div style="font-size:11px;color:var(--sub)">${p.group_name} · Lv.${p.level}</div>
-        </div>
-        <div style="font-size:13px;font-weight:900;color:var(--gold)">${p.xp} XP</div>
-      </div>`;
-    }).join('');
-  } catch {
-    el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:10px;font-size:13px">—</div>';
-  }
+    const res = await api('/game/score', {
+      method:'POST',
+      body: JSON.stringify({game_type, score, xp_earned}),
+    });
+    if (res.new_xp !== undefined) {
+      document.getElementById('hdrXp').textContent  = res.new_xp + ' XP';
+      document.getElementById('hdrLvl').textContent = 'Lv.' + res.new_level;
+    }
+    if (res.leveled_up) toast('Daraja oshdi! Lv.' + res.new_level);
+    return res;
+  } catch { return null; }
 }
 
+/* ── Init ── */
 async function init() {
-  applyLang();
-  // Restore sound button state
   const sBtn = document.getElementById('soundBtn');
   if (sBtn) sBtn.textContent = _soundOn ? '🔊' : '🔇';
   loadPlaysToday();
-  loadGameLeaderboard('typing');
+  loadGameLeaderboard('quiz');
   try {
     me = await api('/me');
     document.getElementById('hdrXp').textContent  = (me.xp || 0) + ' XP';
     document.getElementById('hdrLvl').textContent = 'Lv.' + (me.level || 1);
     loadBestScores();
-    loadTopPlayers();
   } catch(e) {
-    if (e.status === 401 || e.status === 404) {
-      toast(L.register_first);
-    }
+    if (e.status === 401 || e.status === 404) toast('Avval botda ro\'yxatdan o\'ting!');
   }
 }
 
@@ -820,261 +742,67 @@ async function loadBestScores() {
     const prog = await api('/student/progress');
     const best = prog.game_best || {};
     const games = [
-      { key:'typing', name:'⌨️ Typing Speed', unit:'WPM' },
-      { key:'quiz',   name:'🧠 Code Quiz',    unit: L.ball },
-      { key:'2048',   name:'🔢 2048',          unit: L.ball },
-      { key:'memory', name:'🃏 ' + L.memory_name, unit: L.moves },
-      { key:'chess',  name:'♟ ' + L.chess_name,   unit:'' },
+      {key:'quiz',          name:'🧠 Dasturlash Testi', unit:'ball'},
+      {key:'css_duel',      name:'🎨 CSS Duel',         unit:'ball'},
+      {key:'bug_hunter',    name:'🐛 Bug Hunter',        unit:'ball'},
+      {key:'code_order',    name:'🔀 Code Order',        unit:'ball'},
+      {key:'tag_match',     name:'🏷 Tag Match',         unit:'ball'},
+      {key:'selector_quiz', name:'🎯 Selector Quiz',     unit:'ball'},
     ];
     el.innerHTML = games.map(g => {
       const v = best[g.key];
       return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px">
         <span>${g.name}</span>
-        <span style="font-weight:800;color:var(--gold)">${v ? v + (g.unit ? ' ' + g.unit : '') : '—'}</span>
+        <span style="font-weight:800;color:var(--gold)">${v ? v + ' ' + g.unit : '—'}</span>
       </div>`;
     }).join('');
   } catch {
-    el.innerHTML = `<div style="color:var(--sub);text-align:center;padding:12px;font-size:13px">${L.no_records}</div>`;
+    el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:12px;font-size:13px">Rekordlar yuklanmadi</div>';
   }
 }
 
-async function saveScore(game_type, score, xp_earned) {
-  try {
-    const res = await api('/game/score', {
-      method:'POST',
-      body: JSON.stringify({ game_type, score, xp_earned }),
-    });
-    // Update header XP
-    if (res.new_xp !== undefined) {
-      document.getElementById('hdrXp').textContent  = res.new_xp + ' XP';
-      document.getElementById('hdrLvl').textContent = 'Lv.' + res.new_level;
-    }
-    if (res.leveled_up) toast(L.level_up + res.new_level);
-    return res;
-  } catch { return null; }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   TYPING SPEED
-══════════════════════════════════════════════════════════════════════ */
-const TYPING_TEXTS_UZ = [
-  "Python dasturlash tili oddiy va o'qishga qulay sintaksisga ega. U data science, web va avtomatlashtirish uchun ishlatiladi.",
-  "Funksiyalar kodni qayta ishlatish imkonini beradi. Ular parametr qabul qilib natija qaytaradi.",
-  "Tsikl konstruktsiyalari kodni bir necha marta takrorlash uchun ishlatiladi. For va while tsikllari mavjud.",
-  "O'zgaruvchi — ma'lumotni saqlaydigan nomlangan xotira joyi. Python da tur ko'rsatmasdan e'lon qilinadi.",
-  "Massiv — bir xil turdagi elementlar to'plami. Python da list, tuple va set turlari mavjud.",
-];
-const TYPING_TEXTS_RU = [
-  "Программирование — это искусство создания программ для решения задач с помощью компьютера.",
-  "Функции позволяют повторно использовать код и делают программу более структурированной.",
-  "Цикл — это конструкция, которая позволяет выполнять блок кода несколько раз подряд.",
-  "Переменная — это именованная ячейка памяти для хранения данных в программе.",
-  "Массив — это структура данных для хранения набора элементов одного типа.",
-];
-const TYPING_TEXTS_EN = [
-  "Programming is the art of creating software applications to solve real world problems efficiently.",
-  "Functions allow us to reuse code and keep our programs organized and easy to maintain.",
-  "A loop is a programming construct that repeats a block of code multiple times in sequence.",
-  "A variable is a named storage location that holds a value which can change during execution.",
-  "An array is a data structure that stores a collection of elements of the same type.",
-];
-const TYPING_TEXTS_ALL = { uz: TYPING_TEXTS_UZ, ru: TYPING_TEXTS_RU, en: TYPING_TEXTS_EN };
-let typingLang = 'uz';
-function setTypingLang(l) {
-  typingLang = l;
-  ['uz','ru','en'].forEach(k => document.getElementById('typLang'+k.charAt(0).toUpperCase()+k.slice(1))?.classList.toggle('active', k===l));
-  startTyping();
-}
-const TYPING_TEXTS = TYPING_TEXTS_UZ; // legacy alias
-
-let typTimer=null, typStart=null, typTimeLeft=60, typWords=[], typIdx=0, typFinished=false;
-
-function startTyping() {
-  if (checkDailyLimit('typing')) { showLimitModal('typing'); return; }
-  recordPlay('typing').catch(()=>{});
-  clearInterval(typTimer);
-  typFinished = false;
-  typTimeLeft = 60;
-  typIdx = 0;
-  const texts = TYPING_TEXTS_ALL[typingLang] || TYPING_TEXTS_UZ;
-  const text = texts[Math.floor(Math.random() * texts.length)];
-  typWords = text.split('');
-  renderTypingText(0);
-  document.getElementById('typInput').value = '';
-  document.getElementById('typInput').disabled = false;
-  document.getElementById('typResult').style.display = 'none';
-  document.getElementById('typText').parentElement?.querySelector('#typResult')?.style?.setProperty('display','none');
-  document.getElementById('typWpm').textContent = '0';
-  document.getElementById('typAcc').textContent = '100%';
-  document.getElementById('typTimer').textContent = '60';
-  document.getElementById('typProg').style.width = '0%';
-  setTimeout(() => document.getElementById('typInput').focus(), 100);
-
-  typStart = null;
-  typTimer = setInterval(() => {
-    if (!typStart) return;
-    typTimeLeft--;
-    document.getElementById('typTimer').textContent = typTimeLeft;
-    if (typTimeLeft <= 0) finishTyping(false);
-  }, 1000);
-}
-
-function renderTypingText(currentIdx) {
-  const el = document.getElementById('typText');
-  el.innerHTML = typWords.map((ch, i) => {
-    const cls = i < currentIdx ? 'correct' : i === currentIdx ? 'current' : '';
-    return `<span class="typing-char ${cls}">${ch}</span>`;
-  }).join('');
-}
-
-function onTypingInput() {
-  if (typFinished) return;
-  const input = document.getElementById('typInput');
-  const val   = input.value;
-  if (!typStart) typStart = Date.now();
-
-  typIdx = val.length;
-  const correctSoFar = typWords.slice(0, typIdx).join('') === val;
-
-  // Sound on correct keystroke
-  if (typIdx > 0 && typWords[typIdx - 1] === val[typIdx - 1]) {
-    playSound(800, 'sine', 0.05);
-  }
-
-  // Color chars
-  const el = document.getElementById('typText');
-  const chars = el.querySelectorAll('.typing-char');
-  chars.forEach((ch, i) => {
-    ch.className = 'typing-char';
-    if (i < typIdx) {
-      ch.classList.add(typWords[i] === val[i] ? 'correct' : 'wrong');
-    } else if (i === typIdx) {
-      ch.classList.add('current');
-    }
-  });
-
-  // Progress
-  const pct = Math.min(100, Math.round(typIdx / typWords.length * 100));
-  document.getElementById('typProg').style.width = pct + '%';
-
-  // WPM
-  const elapsed = (Date.now() - typStart) / 60000;
-  const wpm = elapsed > 0 ? Math.round((typIdx / 5) / elapsed) : 0;
-  document.getElementById('typWpm').textContent = wpm;
-
-  // Accuracy
-  let correct = 0;
-  for (let i = 0; i < typIdx; i++) { if (typWords[i] === val[i]) correct++; }
-  const acc = typIdx ? Math.round(correct / typIdx * 100) : 100;
-  document.getElementById('typAcc').textContent = acc + '%';
-
-  if (typIdx >= typWords.length && correctSoFar) finishTyping(true);
-}
-
-async function finishTyping(completed) {
-  typFinished = true;
-  clearInterval(typTimer);
-  const input = document.getElementById('typInput');
-  input.disabled = true;
-  const elapsed = typStart ? (Date.now() - typStart) / 60000 : 1;
-  const wpm = Math.round((typIdx / 5) / Math.max(elapsed, 1/60));
-  let correct = 0;
-  const val = input.value;
-  for (let i = 0; i < typIdx; i++) { if (typWords[i] === val[i]) correct++; }
-  const acc = typIdx ? Math.round(correct / typIdx * 100) : 0;
-  const xp  = acc === 100 ? 30 : Math.max(5, Math.round(30 * acc / 100));
-
-  document.getElementById('typFinalWpm').textContent = wpm;
-  document.getElementById('typFinalAcc').textContent = acc + '%';
-  document.getElementById('typXpMsg').textContent    = `+${xp} ${L.xp_earned}!`;
-  document.getElementById('typResult').style.display = 'block';
-  document.getElementById('typText').style.display   = 'none';
-
-  tg?.HapticFeedback?.notificationOccurred('success');
-  const res = await saveScore('typing', wpm, xp);
-  if (res) showXpModal('⌨️', 'Typing Speed!', xp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   CODE QUIZ
-══════════════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────────────
+   1. DASTURLASH TESTI (Quiz)
+───────────────────────────────────────────────────────────────────── */
 const QUIZ_QUESTIONS = [
-  // ── JavaScript (qiyin) ──────────────────────────────────────────────────────
-  { q:"typeof null natijasi qanday?", opts:['"null"','"object"','"undefined"','"boolean"'], ans:1 },
-  { q:"console.log(0.1 + 0.2 === 0.3) natijasi?", opts:["true","false","NaN","Error"], ans:1 },
-  { q:"var bilan e'lon qilingan o'zgaruvchi qayerga hoisting bo'ladi?", opts:["Blok boshiga","Funksiya boshiga","Fayl boshiga","Hoisting bo'lmaydi"], ans:1 },
-  { q:"Promise.race([p1,p2]) qachon hal bo'ladi?", opts:["Ikkalasi hal bo'lganda","Birinchisi hal yoki rad bo'lganda","Ikkalasi rad bo'lganda","Birinchisi faqat hal bo'lganda"], ans:1 },
-  { q:"Arrow function da 'this' qayerdan olinadi?", opts:["O'z kontekstidan","Leksik (tashqi) kontekstdan","window dan","undefined bo'ladi"], ans:1 },
-  { q:"[]+[] natijasi JavaScript da?", opts:["[]","\"\"","0","null"], ans:1 },
-  { q:"WeakMap va Map ning asosiy farqi?", opts:["WeakMap tezroq","WeakMap kalitlari faqat ob'ekt, GC tomonidan o'chiriladi","WeakMap ko'proq xotira oladi","WeakMap da takrorlash mumkin"], ans:1 },
-  { q:"Event loop da microtask (Promise) va macrotask (setTimeout) qaysi birinchi?", opts:["macrotask","microtask","Ikkalasi teng","Tartib belgilanmagan"], ans:1 },
-  { q:"Object.freeze() va const farqi?", opts:["Farqi yo'q","freeze ob'ekt tarkibini o'zgartirmaslikni ta'minlaydi, const esa faqat qayta tayinlashni bloklaydi","const tezroq","freeze const ni o'z ichiga oladi"], ans:1 },
-  { q:"'==' va '===' farqi?", opts:["Farqi yo'q","=== tur va qiymatni, == faqat qiymatni (koertsiya bilan) tekshiradi","== tezroq","=== faqat primitivlar uchun"], ans:1 },
-  { q:"Closure nima?", opts:["Funksiya turi","Tashqi funksiya o'zgaruvchilariga kirishni saqlaydigan funksiya","Xatolikni ushlash mexanizmi","Ob'ekt nusxasi"], ans:1 },
-  { q:"async/await ichida xatoni ushlash uchun?", opts:["try/catch","async catch","await.catch","error()"], ans:0 },
-  { q:"Prototype chain nima maqsadda?", opts:["Xotira tejash uchun","Meros olish (inheritance) uchun","Sikl qilish uchun","Async uchun"], ans:1 },
-  // ── Python (qiyin) ─────────────────────────────────────────────────────────
-  { q:"Python da list comprehension: [x*x for x in range(4)] natijasi?", opts:["[1,4,9,16]","[0,1,4,9]","[0,1,2,3]","[1,2,3,4]"], ans:1 },
-  { q:"Python da mutable default argument muammosi?", opts:["Hech qanday muammo yo'q","Default list/dict chaqiruv orasida saqlanib qoladi","Har safar yangi ob'ekt yaratiladi","Faqat Python 2 da muammo"], ans:1 },
-  { q:"@classmethod da birinchi argument nima?", opts:["self","cls","class","this"], ans:1 },
-  { q:"Python GIL (Global Interpreter Lock) nima qiladi?", opts:["Xotira tozalaydi","Bir vaqtda faqat bitta thread Python bytecodeini bajaradi","Multithreading tezlashtiради","Async ishini ta'minlaydi"], ans:1 },
-  { q:"Python da generator ifodasi qaysi?", opts:["[x for x in lst]","(x for x in lst)","<x for x in lst>","{x for x in lst}"], ans:1 },
-  { q:"Python da 'is' operatori nima tekshiradi?", opts:["Qiymat tengligini","Ob'ekt identifikatorini (xotira manzilini)","Tur tengligini","Mavjudligini"], ans:1 },
-  { q:"__slots__ ni aniqlash qanday foyda beradi?", opts:["Meros olishni tezlashtiradi","Har bir nusxa uchun xotira sarfini kamaytiradi","Metodlarni tezlashtiradi","Pickle ni osonlashtiradi"], ans:1 },
-  { q:"Python da 'with' kalit so'zi nima uchun?", opts:["Tsikl uchun","Kontekst menejeri uchun (avtomatik ochish/yopish)","Shartli ifoda uchun","Import uchun"], ans:1 },
-  { q:"dict.get(key, default) va dict[key] farqi?", opts:["Farqi yo'q","get() kalit topilmasa default qaytaradi, [] KeyError tashiydi","[] tezroq","get() faqat string kalit uchun"], ans:1 },
-  { q:"Python da dekorator nima?", opts:["Maxsus izoh","Funksiyani boshqa funksiya bilan o'rash uchun sintaksis shakar","Klass turi","Debug vositasi"], ans:1 },
-  // ── Algoritmlar va ma'lumotlar tuzilmalari ─────────────────────────────────
-  { q:"Binary search ning vaqt murakkabligi?", opts:["O(n)","O(log n)","O(n²)","O(1)"], ans:1 },
-  { q:"Hash table da collision yechish usullari?", opts:["Faqat o'chirish","Chaining va open addressing","Qayta saralash","Hash ni o'zgartirish"], ans:1 },
-  { q:"Quicksort ning eng yomon holat murakkabligi?", opts:["O(n log n)","O(n²)","O(log n)","O(n)"], ans:1 },
-  { q:"Stack (stek) qaysi printsipda ishlaydi?", opts:["FIFO","LIFO","Random","FILO=LIFO"], ans:1 },
-  { q:"DFS va BFS farqi?", opts:["Hech qanday farq yo'q","DFS chuqurlikka, BFS kenglikka boradi","DFS tezroq","BFS kamroq xotira oladi"], ans:1 },
-  { q:"Linked list da indeks bo'yicha qidirish murakkabligi?", opts:["O(1)","O(n)","O(log n)","O(n log n)"], ans:1 },
-  { q:"Dynamic programming asosi?", opts:["Rekursiya","Kichik muammolar natijalarini cache da saqlash","Greedy tanlov","Parallellashtirish"], ans:1 },
-  { q:"O(1) murakkablik nima anglatadi?", opts:["Juda sekin","Kirish hajmidan qat'iy nazar doimiy vaqt","Chiziqli vaqt","Logaritmik vaqt"], ans:1 },
-  // ── Tarmoq va Web ──────────────────────────────────────────────────────────
-  { q:"HTTP 401 va 403 farqi?", opts:["Farqi yo'q","401 autentifikatsiya talab, 403 ruxsat yo'q (autentifikatsiya bo'lsa ham)","401 server xatosi","403 yo'qolgan sahifa"], ans:1 },
-  { q:"TCP va UDP asosiy farqi?", opts:["Tezlik farqi yo'q","TCP ishonchli (tasdiqlash bilan), UDP ishonchsiz (tezroq)","UDP faqat lokal tarmoqda","TCP faqat HTTPS da"], ans:1 },
-  { q:"REST API da idempotent metod qaysi?", opts:["POST","PUT","PATCH","GET va PUT/DELETE"], ans:3 },
-  { q:"CORS nima?", opts:["Xatolarni ushlash mexanizmi","Boshqa manzildan so'rov yuborishga brauzer tomonidan qo'yilgan cheklov","Shifrlash protokoli","Cache mexanizmi"], ans:1 },
-  { q:"HTTP/2 ning HTTP/1.1 dan asosiy farqi?", opts:["Faqat HTTPS da ishlaydi","Multiplexing — bitta ulanishda parallel so'rovlar","Header kompressiyasi yo'q","Faqat REST uchun"], ans:1 },
-  { q:"DNS nima qiladi?", opts:["Paketlarni yo'naltiradi","Domen nomini IP manzilga aylantiradi","Shifrlaydi","Tarmoq tezligini oshiradi"], ans:1 },
-  { q:"WebSocket va HTTP farqi?", opts:["Farqi yo'q","WebSocket ikki tomonlama doimiy ulanish, HTTP so'rov-javob modeli","WebSocket faqat JSON da","WebSocket serverdan serverga"], ans:1 },
-  // ── SQL va Ma'lumotlar bazasi ───────────────────────────────────────────────
-  { q:"SQL da INNER JOIN va LEFT JOIN farqi?", opts:["Farqi yo'q","INNER faqat ikkala jadvalda mavjud, LEFT chap jadval barcha qatorlarini qaytaradi","LEFT INNER dan tezroq","INNER faqat bir jadval uchun"], ans:1 },
-  { q:"SQL da indeks nima uchun?", opts:["Ma'lumot saqlash uchun","Qidirish tezligini oshirish uchun","Xavfsizlik uchun","Backup uchun"], ans:1 },
-  { q:"NoSQL va SQL asosiy farqi?", opts:["NoSQL tezroq, SQL sekin","SQL sxema (jadval), NoSQL egiluvchan sxema (hujjat/kalit-qiymat va h.k.)","NoSQL faqat kichik proyektlar uchun","SQL bulutda ishlamaydi"], ans:1 },
-  { q:"Transaksiya ACID da 'I' nima?", opts:["Index","Isolation (ajratilganlik — transaksiyalar bir-biriga ta'sir qilmaydi)","Integration","Internal"], ans:1 },
-  // ── Git (ilg'or) ───────────────────────────────────────────────────────────
-  { q:"git rebase va git merge farqi?", opts:["Farqi yo'q","rebase tarixni qayta yozadi (chiziqli), merge qo'shish commit yaratadi","rebase tezroq","merge xavfliroq"], ans:1 },
-  { q:"git stash nima qiladi?", opts:["O'zgarishlarni o'chiradi","O'zgarishlarni vaqtincha saqlaydi va ish direktoriysini tozalaydi","Yangi branch yaratadi","Remote ga push qiladi"], ans:1 },
-  { q:"git cherry-pick nima uchun?", opts:["Branch uchun","Bitta commitni boshqa branchga ko'chirish uchun","Tarixni o'chirish uchun","Tag qo'yish uchun"], ans:1 },
-  // ── CSS (ilg'or) ──────────────────────────────────────────────────────────
-  { q:"CSS specificity tartibida eng kuchli qaysi?", opts:["class","element","!important","ID"], ans:2 },
-  { q:"CSS 'position: sticky' qachon ishlaydi?", opts:["Hamma vaqt","Ota element overflow:hidden bo'lmasa va scroll mavjud bo'lsa","Faqat mobilda","Faqat flexboxda"], ans:1 },
-  { q:"CSS da 'em' va 'rem' farqi?", opts:["Farqi yo'q","em ota elementga, rem root elementga nisbatan","rem eski brauzerlar uchun","em aniqroq"], ans:1 },
-  { q:"Flexbox da 'flex: 1' nima anglatadi?", opts:["width: 100%","flex-grow:1, flex-shrink:1, flex-basis:0 — bo'sh joyni teng bo'lishadi","Faqat flex-grow","height: 1px"], ans:1 },
-  // ── Docker va DevOps ───────────────────────────────────────────────────────
-  { q:"Docker container va VM (virtual machine) farqi?", opts:["Farqi yo'q","Container OS ni ulashadi (yengil), VM o'z OS iga ega (og'ir)","VM tezroq","Container Windows da ishlamaydi"], ans:1 },
-  { q:"CI/CD nima anglatadi?", opts:["Code Integration / Code Delivery","Continuous Integration / Continuous Delivery (Deployment)","Cloud Integration / Cloud Delivery","Custom Interface / Custom Design"], ans:1 },
-  { q:"Dockerfile da CMD va ENTRYPOINT farqi?", opts:["Farqi yo'q","CMD override qilinadi, ENTRYPOINT container asosiy jarayonini belgilaydi","ENTRYPOINT faqat Linux da","CMD build vaqtida ishga tushadi"], ans:1 },
-  // ── Xavfsizlik ────────────────────────────────────────────────────────────
-  { q:"SQL Injection nima va qanday oldini olish mumkin?", opts:["Virus turi; antivirus bilan","Zararli SQL kodi kiritish; parametrlangan so'rovlar bilan","Tarmoq hujumi; firewall bilan","CSS hujumi; CORS bilan"], ans:1 },
-  { q:"XSS (Cross-Site Scripting) nima?", opts:["Server hujumi","Foydalanuvchi brauzerida zararli skript ishlatish; input sanitizatsiya bilan oldini olinadi","Parol o'g'irlash usuli","SQL hujumi turi"], ans:1 },
-  { q:"JWT da payload ma'lumotlari xavfsizmi?", opts:["Ha, shifrlangan","Yo'q, base64 encode qilingan (ochiq o'qiladi); imzo faqat o'zgartirishni oldini oladi","Ha, faqat server o'qiydi","Yo'q, umuman ishlatib bo'lmaydi"], ans:1 },
+  {q:"typeof null natijasi qanday?", opts:['"null"','"object"','"undefined"','"boolean"'], ans:1},
+  {q:"console.log(0.1 + 0.2 === 0.3) natijasi?", opts:["true","false","NaN","Error"], ans:1},
+  {q:"var bilan e'lon qilingan o'zgaruvchi qayerga hoisting bo'ladi?", opts:["Blok boshiga","Funksiya boshiga","Fayl boshiga","Hoisting bo'lmaydi"], ans:1},
+  {q:"Arrow function da 'this' qayerdan olinadi?", opts:["O'z kontekstidan","Leksik (tashqi) kontekstdan","window dan","undefined bo'ladi"], ans:1},
+  {q:"'==' va '===' farqi?", opts:["Farqi yo'q","=== tur va qiymatni tekshiradi, == koertsiya bilan qiymatni","== tezroq","=== faqat primitivlar uchun"], ans:1},
+  {q:"async/await ichida xatoni ushlash uchun?", opts:["try/catch","async catch","await.catch","error()"], ans:0},
+  {q:"Promise.race([p1,p2]) qachon hal bo'ladi?", opts:["Ikkalasi hal bo'lganda","Birinchisi hal yoki rad bo'lganda","Ikkalasi rad bo'lganda","Faqat birinchisi hal bo'lganda"], ans:1},
+  {q:"Python da list comprehension: [x*x for x in range(4)] natijasi?", opts:["[1,4,9,16]","[0,1,4,9]","[0,1,2,3]","[1,2,3,4]"], ans:1},
+  {q:"@classmethod da birinchi argument nima?", opts:["self","cls","class","this"], ans:1},
+  {q:"Python da generator ifodasi qaysi?", opts:["[x for x in lst]","(x for x in lst)","<x for x in lst>","{x for x in lst}"], ans:1},
+  {q:"Python da 'is' operatori nima tekshiradi?", opts:["Qiymat tengligini","Ob'ekt identifikatorini (xotira manzilini)","Tur tengligini","Mavjudligini"], ans:1},
+  {q:"dict.get(key, default) va dict[key] farqi?", opts:["Farqi yo'q","get() kalit topilmasa default qaytaradi, [] KeyError tashiydi","[] tezroq","get() faqat string kalit uchun"], ans:1},
+  {q:"Binary search ning vaqt murakkabligi?", opts:["O(n)","O(log n)","O(n²)","O(1)"], ans:1},
+  {q:"Stack qaysi printsipda ishlaydi?", opts:["FIFO","LIFO","Random","Chiziqli"], ans:1},
+  {q:"SQL da INNER JOIN va LEFT JOIN farqi?", opts:["Farqi yo'q","INNER faqat ikkala jadvalda mavjud, LEFT chap jadval barcha qatorlarini qaytaradi","LEFT INNER dan tezroq","INNER faqat bir jadval uchun"], ans:1},
+  {q:"HTTP 401 va 403 farqi?", opts:["Farqi yo'q","401 autentifikatsiya talab, 403 ruxsat yo'q","401 server xatosi","403 yo'qolgan sahifa"], ans:1},
+  {q:"REST API da idempotent metod qaysi?", opts:["POST","PUT","PATCH","GET va PUT/DELETE"], ans:3},
+  {q:"git rebase va git merge farqi?", opts:["Farqi yo'q","rebase tarixni qayta yozadi (chiziqli), merge qo'shish commit yaratadi","rebase tezroq","merge xavfliroq"], ans:1},
+  {q:"git stash nima qiladi?", opts:["O'zgarishlarni o'chiradi","O'zgarishlarni vaqtincha saqlaydi va ish direktoriysini tozalaydi","Yangi branch yaratadi","Remote ga push qiladi"], ans:1},
+  {q:"CSS specificity tartibida eng kuchli qaysi?", opts:["class","element","!important","ID"], ans:2},
+  {q:"CSS 'em' va 'rem' farqi?", opts:["Farqi yo'q","em ota elementga, rem root elementga nisbatan","rem eski brauzerlar uchun","em aniqroq"], ans:1},
+  {q:"Flexbox da 'flex: 1' nima anglatadi?", opts:["width:100%","flex-grow:1, flex-shrink:1, flex-basis:0","Faqat flex-grow","height:1px"], ans:1},
+  {q:"Docker container va VM farqi?", opts:["Farqi yo'q","Container OS ni ulashadi (yengil), VM o'z OS iga ega (og'ir)","VM tezroq","Container Windows da ishlamaydi"], ans:1},
+  {q:"SQL Injection oldini olish uchun?", opts:["Antivirus","Parametrlangan so'rovlar (prepared statements)","Firewall","CORS"], ans:1},
+  {q:"XSS (Cross-Site Scripting) nima?", opts:["Server hujumi","Foydalanuvchi brauzerida zararli skript ishlatish","Parol o'g'irlash usuli","SQL hujumi turi"], ans:1},
+  {q:"JWT da payload ma'lumotlari xavfsizmi?", opts:["Ha, shifrlangan","Yo'q, base64 encode (ochiq o'qiladi); imzo faqat o'zgartirishni bloklaydi","Ha, faqat server o'qiydi","Umuman ishlatib bo'lmaydi"], ans:1},
+  {q:"WebSocket va HTTP farqi?", opts:["Farqi yo'q","WebSocket ikki tomonlama doimiy ulanish, HTTP so'rov-javob modeli","WebSocket faqat JSON da","WebSocket serverdan serverga"], ans:1},
+  {q:"CORS nima?", opts:["Xatolarni ushlash","Boshqa manzildan so'rovga brauzer cheklovi","Shifrlash protokoli","Cache mexanizmi"], ans:1},
+  {q:"Closure nima?", opts:["Funksiya turi","Tashqi funksiya o'zgaruvchilariga kirishni saqlaydigan funksiya","Xatolikni ushlash","Ob'ekt nusxasi"], ans:1},
+  {q:"Dynamic programming asosi?", opts:["Rekursiya","Kichik muammolar natijalarini cache da saqlash","Greedy tanlov","Parallellashtirish"], ans:1},
 ];
 
-let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false;
-let quizResults=[];
+let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false, quizXp=0;
 
 function startQuiz() {
   if (checkDailyLimit('quiz')) { showLimitModal('quiz'); return; }
   recordPlay('quiz').catch(()=>{});
-  quizResults = [];
-  quizScore = 0;
-  quizIdx   = 0;
-  // Shuffle and pick 10
+  quizScore = 0; quizIdx = 0; quizXp = 0;
   quizQ = [...QUIZ_QUESTIONS].sort(() => Math.random() - .5).slice(0, 10);
   document.getElementById('quizGame').style.display   = 'block';
   document.getElementById('quizResult').style.display = 'none';
@@ -1084,17 +812,13 @@ function startQuiz() {
 function showQuizQ() {
   const q = quizQ[quizIdx];
   if (!q) return;
-  document.getElementById('quizQNum').textContent = `${quizIdx+1}/10`;
-  document.getElementById('quizQ').textContent    = q.q;
-  const optsEl = document.getElementById('quizOpts');
-  if (optsEl) {
-    optsEl.style.display = 'block';
-    optsEl.innerHTML = q.opts.map((o,i) =>
-      `<button class="quiz-opt" onclick="answerQuiz(${i})">${o}</button>`
-    ).join('');
-  }
-  const quizCard = document.getElementById('quizGame');
-  if (quizCard) quizCard.style.display = 'block';
+  document.getElementById('quizQNum').textContent  = `${quizIdx+1}/10`;
+  document.getElementById('quizXpSoFar').textContent = quizXp;
+  document.getElementById('quizProgFill').style.width = ((quizIdx+1)/10*100) + '%';
+  document.getElementById('quizQ').textContent = q.q;
+  document.getElementById('quizOpts').innerHTML = q.opts.map((o,i) =>
+    `<button class="quiz-opt" onclick="answerQuiz(${i})">${o}</button>`
+  ).join('');
   quizTimeLeft  = 30;
   quizAnswered  = false;
   clearInterval(quizTimer);
@@ -1106,7 +830,6 @@ function updateQuizTimer() {
   document.getElementById('quizTimerNum').textContent = quizTimeLeft;
   document.getElementById('quizTimerFill').style.width = (quizTimeLeft / 30 * 100) + '%';
 }
-
 function quizTick() {
   quizTimeLeft--;
   updateQuizTimer();
@@ -1117,16 +840,15 @@ function answerQuiz(chosen) {
   if (quizAnswered) return;
   quizAnswered = true;
   clearInterval(quizTimer);
-  const q     = quizQ[quizIdx];
-  const opts  = document.getElementById('quizOpts').querySelectorAll('.quiz-opt');
-  const isOk  = chosen === q.ans;
-  if (isOk) { quizScore++; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523, 659, 784], 0.12); }
-  else { playSound(300, 'square', 0.3); }
-  opts.forEach((el, i) => {
-    if (i === q.ans)   el.classList.add('show-correct');
+  const q = quizQ[quizIdx];
+  const opts = document.getElementById('quizOpts').querySelectorAll('.quiz-opt');
+  const isOk = chosen === q.ans;
+  if (isOk) { quizScore++; quizXp += 2; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
+  else { playSound(300,'square',0.3); }
+  opts.forEach((el,i) => {
+    if (i === q.ans) el.classList.add('show-correct');
     if (i === chosen && !isOk) el.classList.add('wrong');
   });
-  quizResults.push({ q: q.q, correct: isOk, chosen, ans: q.ans, opts: q.opts });
   setTimeout(() => {
     quizIdx++;
     if (quizIdx < quizQ.length) showQuizQ();
@@ -1136,617 +858,812 @@ function answerQuiz(chosen) {
 
 async function finishQuiz() {
   clearInterval(quizTimer);
-  const xp = quizScore * 2;
-  document.getElementById('quizFinalScore').textContent = quizScore * 10;
-  document.getElementById('quizFinalXp').textContent    = `+${xp} ${L.xp_earned}`;
-  document.getElementById('quizResultRows').innerHTML   = quizResults.map(r =>
-    `<div class="quiz-result-row"><span>${r.q.slice(0,40)}…</span><span style="color:${r.correct ? 'var(--success)':'var(--danger)'}">${r.correct ? '✅' : '❌'}</span></div>`
-  ).join('');
   document.getElementById('quizGame').style.display   = 'none';
   document.getElementById('quizResult').style.display = 'block';
+  document.getElementById('quizFinalScore').textContent = quizScore * 10;
+  document.getElementById('quizFinalXp').textContent    = `+${quizXp} XP olindi`;
   tg?.HapticFeedback?.notificationOccurred('success');
-  const res = await saveScore('quiz', quizScore * 10, xp);
-  if (res) showXpModal('🧠', 'Code Quiz!', xp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
+  const res = await saveScore('quiz', quizScore * 10, quizXp);
+  if (res) showXpModal('🧠', 'Dasturlash Testi!', quizXp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   2048
-══════════════════════════════════════════════════════════════════════ */
-let board2048=[], score2048=0, best2048=0, g2048Over=false;
-let t2048X0=0, t2048Y0=0;
-
-function init2048() {
-  if (checkDailyLimit('2048')) { showLimitModal('2048'); return; }
-  recordPlay('2048').catch(()=>{});
-  g2048Over = false; score2048 = 0;
-  board2048 = Array(4).fill(null).map(() => Array(4).fill(0));
-  document.getElementById('g2048Overlay').style.display = 'none';
-  addTile2048(); addTile2048();
-  render2048();
-}
-
-function addTile2048() {
-  const empty = [];
-  board2048.forEach((r,i) => r.forEach((v,j) => { if (!v) empty.push([i,j]); }));
-  if (!empty.length) return;
-  const [r,c] = empty[Math.floor(Math.random()*empty.length)];
-  board2048[r][c] = Math.random() < .9 ? 2 : 4;
-}
-
-function render2048() {
-  const el = document.getElementById('board2048');
-  el.innerHTML = board2048.flat().map(v =>
-    `<div class="g2048-cell" data-val="${v||''}">${v||''}</div>`
-  ).join('');
-  document.getElementById('s2048Score').textContent = score2048;
-  document.getElementById('s2048Best').textContent  = best2048;
-  const max = Math.max(...board2048.flat());
-  document.getElementById('s2048Max').textContent  = max;
-  if (max >= best2048) best2048 = max;
-}
-
-function slide2048(row) {
-  const r = row.filter(v => v);
-  const res = []; let merged = false;
-  for (let i = 0; i < r.length; i++) {
-    if (!merged && r[i+1] === r[i]) { res.push(r[i]*2); score2048 += r[i]*2; i++; merged = true; playSound(600, 'sine', 0.1); }
-    else { res.push(r[i]); merged = false; }
-  }
-  while (res.length < 4) res.push(0);
-  return res;
-}
-
-function move2048(dir) {
-  if (g2048Over) return;
-  const prev = JSON.stringify(board2048);
-  let b = board2048;
-  if (dir==='left')  b = b.map(r => slide2048(r));
-  if (dir==='right') b = b.map(r => slide2048([...r].reverse()).reverse());
-  if (dir==='up')    { b = transpose2048(b); b = b.map(r => slide2048(r)); b = transpose2048(b); }
-  if (dir==='down')  { b = transpose2048(b); b = b.map(r => slide2048([...r].reverse()).reverse()); b = transpose2048(b); }
-  board2048 = b;
-  if (JSON.stringify(board2048) !== prev) addTile2048();
-  render2048();
-  // Check 2048 milestone
-  const max = Math.max(...board2048.flat());
-  if (max === 2048) {
-    toast(L.game_over_2048_msg);
-    saveScore('2048', score2048, 30).then(r => { if (r) showXpModal('🎲', '2048!', 30, r.new_xp || 0, 'Lv.' + (r.new_level || 1), 0, 0); });
-  }
-  // Game over check
-  if (!hasMove2048()) {
-    g2048Over = true;
-    document.getElementById('g2048OverlaySub').textContent = L.game_over_sub || 'Oyin tugadi';
-    document.getElementById('g2048OverlayScore').textContent = (L.score || 'Ball') + ': ' + score2048;
-    document.getElementById('g2048Overlay').style.display = 'flex';
-    tg?.HapticFeedback?.notificationOccurred('error');
-    playSoundSeq([400, 350, 300, 200], 0.15);
-    saveScore('2048', score2048, 10).then(r => { if (r) showXpModal('🔢', 'Game Over!', 10, r.new_xp || 0, 'Lv.' + (r.new_level || 1), 0, 0); });
-  }
-}
-
-function transpose2048(b) { return b[0].map((_, i) => b.map(r => r[i])); }
-
-function hasMove2048() {
-  if (board2048.flat().includes(0)) return true;
-  for (let r=0;r<4;r++) for (let c=0;c<4;c++) {
-    if (c<3 && board2048[r][c]===board2048[r][c+1]) return true;
-    if (r<3 && board2048[r][c]===board2048[r+1][c]) return true;
-  }
-  return false;
-}
-
-function t2048Start(e) { t2048X0=e.touches[0].clientX; t2048Y0=e.touches[0].clientY; }
-function t2048End(e) {
-  const dx=e.changedTouches[0].clientX-t2048X0, dy=e.changedTouches[0].clientY-t2048Y0;
-  if (Math.abs(dx)<20 && Math.abs(dy)<20) return;
-  if (Math.abs(dx)>Math.abs(dy)) move2048(dx>0?'right':'left');
-  else move2048(dy>0?'down':'up');
-}
-
-document.addEventListener('keydown', e => {
-  if (currentPage !== 'g2048') return;
-  const map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down' };
-  if (map[e.key]) { e.preventDefault(); move2048(map[e.key]); }
-});
-
-/* ══════════════════════════════════════════════════════════════════════
-   MEMORY MATCH
-══════════════════════════════════════════════════════════════════════ */
-const MEM_EMOJIS = ['🐍','🌐','💾','🔧','⚡','🎯','🔍','🛡'];
-let memCards=[], memFlipped=[], memMatched=0, memMoves=0, memTimerInt=null, memSecs=0, memLocked=false;
-
-function initMemory() {
-  if (checkDailyLimit('memory')) { showLimitModal('memory'); return; }
-  recordPlay('memory').catch(()=>{});
-  clearInterval(memTimerInt);
-  memFlipped=[]; memMatched=0; memMoves=0; memSecs=0; memLocked=false;
-  const pairs = [...MEM_EMOJIS, ...MEM_EMOJIS].sort(() => Math.random()-.5);
-  memCards = pairs.map((em,i) => ({ id:i, em, flipped:false, matched:false }));
-  renderMemory();
-  memTimerInt = setInterval(() => {
-    memSecs++;
-    document.getElementById('memTimer').textContent = memSecs;
-  }, 1000);
-}
-
-function renderMemory() {
-  const el = document.getElementById('memBoard');
-  el.innerHTML = memCards.map((c,i) =>
-    `<div class="mem-card${c.flipped||c.matched?' flipped':''}${c.matched?' matched':''}" onclick="flipCard(${i})">
-      <span>${c.em}</span>
-    </div>`
-  ).join('');
-  document.getElementById('memMoves').textContent = memMoves;
-  document.getElementById('memPairs').textContent = memMatched + '/8';
-}
-
-async function flipCard(idx) {
-  if (memLocked || memCards[idx].flipped || memCards[idx].matched) return;
-  memCards[idx].flipped = true;
-  memFlipped.push(idx);
-  renderMemory();
-  if (memFlipped.length === 2) {
-    memMoves++;
-    memLocked = true;
-    const [a,b] = memFlipped;
-    if (memCards[a].em === memCards[b].em) {
-      memCards[a].matched = memCards[b].matched = true;
-      memMatched++;
-      memFlipped = []; memLocked = false;
-      renderMemory();
-      tg?.HapticFeedback?.impactOccurred('light');
-      if (memMatched === 8) {
-        clearInterval(memTimerInt);
-        toast(`${L.memory_done} ${memMoves} ${L.moves}, ${memSecs}s`);
-        const res = await saveScore('memory', memMoves, 15);
-        if (res) showXpModal('🃏', L.memory_done || 'Memory!', 15, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
-      }
-    } else {
-      setTimeout(() => {
-        memCards[a].flipped = memCards[b].flipped = false;
-        memFlipped = []; memLocked = false;
-        renderMemory();
-      }, 800);
-    }
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   CHESS (chess.js CDN — solo vs random AI)
-══════════════════════════════════════════════════════════════════════ */
-let chess=null, chessSelected=null, chessMoveCount=0, chessGameOver=false, chessFirstMove=true;
-
-function initChess() {
-  if (checkDailyLimit('chess')) { showLimitModal('chess'); return; }
-  recordPlay('chess').catch(()=>{});
-  chess = new Chess();
-  chessSelected  = null;
-  chessMoveCount = 0;
-  chessGameOver  = false;
-  chessFirstMove = true;
-  renderChess();
-  document.getElementById('chessMsg').textContent = L.chess_hint || 'Dona bosib boshlang ♟';
-  document.getElementById('chessStatus').textContent = L.your_turn || 'Sizning navbat';
-  document.getElementById('chessMoves').textContent = '0';
-}
-
-const PIECE_SYMBOLS = {
-  'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙',
-  'bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟',
-};
-
-function renderChess() {
-  const el = document.getElementById('chessBoard');
-  if (!chess) return;
-  const board = chess.board();
-  let html = '';
-  for (let r=7; r>=0; r--) {
-    for (let c=0; c<8; c++) {
-      const sq   = String.fromCharCode(97+c) + (r+1);
-      const p    = board[r][c];
-      const sym  = p ? (PIECE_SYMBOLS[p.color+p.type.toUpperCase()] || '?') : '';
-      const light= (r+c)%2===0;
-      const selCls = chessSelected === sq ? ' selected' : '';
-      const pieceHtml = sym ? `<span class="cp-${p.color}">${sym}</span>` : '';
-      html += `<div class="chess-cell ${light?'light':'dark'}${selCls}" onclick="chessClick('${sq}')">${pieceHtml}</div>`;
-    }
-  }
-  el.innerHTML = html;
-}
-
-function chessClick(sq) {
-  if (chessGameOver || chess.turn() !== 'w') return;
-  if (!chessSelected) {
-    const piece = chess.get(sq);
-    if (piece && piece.color === 'w') { chessSelected = sq; renderChess(); }
-  } else {
-    const moves = chess.moves({ square: chessSelected, verbose: true });
-    const mv    = moves.find(m => m.to === sq);
-    if (mv) {
-      const isCapture = !!chess.get(mv.to);
-      chess.move(mv);
-      chessMoveCount++;
-      chessSelected = null;
-      document.getElementById('chessMoves').textContent = chessMoveCount;
-      if (isCapture) playSound(200, 'sine', 0.2);
-      else playSound(400, 'sine', 0.08);
-      renderChess();
-      if (chess.game_over()) { endChess(); return; }
-      document.getElementById('chessStatus').textContent = L.ai_thinking || 'AI o\'ylayapti...';
-      document.getElementById('chessMsg').innerHTML = chessFirstMove
-        ? `<span class="chess-ai-thinking">⏳ ${L.ai_thinking_long || 'AI o\'ylayapti... (10 soniya)'}</span>`
-        : `<span class="chess-ai-thinking">${L.ai_thinking || 'AI o\'ylayapti...'}</span>`;
-      const delay = chessFirstMove ? 10000 : 800;
-      chessFirstMove = false;
-      setTimeout(aiMove, delay);
-    } else {
-      const piece = chess.get(sq);
-      chessSelected = (piece && piece.color === 'w') ? sq : null;
-      renderChess();
-    }
-  }
-}
-
-function aiMove() {
-  const moves = chess.moves();
-  if (!moves.length) { endChess(); return; }
-  // Random move (simple AI)
-  chess.move(moves[Math.floor(Math.random()*moves.length)]);
-  chessMoveCount++;
-  document.getElementById('chessMoves').textContent = chessMoveCount;
-  document.getElementById('chessStatus').textContent = L.your_turn || 'Sizning navbat';
-  document.getElementById('chessMsg').textContent = L.chess_hint || 'Dona bosib boshlang ♟';
-  renderChess();
-  if (chess.game_over()) endChess();
-}
-
-async function endChess() {
-  chessGameOver = true;
-  let msg, xp=0;
-  if (chess.in_checkmate()) {
-    if (chess.turn() === 'b') { msg = L.chess_won; xp = 20; tg?.HapticFeedback?.notificationOccurred('success'); }
-    else { msg = L.chess_lost; xp = 5; }
-  } else { msg = L.chess_draw; xp = 8; }
-  document.getElementById('chessMsg').textContent   = msg;
-  document.getElementById('chessStatus').textContent = L.finished;
-  toast(msg + ' +' + xp + ' XP');
-  const res = await saveScore('chess', xp===20?1:0, xp);
-  if (res) showXpModal('♟', msg, xp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   BLOCK BLAST GAME
-══════════════════════════════════════════════════════════════════════ */
-const BB_SIZE = 8, BB_CELL = 36;
-let bbBoard = [], bbScore = 0, bbPieces = [], bbDragPiece = null;
-
-const BB_PIECES = [
-  [[1,1],[1,1]], [[1,1,1]], [[1],[1],[1]], [[1,1,0],[0,1,1]],
-  [[0,1,1],[1,1,0]], [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]],
-  [[1,1,1],[0,1,0]], [[1,1,1,1]], [[1,1],[0,1],[0,1]],
+/* ─────────────────────────────────────────────────────────────────────
+   2. CSS DUEL
+───────────────────────────────────────────────────────────────────── */
+const CSS_DUEL_QUESTIONS = [
+  {
+    code: "div {\n  background: red;\n  width: 100px;\n  height: 100px;\n  border-radius: 50%;\n}",
+    q: "Bu CSS qanday element ko'rsatadi?",
+    opts: ["Qizil kvadrat","Qizil doira","Qizil uchburchak","Qizil chiziq"],
+    ans: 1
+  },
+  {
+    code: "p {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}",
+    q: "Flex konteyner ichidagi elementlar qaerda joylashadi?",
+    opts: ["Yuqori chap","Markazda (horizontal va vertikal)","Pastda","O'ng tomonda"],
+    ans: 1
+  },
+  {
+    code: ".box {\n  position: absolute;\n  top: 0;\n  right: 0;\n}",
+    q: "Bu element qayerda joylashadi?",
+    opts: ["Yuqori chap burchak","Yuqori o'ng burchak","Pastki chap","Markazda"],
+    ans: 1
+  },
+  {
+    code: "div {\n  opacity: 0;\n  visibility: hidden;\n}",
+    q: "Bu element qanday bo'ladi?",
+    opts: ["Ko'rinmaydi va joy egallaydi","Ko'rinmaydi va joy egallaMaydi","Ko'rinadi lekin bosilmaydi","O'chib ketadi"],
+    ans: 1
+  },
+  {
+    code: "span {\n  display: block;\n  width: 200px;\n}",
+    q: "span elementi odatda inline. display:block qo'shilganda nima bo'ladi?",
+    opts: ["Hech narsa o'zgarmaydi","Blok elementi kabi ishlaydi, width ishlaydi","width ishlaydi lekin yangi qatorga tushmaydi","Xato chiqadi"],
+    ans: 1
+  },
+  {
+    code: "div {\n  margin: 10px 20px;\n}",
+    q: "Bu margin shorthand nima anglatadi?",
+    opts: ["Hamma tomondan 10px","Yuqori/pastdan 10px, chap/o'ngdan 20px","Chap/o'ngdan 10px, yuqori/pastdan 20px","Faqat yuqoridan 10px"],
+    ans: 1
+  },
+  {
+    code: ".a { z-index: 1; }\n.b { z-index: 10; }",
+    q: "Qaysi element yuqorida (ustida) ko'rinadi?",
+    opts: [".a","  .b","Ikkalasi teng","z-index ishlamaydi"],
+    ans: 1
+  },
+  {
+    code: "body {\n  font-size: 16px;\n}\n.child {\n  font-size: 2em;\n}",
+    q: ".child elementi font-size qancha bo'ladi?",
+    opts: ["16px","32px","2px","8px"],
+    ans: 1
+  },
+  {
+    code: "div {\n  box-sizing: border-box;\n  width: 200px;\n  padding: 20px;\n  border: 5px solid;\n}",
+    q: "Elementning umumiy kengligi qancha?",
+    opts: ["250px","200px","170px","220px"],
+    ans: 1
+  },
+  {
+    code: "ul {\n  list-style: none;\n  padding: 0;\n  margin: 0;\n}",
+    q: "Bu CSS nima qiladi?",
+    opts: ["Ro'yxatni o'chiradi","Ro'yxat belgilarini va standart padding/margin ni olib tashlaydi","Faqat padding ni 0 qiladi","Hech narsa o'zgarmaydi"],
+    ans: 1
+  },
+  {
+    code: ".btn:hover {\n  background: blue;\n  transform: scale(1.1);\n}",
+    q: "Foydalanuvchi tugmachani sichqoncha bilan ustiga borganida nima bo'ladi?",
+    opts: ["Hech narsa","Fon ko'k bo'ladi va 10% kattalashadi","Faqat fon o'zgaradi","Element o'chadi"],
+    ans: 1
+  },
+  {
+    code: "@media (max-width: 768px) {\n  .sidebar {\n    display: none;\n  }\n}",
+    q: "Bu media query qachon ishlaydi?",
+    opts: ["Ekran 768px dan katta bo'lganda","Ekran 768px yoki kichik bo'lganda","Har doim","Faqat mobil qurilmalarda"],
+    ans: 1
+  },
+  {
+    code: "div {\n  transition: all 0.3s ease;\n}",
+    q: "Bu CSS nima qiladi?",
+    opts:["Hech narsa","Barcha CSS o'zgarishlarini 0.3 soniya davomida silliq animatsiya qiladi","Faqat rangni animatsiya qiladi","Element 0.3s da o'chadi"],
+    ans: 1
+  },
+  {
+    code: ".grid {\n  display: grid;\n  grid-template-columns: 1fr 2fr 1fr;\n}",
+    q: "Grid ustunlari nisbati qanday?",
+    opts: ["Teng 3 ta ustun","1:2:1 nisbatida 3 ta ustun","2 ta ustun","Faqat bitta ustun"],
+    ans: 1
+  },
+  {
+    code: "a {\n  text-decoration: none;\n  color: inherit;\n}",
+    q: "Bu stillar linkga nima qiladi?",
+    opts:["Linkni o'chiradi","Chiziqni va standart rangni (ko'k) olib tashlaydi, ota element rangini oladi","Faqat chiziqni olib tashlaydi","Link bosilmaydi"],
+    ans: 1
+  },
 ];
-const BB_COLORS = ['#FF5722','#2196F3','#4CAF50','#FF9800','#9C27B0','#00BCD4','#F44336','#8BC34A','#3F51B5','#FFEB3B'];
 
-function bbNewBoard() { return Array.from({length:BB_SIZE}, () => Array(BB_SIZE).fill(0)); }
-function bbGetPieces() {
-  bbPieces = Array.from({length:3}, () => ({
-    shape: BB_PIECES[Math.floor(Math.random()*BB_PIECES.length)],
-    color: BB_COLORS[Math.floor(Math.random()*BB_COLORS.length)]
-  }));
-  renderBBPieces();
+let cdQ=[], cdIdx=0, cdScore=0, cdTimer=null, cdTimeLeft=20, cdAnswered=false, cdXp=0;
+
+function startCssDuel() {
+  if (checkDailyLimit('css_duel')) { showLimitModal('css_duel'); return; }
+  recordPlay('css_duel').catch(()=>{});
+  cdScore=0; cdIdx=0; cdXp=0;
+  cdQ = [...CSS_DUEL_QUESTIONS].sort(() => Math.random()-.5).slice(0,10);
+  document.getElementById('cssDuelGame').style.display   = 'block';
+  document.getElementById('cssDuelResult').style.display = 'none';
+  showCssDuelQ();
 }
-function bbCanPlace(shape, row, col) {
-  return shape.every((r,ri) => r.every((c,ci) => !c||(row+ri<BB_SIZE&&col+ci<BB_SIZE&&row+ri>=0&&col+ci>=0&&!bbBoard[row+ri][col+ci])));
+
+function showCssDuelQ() {
+  const q = cdQ[cdIdx];
+  if (!q) return;
+  document.getElementById('cssDuelQNum').textContent    = `${cdIdx+1}/10`;
+  document.getElementById('cssDuelXpSoFar').textContent = cdXp;
+  document.getElementById('cssDuelProgFill').style.width = ((cdIdx+1)/10*100) + '%';
+  document.getElementById('cssDuelCode').textContent    = q.code;
+  document.getElementById('cssDuelOpts').innerHTML = q.opts.map((o,i) =>
+    `<button class="css-duel-opt" onclick="answerCssDuel(${i})">${o}</button>`
+  ).join('');
+  cdTimeLeft = 20; cdAnswered = false;
+  clearInterval(cdTimer);
+  cdTimer = setInterval(cdTick, 1000);
+  updateCdTimer();
 }
-function bbPlace(shape, row, col, color) {
-  shape.forEach((r,ri) => r.forEach((c,ci) => { if(c) bbBoard[row+ri][col+ci]=color; }));
-  playSound(350,'sine',0.1);
-  bbClearLines();
+
+function updateCdTimer() {
+  document.getElementById('cssDuelTimerNum').textContent = cdTimeLeft;
+  document.getElementById('cssDuelTimerFill').style.width = (cdTimeLeft/20*100) + '%';
 }
-function bbClearLines() {
-  let cleared=0;
-  for(let r=0;r<BB_SIZE;r++) if(bbBoard[r].every(c=>c)){bbBoard[r]=Array(BB_SIZE).fill(0);cleared++;}
-  for(let c=0;c<BB_SIZE;c++) if(bbBoard.every(r=>r[c])){bbBoard.forEach(r=>r[c]=0);cleared++;}
-  if(cleared>0){bbScore+=cleared*BB_SIZE*10;const el=document.getElementById('bbScore');if(el)el.textContent=bbScore;playSoundSeq([300,500,700,800],0.08);}
-  drawBBBoard();
+function cdTick() {
+  cdTimeLeft--;
+  updateCdTimer();
+  if (cdTimeLeft <= 0) answerCssDuel(-1);
 }
-function bbCanPlaceAnywhere(shape) {
-  for(let r=0;r<BB_SIZE;r++) for(let c=0;c<BB_SIZE;c++) if(bbCanPlace(shape,r,c)) return true;
-  return false;
+
+function answerCssDuel(chosen) {
+  if (cdAnswered) return;
+  cdAnswered = true;
+  clearInterval(cdTimer);
+  const q = cdQ[cdIdx];
+  const opts = document.getElementById('cssDuelOpts').querySelectorAll('.css-duel-opt');
+  const isOk = chosen === q.ans;
+  if (isOk) { cdScore++; cdXp += 3; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
+  else { playSound(300,'square',0.3); }
+  opts.forEach((el,i) => {
+    if (i === q.ans) el.classList.add('show-correct');
+    if (i === chosen && !isOk) el.classList.add('wrong');
+  });
+  setTimeout(() => {
+    cdIdx++;
+    if (cdIdx < cdQ.length) showCssDuelQ();
+    else finishCssDuel();
+  }, 800);
 }
-function bbCheckGameOver() { return bbPieces.every(p=>p&&!bbCanPlaceAnywhere(p.shape)); }
-function drawBBBoard() {
-  const canvas=document.getElementById('bbCanvas');
-  if(!canvas) return;
-  const ctx=canvas.getContext('2d');
-  ctx.fillStyle='#0d1a2a'; ctx.fillRect(0,0,canvas.width,canvas.height);
-  for(let r=0;r<BB_SIZE;r++) for(let c=0;c<BB_SIZE;c++) {
-    const x=c*BB_CELL,y=r*BB_CELL;
-    ctx.strokeStyle='#1e2a3a'; ctx.strokeRect(x+1,y+1,BB_CELL-2,BB_CELL-2);
-    if(bbBoard[r][c]){ctx.fillStyle=bbBoard[r][c];ctx.fillRect(x+2,y+2,BB_CELL-4,BB_CELL-4);}
+
+async function finishCssDuel() {
+  clearInterval(cdTimer);
+  document.getElementById('cssDuelGame').style.display   = 'none';
+  document.getElementById('cssDuelResult').style.display = 'block';
+  const finalScore = cdScore * 10;
+  document.getElementById('cssDuelFinalScore').textContent = finalScore;
+  document.getElementById('cssDuelFinalXp').textContent    = `+${cdXp} XP olindi`;
+  tg?.HapticFeedback?.notificationOccurred('success');
+  const res = await saveScore('css_duel', finalScore, cdXp);
+  if (res) showXpModal('🎨', 'CSS Duel!', cdXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   3. BUG HUNTER
+───────────────────────────────────────────────────────────────────── */
+const BUG_QUESTIONS = [
+  {
+    lines: [
+      "function sum(a, b) {",
+      "  return a - b;",
+      "}",
+      "console.log(sum(2, 3)); // 5 kutilmoqda"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: 'a - b' o'rniga 'a + b' bo'lishi kerak"
+  },
+  {
+    lines: [
+      "const arr = [1, 2, 3];",
+      "for (let i = 0; i <= arr.length; i++) {",
+      "  console.log(arr[i]);",
+      "}"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: '<=' o'rniga '<' bo'lishi kerak (out of bounds)"
+  },
+  {
+    lines: [
+      "function greet(name) {",
+      "  console.log('Salom, ' + Name);",
+      "}"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: 'Name' o'rniga 'name' (kichik harf) bo'lishi kerak"
+  },
+  {
+    lines: [
+      "let x = 5;",
+      "if (x = 10) {",
+      "  console.log('o\\'n');",
+      "}"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: 'x = 10' (tayinlash) o'rniga 'x === 10' (taqqoslash) bo'lishi kerak"
+  },
+  {
+    lines: [
+      "const user = { name: 'Ali' };",
+      "console.log(user.age.toFixed(2));"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: 'user.age' undefined, .toFixed() chaqirib bo'lmaydi"
+  },
+  {
+    lines: [
+      "async function fetchData() {",
+      "  const data = fetch('/api/data');",
+      "  return data.json();",
+      "}"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: 'fetch' oldida 'await' yo'q"
+  },
+  {
+    lines: [
+      "const numbers = [3, 1, 4, 1, 5];",
+      "numbers.sort();",
+      "console.log(numbers); // [1,1,3,4,5] kutilmoqda"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: sort() raqamlar uchun comparator talab qiladi: sort((a,b)=>a-b)"
+  },
+  {
+    lines: [
+      "function factorial(n) {",
+      "  if (n === 0) return 1;",
+      "  return n * factorial(n);",
+      "}"
+    ],
+    bugLine: 2,
+    explanation: "3-satr: 'factorial(n)' o'rniga 'factorial(n-1)' bo'lishi kerak"
+  },
+  {
+    lines: [
+      "const obj = {};",
+      "obj.hasOwnProperty = function() { return false; };",
+      "console.log(obj.hasOwnProperty('x')); // true kutilmoqda"
+    ],
+    bugLine: 1,
+    explanation: "2-satr: obj.hasOwnProperty ni qayta yozish — xavfli va noto'g'ri"
+  },
+  {
+    lines: [
+      "let count = 0;",
+      "setTimeout(function() {",
+      "  count++;",
+      "}, 0);",
+      "console.log(count); // 1 kutilmoqda"
+    ],
+    bugLine: 4,
+    explanation: "5-satr: setTimeout asinxron, console.log 0 chiqaradi, 1 emas"
+  },
+  {
+    lines: [
+      "const items = ['a','b','c'];",
+      "items.forEach(function(item, index) {",
+      "  if (index == 1) items.splice(index, 1);",
+      "});"
+    ],
+    bugLine: 2,
+    explanation: "3-satr: forEach ichida splice — massiv o'lchami o'zgaradi, 'c' o'tkazib yuboriladi"
+  },
+  {
+    lines: [
+      "function double(arr) {",
+      "  return arr.map(x => x * 2);",
+      "}",
+      "const result = double;",
+      "console.log(result([1,2,3]));"
+    ],
+    bugLine: 3,
+    explanation: "4-satr: 'double' o'rniga 'double([1,2,3])' — funksiya chaqirilmagan"
+  },
+];
+
+let bhQ=[], bhIdx=0, bhScore=0, bhTimer=null, bhTimeLeft=30, bhAnswered=false, bhXp=0;
+
+function startBugHunter() {
+  if (checkDailyLimit('bug_hunter')) { showLimitModal('bug_hunter'); return; }
+  recordPlay('bug_hunter').catch(()=>{});
+  bhScore=0; bhIdx=0; bhXp=0;
+  bhQ = [...BUG_QUESTIONS].sort(() => Math.random()-.5).slice(0,8);
+  document.getElementById('bugHunterGame').style.display   = 'block';
+  document.getElementById('bugHunterResult').style.display = 'none';
+  showBugQ();
+}
+
+function showBugQ() {
+  const q = bhQ[bhIdx];
+  if (!q) return;
+  document.getElementById('bugQNum').textContent    = `${bhIdx+1}/8`;
+  document.getElementById('bugXpSoFar').textContent  = bhXp;
+  document.getElementById('bugProgFill').style.width = ((bhIdx+1)/8*100) + '%';
+  // Render code with line numbers
+  document.getElementById('bugCode').innerHTML = q.lines.map((line,i) =>
+    `<span class="code-line"><span class="code-line-num">${i+1}</span>${escHtml(line)}</span>`
+  ).join('\n');
+  // Render line choice buttons
+  document.getElementById('bugOpts').innerHTML = q.lines.map((line,i) =>
+    `<button class="bug-line-btn" onclick="answerBug(${i})"><span style="color:#4a6080;margin-right:8px;">${i+1}.</span> ${escHtml(line.trim().slice(0,60))}${line.trim().length>60?'…':''}</button>`
+  ).join('');
+  bhTimeLeft = 30; bhAnswered = false;
+  clearInterval(bhTimer);
+  bhTimer = setInterval(bhTick, 1000);
+  updateBhTimer();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function updateBhTimer() {
+  document.getElementById('bugTimerNum').textContent = bhTimeLeft;
+  document.getElementById('bugTimerFill').style.width = (bhTimeLeft/30*100) + '%';
+}
+function bhTick() {
+  bhTimeLeft--;
+  updateBhTimer();
+  if (bhTimeLeft <= 0) answerBug(-1);
+}
+
+function answerBug(lineIdx) {
+  if (bhAnswered) return;
+  bhAnswered = true;
+  clearInterval(bhTimer);
+  const q = bhQ[bhIdx];
+  const opts = document.getElementById('bugOpts').querySelectorAll('.bug-line-btn');
+  const isOk = lineIdx === q.bugLine;
+  if (isOk) { bhScore++; bhXp += 5; tg?.HapticFeedback?.impactOccurred('medium'); playSoundSeq([523,659,784],0.12); }
+  else { playSound(300,'square',0.3); }
+  opts.forEach((el,i) => {
+    if (i === q.bugLine) el.classList.add('correct');
+    if (i === lineIdx && !isOk) el.classList.add('wrong');
+  });
+  // Highlight bug line in code box
+  const codeLines = document.getElementById('bugCode').querySelectorAll('.code-line');
+  if (codeLines[q.bugLine]) codeLines[q.bugLine].classList.add('bug-line');
+  // Show explanation
+  const expEl = document.createElement('div');
+  expEl.style.cssText = 'font-size:12px;color:#7eb8f7;padding:8px 10px;background:rgba(82,136,193,.1);border-radius:8px;margin-top:8px;';
+  expEl.textContent = q.explanation;
+  document.getElementById('bugOpts').appendChild(expEl);
+  setTimeout(() => {
+    bhIdx++;
+    if (bhIdx < bhQ.length) showBugQ();
+    else finishBugHunter();
+  }, 1200);
+}
+
+async function finishBugHunter() {
+  clearInterval(bhTimer);
+  document.getElementById('bugHunterGame').style.display   = 'none';
+  document.getElementById('bugHunterResult').style.display = 'block';
+  const finalScore = bhScore * 10;
+  document.getElementById('bugFinalScore').textContent = finalScore;
+  document.getElementById('bugFinalXp').textContent    = `+${bhXp} XP olindi`;
+  tg?.HapticFeedback?.notificationOccurred('success');
+  const res = await saveScore('bug_hunter', finalScore, bhXp);
+  if (res) showXpModal('🐛', 'Bug Hunter!', bhXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   4. CODE ORDER
+───────────────────────────────────────────────────────────────────── */
+const CODE_ORDER_PUZZLES = [
+  {
+    desc: "JavaScript: Massiv elementlari yig'indisini hisoblash funksiyasi",
+    lines: [
+      "function sum(arr) {",
+      "  let total = 0;",
+      "  for (let i = 0; i < arr.length; i++) {",
+      "    total += arr[i];",
+      "  }",
+      "  return total;",
+      "}"
+    ]
+  },
+  {
+    desc: "JavaScript: Promisega asoslangan kechiktirish funksiyasi",
+    lines: [
+      "function delay(ms) {",
+      "  return new Promise((resolve) => {",
+      "    setTimeout(resolve, ms);",
+      "  });",
+      "}"
+    ]
+  },
+  {
+    desc: "JavaScript: Massivdan takrorlanuvchi elementlarni olib tashlash",
+    lines: [
+      "function unique(arr) {",
+      "  const seen = new Set();",
+      "  return arr.filter((item) => {",
+      "    if (seen.has(item)) return false;",
+      "    seen.add(item);",
+      "    return true;",
+      "  });",
+      "}"
+    ]
+  },
+  {
+    desc: "JavaScript: Ob'ektlarni chuqur nusxalash",
+    lines: [
+      "function deepClone(obj) {",
+      "  if (obj === null || typeof obj !== 'object') {",
+      "    return obj;",
+      "  }",
+      "  return JSON.parse(JSON.stringify(obj));",
+      "}"
+    ]
+  },
+  {
+    desc: "HTML: Asosiy sahifa strukturasi",
+    lines: [
+      "<!DOCTYPE html>",
+      "<html lang=\"uz\">",
+      "<head>",
+      "  <meta charset=\"UTF-8\">",
+      "  <title>Mening sahifam</title>",
+      "</head>",
+      "<body>",
+      "  <h1>Salom, dunyo!</h1>",
+      "</body>",
+      "</html>"
+    ]
+  },
+  {
+    desc: "JavaScript: Async/await bilan API dan ma'lumot olish",
+    lines: [
+      "async function getData(url) {",
+      "  try {",
+      "    const response = await fetch(url);",
+      "    const data = await response.json();",
+      "    return data;",
+      "  } catch (error) {",
+      "    console.error(error);",
+      "  }",
+      "}"
+    ]
+  },
+  {
+    desc: "JavaScript: Binary search algoritmi",
+    lines: [
+      "function binarySearch(arr, target) {",
+      "  let left = 0, right = arr.length - 1;",
+      "  while (left <= right) {",
+      "    const mid = Math.floor((left + right) / 2);",
+      "    if (arr[mid] === target) return mid;",
+      "    if (arr[mid] < target) left = mid + 1;",
+      "    else right = mid - 1;",
+      "  }",
+      "  return -1;",
+      "}"
+    ]
+  },
+  {
+    desc: "JavaScript: Debounce funksiyasi",
+    lines: [
+      "function debounce(fn, delay) {",
+      "  let timer;",
+      "  return function(...args) {",
+      "    clearTimeout(timer);",
+      "    timer = setTimeout(() => fn.apply(this, args), delay);",
+      "  };",
+      "}"
+    ]
+  },
+];
+
+let coPuzzle=null, coLines=[], coDragIdx=null, coScore=0, coPuzzleIdx=0, coXp=0;
+let coPuzzles=[];
+
+function startCodeOrder() {
+  if (checkDailyLimit('code_order')) { showLimitModal('code_order'); return; }
+  recordPlay('code_order').catch(()=>{});
+  coScore=0; coPuzzleIdx=0; coXp=0;
+  coPuzzles = [...CODE_ORDER_PUZZLES].sort(() => Math.random()-.5).slice(0,6);
+  document.getElementById('codeOrderGame').style.display   = 'block';
+  document.getElementById('codeOrderResult').style.display = 'none';
+  showCodeOrderPuzzle();
+}
+
+function showCodeOrderPuzzle() {
+  coPuzzle = coPuzzles[coPuzzleIdx];
+  if (!coPuzzle) return;
+  document.getElementById('coQNum').textContent    = `${coPuzzleIdx+1}/6`;
+  document.getElementById('coXpSoFar').textContent  = coXp;
+  document.getElementById('coProgFill').style.width = ((coPuzzleIdx+1)/6*100) + '%';
+  document.getElementById('coTaskDesc').textContent = coPuzzle.desc;
+  // Shuffle lines
+  coLines = [...coPuzzle.lines].sort(() => Math.random() - .5);
+  renderCoLines();
+}
+
+function renderCoLines() {
+  const el = document.getElementById('coLines');
+  el.innerHTML = coLines.map((line,i) =>
+    `<div class="code-order-line" draggable="true"
+      ondragstart="coDragStart(event,${i})"
+      ondragover="coDragOver(event,${i})"
+      ondrop="coDrop(event,${i})"
+      ontouchstart="coTouchStart(event,${i})"
+      ontouchend="coTouchEnd(event,${i})"
+      data-idx="${i}">${escHtml(line)}</div>`
+  ).join('');
+}
+
+let _coTouchSrc=null;
+function coDragStart(e,idx){ coDragIdx=idx; e.currentTarget.classList.add('dragging'); }
+function coDragOver(e,idx){ e.preventDefault(); }
+function coDrop(e,idx){
+  e.preventDefault();
+  if (coDragIdx===null || coDragIdx===idx) { coDragIdx=null; return; }
+  const tmp = coLines[coDragIdx];
+  coLines[coDragIdx] = coLines[idx];
+  coLines[idx] = tmp;
+  coDragIdx = null;
+  renderCoLines();
+}
+function coTouchStart(e,idx){ _coTouchSrc=idx; }
+function coTouchEnd(e,idx){
+  if (_coTouchSrc===null || _coTouchSrc===idx) { _coTouchSrc=null; return; }
+  const tmp = coLines[_coTouchSrc];
+  coLines[_coTouchSrc] = coLines[idx];
+  coLines[idx] = tmp;
+  _coTouchSrc = null;
+  renderCoLines();
+}
+
+function checkCodeOrder() {
+  const correct = coPuzzle.lines;
+  let allOk = true;
+  const lineEls = document.getElementById('coLines').querySelectorAll('.code-order-line');
+  lineEls.forEach((el,i) => {
+    const ok = coLines[i] === correct[i];
+    el.classList.toggle('correct-pos', ok);
+    el.classList.toggle('wrong-pos', !ok);
+    if (!ok) allOk = false;
+  });
+  if (allOk) {
+    coScore++; coXp += 5;
+    playSoundSeq([523,659,784,880],0.1);
+    tg?.HapticFeedback?.notificationOccurred('success');
+    setTimeout(() => {
+      coPuzzleIdx++;
+      if (coPuzzleIdx < coPuzzles.length) showCodeOrderPuzzle();
+      else finishCodeOrder();
+    }, 800);
+  } else {
+    playSound(300,'square',0.3);
+    tg?.HapticFeedback?.notificationOccurred('error');
+    // Show hint after 1.5s
+    setTimeout(() => {
+      coLines = [...coPuzzle.lines];
+      renderCoLines();
+    }, 1500);
   }
 }
-function renderBBPieces() {
-  const el=document.getElementById('bbPieces'); if(!el) return;
-  el.innerHTML=bbPieces.map((p,i)=>{
-    if(!p) return '<div style="width:80px;height:80px;"></div>';
-    const cs=Math.min(20,Math.floor(70/Math.max(p.shape.length,p.shape[0].length)));
-    return `<div id="bbPiece_${i}" draggable="true" style="cursor:grab;padding:8px;background:#1e2a3a;border-radius:8px;touch-action:none;"
-      ondragstart="bbDragStart(event,${i})" ontouchstart="bbTouchStart(event,${i})" ontouchmove="bbTouchMove(event)" ontouchend="bbTouchEnd(event)">
-      ${p.shape.map(row=>`<div style="display:flex;">${row.map(c=>`<div style="width:${cs}px;height:${cs}px;margin:1px;background:${c?p.color:'transparent'};border-radius:2px;"></div>`).join('')}</div>`).join('')}
-    </div>`;
-  }).join('');
-  const canvas=document.getElementById('bbCanvas');
-  if(canvas){canvas.ondragover=e=>{e.preventDefault();bbHighlightDrop(e);};canvas.ondrop=e=>{e.preventDefault();bbDoDrop(e);};}
-}
-function bbDragStart(e,idx){bbDragPiece=idx;e.dataTransfer.setData('text','bb');}
-let _bbTouchPiece=null;
-function bbTouchStart(e,idx){_bbTouchPiece=idx;e.preventDefault();}
-function bbTouchMove(e){
-  e.preventDefault();
-  const touch=e.touches[0],canvas=document.getElementById('bbCanvas');
-  if(!canvas||_bbTouchPiece===null) return;
-  const rect=canvas.getBoundingClientRect();
-  bbHighlightBoard(Math.floor((touch.clientY-rect.top)/BB_CELL),Math.floor((touch.clientX-rect.left)/BB_CELL),bbPieces[_bbTouchPiece]?.shape);
-}
-function bbTouchEnd(e){
-  const touch=e.changedTouches[0],canvas=document.getElementById('bbCanvas');
-  if(!canvas||_bbTouchPiece===null) return;
-  const rect=canvas.getBoundingClientRect();
-  bbDropAt(Math.floor((touch.clientY-rect.top)/BB_CELL),Math.floor((touch.clientX-rect.left)/BB_CELL),_bbTouchPiece);
-  _bbTouchPiece=null; drawBBBoard();
-}
-function bbHighlightDrop(e){
-  if(bbDragPiece===null) return;
-  const canvas=document.getElementById('bbCanvas'),rect=canvas.getBoundingClientRect();
-  bbHighlightBoard(Math.floor((e.clientY-rect.top)/BB_CELL),Math.floor((e.clientX-rect.left)/BB_CELL),bbPieces[bbDragPiece]?.shape);
-}
-function bbHighlightBoard(row,col,shape){
-  drawBBBoard(); if(!shape) return;
-  const ctx=document.getElementById('bbCanvas').getContext('2d'),canPlace=bbCanPlace(shape,row,col);
-  ctx.globalAlpha=0.5;
-  shape.forEach((r,ri)=>r.forEach((c,ci)=>{if(c){ctx.fillStyle=canPlace?'#4CAF50':'#f44336';ctx.fillRect((col+ci)*BB_CELL+2,(row+ri)*BB_CELL+2,BB_CELL-4,BB_CELL-4);}}));
-  ctx.globalAlpha=1;
-}
-function bbDoDrop(e){
-  if(bbDragPiece===null) return;
-  const canvas=document.getElementById('bbCanvas'),rect=canvas.getBoundingClientRect();
-  bbDropAt(Math.floor((e.clientY-rect.top)/BB_CELL),Math.floor((e.clientX-rect.left)/BB_CELL),bbDragPiece);
-  bbDragPiece=null; drawBBBoard();
-}
-function bbDropAt(row,col,pieceIdx){
-  const p=bbPieces[pieceIdx];
-  if(!p||!bbCanPlace(p.shape,row,col)) return;
-  bbPlace(p.shape,row,col,p.color);
-  bbPieces[pieceIdx]=null;
-  if(bbPieces.every(p=>!p)) bbGetPieces();
-  renderBBPieces();
-  if(bbCheckGameOver()) bbEndGame();
-}
-async function bbEndGame(){
-  const xp=bbScore>=500?30:bbScore>=200?20:bbScore>=50?15:10;
-  const el=document.getElementById('bbFinalScore'); if(el) el.textContent=bbScore;
-  const over=document.getElementById('bbGameOver'); if(over) over.style.display='flex';
-  playSoundSeq([400,350,300,200],0.15);
-  const initData=window.Telegram?.WebApp?.initData||'';
-  try{
-    const r=await fetch('/api/game/score',{method:'POST',headers:{'Content-Type':'application/json','X-Init-Data':initData},body:JSON.stringify({game_type:'block_blast',score:bbScore,xp_earned:xp})});
-    const d=await r.json();
-    showXpModal('🎮','Block Blast!',xp,d.new_xp||0,'Lv.'+(d.new_level||1),0,0);
-  }catch(e){}
-}
-function startBlockBlastGame(){
-  bbBoard=bbNewBoard(); bbScore=0;
-  const sc=document.getElementById('bbScore'); if(sc) sc.textContent='0';
-  const over=document.getElementById('bbGameOver'); if(over) over.style.display='none';
-  bbGetPieces(); drawBBBoard();
-}
-async function startBlockBlast(){
-  if(checkDailyLimit('block_blast')){showLimitModal('block_blast');return;}
-  await recordPlay('block_blast');
-  updateGameCardBadges();
-  const page=document.getElementById('blockBlastPage'); if(!page) return;
-  page.style.display='block';
-  const canvas=document.getElementById('bbCanvas');
-  canvas.width=BB_SIZE*BB_CELL; canvas.height=BB_SIZE*BB_CELL;
-  startBlockBlastGame();
-}
-function closeBlockBlast(){const page=document.getElementById('blockBlastPage');if(page)page.style.display='none';}
 
-/* ══════════════════════════════════════════════════════════════════════
-   MULTIPLAYER TYPING RACE
-══════════════════════════════════════════════════════════════════════ */
-let myRoomId=null, raceText='', racePollTimer=null, raceTimerInt=null;
-let raceTimeLeft=60, raceMyProgress=0, raceFinished=false, raceMyPlayerId=null;
-
-function showMultiLobby() {
-  document.getElementById('multiLobby').style.display  = '';
-  document.getElementById('multiWaiting').style.display = 'none';
-  document.getElementById('multiGame').style.display   = 'none';
-  clearInterval(racePollTimer);
-  clearInterval(raceTimerInt);
-  myRoomId = null;
+async function finishCodeOrder() {
+  document.getElementById('codeOrderGame').style.display   = 'none';
+  document.getElementById('codeOrderResult').style.display = 'block';
+  const finalScore = coScore * 10;
+  document.getElementById('coFinalScore').textContent = finalScore;
+  document.getElementById('coFinalXp').textContent    = `+${coXp} XP olindi`;
+  tg?.HapticFeedback?.notificationOccurred('success');
+  const res = await saveScore('code_order', finalScore, coXp);
+  if (res) showXpModal('🔀', 'Code Order!', coXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
 }
 
-async function loadRooms() {
-  const el = document.getElementById('roomsList');
-  el.innerHTML = '<div class="spinner"></div>';
-  try {
-    const data = await api('/game/rooms?type=typing_race');
-    if (!data.rooms.length) {
-      el.innerHTML = `<div style="color:var(--sub);text-align:center;padding:14px;font-size:13px">${L.no_rooms}</div>`;
-      return;
-    }
-    el.innerHTML = data.rooms.map(r =>
-      `<div class="room-card">
-        <div class="room-av">${r.player1_name.charAt(0).toUpperCase()}</div>
-        <div><div class="room-name">${r.player1_name}</div><div class="room-sub">${L.waiting_race}</div></div>
-        <button class="room-join-btn" onclick="joinRoom(${r.id})">${L.join}</button>
-      </div>`
-    ).join('');
-  } catch { el.innerHTML = '<div style="color:var(--sub);text-align:center;padding:14px">⚠️</div>'; }
+/* ─────────────────────────────────────────────────────────────────────
+   5. TAG MATCH
+───────────────────────────────────────────────────────────────────── */
+const TAG_MATCH_QUESTIONS = [
+  {tag:"<div>",    q:"Bu teg qanday element yaratadi?",       opts:["Blok element (bo'linish)","Inline element","Jadval qatori","Forma elementi"],        ans:0},
+  {tag:"<span>",   q:"Bu teg qanday element yaratadi?",       opts:["Blok element","Inline element (satr ichida)","Ro'yxat elementi","Tasvirchi"],         ans:1},
+  {tag:"<a href>", q:"href atributi nima uchun?",             opts:["Surat manzili","Havola manzili (URL)","Sahifa sarlavhasi","CSS ulanish"],              ans:1},
+  {tag:"<input type='checkbox'>", q:"Bu input qanday ko'rinadi?", opts:["Matn maydoni","Belgilash katagini (checkbox)","Radio tugma","Ochiladigan ro'yxat"],ans:1},
+  {tag:"<meta charset='UTF-8'>", q:"Bu teg nima qiladi?",    opts:["Sahifa stilini belgilaydi","Sahifa belgilar kodlashini belgilaydi","Kalit so'zlar","Muallif"],ans:1},
+  {tag:"<script defer>",q:"defer atributi nima qiladi?",     opts:["Skriptni to'xtatadi","HTML yuklangandan keyin skriptni ishlatadi","Skriptni tezlashtiradi","Xatolarni bloklaydi"],ans:1},
+  {tag:"<picture>", q:"Bu teg nima uchun ishlatiladi?",      opts:["Audio reproduksiya","Responsive rasmlar (responsive images)","Video","Grafik chizish"],  ans:1},
+  {tag:"<datalist>",q:"Bu teg nima qiladi?",                 opts:["Ma'lumotlar jadval","Input uchun tavsiyalar ro'yxati","Qator guruhi","Fayllar ro'yxati"],ans:1},
+  {tag:"<details>", q:"Bu teg nima uchun?",                  opts:["Uslublar","Yig'iladigan/ochiluvchi kontent bloki","Jadval tafsilotlari","Forma yordami"],ans:1},
+  {tag:"<canvas>",  q:"Bu teg nima uchun?",                  opts:["Rasmlarni ko'rsatish","2D/3D grafika chizish uchun JavaScript bilan","Video ko'rsatish","Xarita ko'rsatish"],ans:1},
+  {tag:"<abbr title>",q:"title atributi bu tegda nima qiladi?", opts:["Sahifa sarlavhasi","Qisqartma to'liq matnini tooltip sifatida ko'rsatadi","CSS klassi","JavaScript funksiyasi"],ans:1},
+  {tag:"<fieldset>", q:"Bu teg nima uchun?",                 opts:["Matn guruhi","Forma elementlarini guruhlash va ramka bilan o'rash","Jadval guruhi","Sanavar"],ans:1},
+  {tag:"<time datetime>",q:"datetime atributi nima uchun?",  opts:["Ko'rsatish formati","Mashina o'qiydigan sana/vaqt formati (ISO 8601)","Zona","Til"],   ans:1},
+  {tag:"<output>",  q:"Bu teg nima uchun?",                  opts:["Fayl chiqishi","Hisoblash yoki foydalanuvchi amali natijasini ko'rsatish","Konsol","Debug"],ans:1},
+  {tag:"<template>",q:"Bu teg nima qiladi?",                 opts:["Boshqa sahifani yuklaydi","Render qilinmaydigan, JavaScript bilan ishlatish uchun HTML shabloni","Parametrlar","Stil shabloni"],ans:1},
+];
+
+let tmQ=[], tmIdx=0, tmScore=0, tmTimer=null, tmTimeLeft=25, tmAnswered=false, tmXp=0;
+
+function startTagMatch() {
+  if (checkDailyLimit('tag_match')) { showLimitModal('tag_match'); return; }
+  recordPlay('tag_match').catch(()=>{});
+  tmScore=0; tmIdx=0; tmXp=0;
+  tmQ = [...TAG_MATCH_QUESTIONS].sort(() => Math.random()-.5).slice(0,10);
+  document.getElementById('tagMatchGame').style.display   = 'block';
+  document.getElementById('tagMatchResult').style.display = 'none';
+  showTagQ();
 }
 
-async function createRoom() {
-  document.getElementById('createRoomBtn').disabled = true;
-  try {
-    const res = await api('/game/rooms', { method:'POST', body: JSON.stringify({ game_type:'typing_race' }) });
-    myRoomId        = res.room.id;
-    raceText        = res.room.text;
-    raceMyPlayerId  = me?.user_id;
-    document.getElementById('waitRoomId').textContent = myRoomId;
-    document.getElementById('multiLobby').style.display   = 'none';
-    document.getElementById('multiWaiting').style.display = '';
-    // Poll for player2
-    racePollTimer = setInterval(pollRoomStatus, 2000);
-  } catch(e) { toast('⚠️ ' + e.message); }
-  document.getElementById('createRoomBtn').disabled = false;
+function showTagQ() {
+  const q = tmQ[tmIdx];
+  if (!q) return;
+  document.getElementById('tmQNum').textContent    = `${tmIdx+1}/10`;
+  document.getElementById('tmXpSoFar').textContent  = tmXp;
+  document.getElementById('tmProgFill').style.width = ((tmIdx+1)/10*100) + '%';
+  document.getElementById('tmTagDisplay').textContent = q.tag;
+  document.getElementById('tmQ').textContent = q.q;
+  document.getElementById('tmOpts').innerHTML = q.opts.map((o,i) =>
+    `<button class="quiz-opt" onclick="answerTagMatch(${i})">${o}</button>`
+  ).join('');
+  tmTimeLeft = 25; tmAnswered = false;
+  clearInterval(tmTimer);
+  tmTimer = setInterval(tmTick, 1000);
+  updateTmTimer();
 }
 
-async function joinRoom(roomId) {
-  try {
-    const res = await api(`/game/rooms/${roomId}/join`, { method:'POST' });
-    myRoomId       = roomId;
-    raceText       = res.room.text;
-    raceMyPlayerId = me?.user_id;
-    startRaceGame(res.room);
-  } catch(e) { toast('⚠️ ' + (e.message || 'Xona band')); loadRooms(); }
+function updateTmTimer() {
+  document.getElementById('tmTimerNum').textContent = tmTimeLeft;
+  document.getElementById('tmTimerFill').style.width = (tmTimeLeft/25*100) + '%';
+}
+function tmTick() {
+  tmTimeLeft--;
+  updateTmTimer();
+  if (tmTimeLeft <= 0) answerTagMatch(-1);
 }
 
-function cancelRoom() {
-  clearInterval(racePollTimer);
-  showMultiLobby();
+function answerTagMatch(chosen) {
+  if (tmAnswered) return;
+  tmAnswered = true;
+  clearInterval(tmTimer);
+  const q = tmQ[tmIdx];
+  const opts = document.getElementById('tmOpts').querySelectorAll('.quiz-opt');
+  const isOk = chosen === q.ans;
+  if (isOk) { tmScore++; tmXp += 2; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
+  else { playSound(300,'square',0.3); }
+  opts.forEach((el,i) => {
+    if (i === q.ans) el.classList.add('show-correct');
+    if (i === chosen && !isOk) el.classList.add('wrong');
+  });
+  setTimeout(() => {
+    tmIdx++;
+    if (tmIdx < tmQ.length) showTagQ();
+    else finishTagMatch();
+  }, 800);
 }
 
-async function pollRoomStatus() {
-  if (!myRoomId) return;
-  try {
-    const room = await api(`/game/rooms/${myRoomId}`);
-    if (room.status === 'active') {
-      clearInterval(racePollTimer);
-      startRaceGame(room);
-    }
-  } catch {}
+async function finishTagMatch() {
+  clearInterval(tmTimer);
+  document.getElementById('tagMatchGame').style.display   = 'none';
+  document.getElementById('tagMatchResult').style.display = 'block';
+  const finalScore = tmScore * 10;
+  document.getElementById('tmFinalScore').textContent = finalScore;
+  document.getElementById('tmFinalXp').textContent    = `+${tmXp} XP olindi`;
+  tg?.HapticFeedback?.notificationOccurred('success');
+  const res = await saveScore('tag_match', finalScore, tmXp);
+  if (res) showXpModal('🏷', 'Tag Match!', tmXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
 }
 
-function startRaceGame(room) {
-  document.getElementById('multiLobby').style.display   = 'none';
-  document.getElementById('multiWaiting').style.display = 'none';
-  document.getElementById('multiGame').style.display    = '';
-  raceText       = room.text || raceText;
-  raceTimeLeft   = 60;
-  raceMyProgress = 0;
-  raceFinished   = false;
-  const isP1 = (me?.user_id === room.player1_id);
-  document.getElementById('raceP1Name').textContent = room.player1_name + (isP1 ? ' (Sen)':'');
-  document.getElementById('raceP2Name').textContent = (room.player2_name || '...') + (!isP1 ? ' (Sen)':'');
-  renderRaceText(0);
-  document.getElementById('raceInput').value = '';
-  document.getElementById('raceInput').disabled = false;
-  document.getElementById('raceStatus').textContent = 'Boshlang!';
-  setTimeout(() => document.getElementById('raceInput').focus(), 100);
-  // Timer
-  clearInterval(raceTimerInt);
-  raceTimerInt = setInterval(() => {
-    raceTimeLeft--;
-    document.getElementById('raceTimer').textContent = raceTimeLeft;
-    if (raceTimeLeft <= 0) endRace('time');
-  }, 1000);
-  // Poll opponent
-  clearInterval(racePollTimer);
-  racePollTimer = setInterval(pollRaceProgress, 1500);
+/* ─────────────────────────────────────────────────────────────────────
+   6. SELECTOR QUIZ
+───────────────────────────────────────────────────────────────────── */
+const SELECTOR_QUESTIONS = [
+  {sel:".btn",              q:"Bu selector qaysi elementni tanlaydi?",     opts:["id='btn' element","class='btn' element","btn tegi","Barcha button lar"],ans:1},
+  {sel:"#header",           q:"Bu selector nima tanlaydi?",                opts:["header tegidagi barcha","id='header' element","class='header'","head tegi"],ans:1},
+  {sel:"div > p",           q:"Bu selector qaysi elementni tanlaydi?",     opts:["div ichidagi barcha p","div ning to'g'ridan-to'g'ri farzand p lari","div dan oldingi p","div bilan p orasidagi"],ans:1},
+  {sel:"a:hover",           q:"Bu selector qachon ishlaydi?",              opts:["Sahifa yuklanganda","Sichqoncha a ustiga kelganda","a bosilganda","a fokus olganda"],ans:1},
+  {sel:"input[type='text']",q:"Bu selector nima tanlaydi?",                opts:["Barcha input lar","type='text' bo'lgan input lar","text klassi bo'lgan input","#text id li input"],ans:1},
+  {sel:"p:first-child",     q:"Bu selector nima tanlaydi?",                opts:["Birinchi p tegi","Ota elementning birinchi farzandi bo'lgan p","Oxirgi p","Faqat bitta p"],ans:1},
+  {sel:"h1 ~ p",            q:"Bu general sibling selector nima tanlaydi?",opts:["h1 ichidagi p","h1 dan keyin keluvchi barcha sibling p lar","h1 dan oldingi p","h1 ning ota elementi"],ans:1},
+  {sel:".container .item",  q:"Bu selector nima tanlaydi?",                opts:["Faqat to'g'ridan-to'g'ri farzand .item","container klassidagi barcha avlod .item lar","container va item bir elementda","#container #item"],ans:1},
+  {sel:"button:disabled",   q:"Bu selector nima tanlaydi?",                opts:["class='disabled' tugma","disabled atributi bo'lgan tugma","Bosilmagan tugma","aria-disabled tugma"],ans:1},
+  {sel:"li:nth-child(odd)", q:"Bu selector nima tanlaydi?",                opts:["Toq tartibli li elementlar (1,3,5...)","Juft tartibli li lar","Faqat birinchi li","Oxirgi li"],ans:0},
+  {sel:"::before",          q:"Bu pseudo-element nima qiladi?",            opts:["Elementdan oldin real HTML qo'shadi","Elementdan oldin CSS bilan kontent qo'shadi","Birinchi farzand","Before klasi"],ans:1},
+  {sel:"[data-type]",       q:"Bu attribute selector nima tanlaydi?",      opts:["type atributli elementlar","data-type atributi bo'lgan barcha elementlar","data klassi","type='data' elementlar"],ans:1},
+  {sel:"nav a:not(.active)",q:"Bu selector nima tanlaydi?",                opts:["nav ichidagi aktiv linklar","nav ichidagi active klassi bo'lmagan a lar","nav ning o'zi","a:active holatdagilar"],ans:1},
+  {sel:"*",                 q:"Universal selector nima tanlaydi?",         opts:["Barcha teglar","Faqat div lar","Faqat blok elementlar","Faqat HTML5 teglari"],ans:0},
+  {sel:".parent + .child",  q:"Bu adjacent sibling selector nima tanlaydi?",opts:[".parent ning farzandlari",".parent dan keyin darhol keluvchi .child sibling",".child ning .parent si","Ixtiyoriy .child"],ans:1},
+];
+
+let sqQ=[], sqIdx=0, sqScore=0, sqTimer=null, sqTimeLeft=25, sqAnswered=false, sqXp=0;
+
+function startSelectorQuiz() {
+  if (checkDailyLimit('selector_quiz')) { showLimitModal('selector_quiz'); return; }
+  recordPlay('selector_quiz').catch(()=>{});
+  sqScore=0; sqIdx=0; sqXp=0;
+  sqQ = [...SELECTOR_QUESTIONS].sort(() => Math.random()-.5).slice(0,10);
+  document.getElementById('selectorGame').style.display   = 'block';
+  document.getElementById('selectorResult').style.display = 'none';
+  showSqQ();
 }
 
-function renderRaceText(progress) {
-  const el = document.getElementById('raceText');
-  el.innerHTML = raceText.split('').map((ch,i) => {
-    const cls = i < progress ? 'correct' : i === progress ? 'current' : '';
-    return `<span class="typing-char ${cls}">${ch===' '?'&nbsp;':ch}</span>`;
-  }).join('');
+function showSqQ() {
+  const q = sqQ[sqIdx];
+  if (!q) return;
+  document.getElementById('sqQNum').textContent    = `${sqIdx+1}/10`;
+  document.getElementById('sqXpSoFar').textContent  = sqXp;
+  document.getElementById('sqProgFill').style.width = ((sqIdx+1)/10*100) + '%';
+  document.getElementById('sqSelectorDisplay').textContent = q.sel;
+  document.getElementById('sqQ').textContent = q.q;
+  document.getElementById('sqOpts').innerHTML = q.opts.map((o,i) =>
+    `<button class="quiz-opt" onclick="answerSq(${i})">${o}</button>`
+  ).join('');
+  sqTimeLeft = 25; sqAnswered = false;
+  clearInterval(sqTimer);
+  sqTimer = setInterval(sqTick, 1000);
+  updateSqTimer();
 }
 
-async function onRaceInput() {
-  if (raceFinished) return;
-  const val = document.getElementById('raceInput').value;
-  raceMyProgress = val.length;
-  renderRaceText(raceMyProgress);
-  const pct = Math.round(raceMyProgress / raceText.length * 100);
-  const isP1 = me?.user_id !== null;
-  // Update my bar
-  document.getElementById('raceP1Bar').style.width = pct + '%';
-  // Send progress
-  try {
-    const done = raceMyProgress >= raceText.length &&
-                 val === raceText.slice(0, raceMyProgress);
-    const res = await api(`/game/rooms/${myRoomId}/progress`, {
-      method:'POST',
-      body: JSON.stringify({ progress: raceMyProgress, finished: done }),
-    });
-    if (res.winner_id) endRace('finish', res.winner_id);
-  } catch {}
+function updateSqTimer() {
+  document.getElementById('sqTimerNum').textContent = sqTimeLeft;
+  document.getElementById('sqTimerFill').style.width = (sqTimeLeft/25*100) + '%';
+}
+function sqTick() {
+  sqTimeLeft--;
+  updateSqTimer();
+  if (sqTimeLeft <= 0) answerSq(-1);
 }
 
-async function pollRaceProgress() {
-  if (raceFinished || !myRoomId) return;
-  try {
-    const room = await api(`/game/rooms/${myRoomId}`);
-    const pct1 = Math.round(room.p1_progress / raceText.length * 100);
-    const pct2 = Math.round(room.p2_progress / raceText.length * 100);
-    document.getElementById('raceP1Bar').style.width = pct1 + '%';
-    document.getElementById('raceP2Bar').style.width = pct2 + '%';
-    if (room.winner_id) endRace('finish', room.winner_id);
-  } catch {}
+function answerSq(chosen) {
+  if (sqAnswered) return;
+  sqAnswered = true;
+  clearInterval(sqTimer);
+  const q = sqQ[sqIdx];
+  const opts = document.getElementById('sqOpts').querySelectorAll('.quiz-opt');
+  const isOk = chosen === q.ans;
+  if (isOk) { sqScore++; sqXp += 2; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
+  else { playSound(300,'square',0.3); }
+  opts.forEach((el,i) => {
+    if (i === q.ans) el.classList.add('show-correct');
+    if (i === chosen && !isOk) el.classList.add('wrong');
+  });
+  setTimeout(() => {
+    sqIdx++;
+    if (sqIdx < sqQ.length) showSqQ();
+    else finishSelectorQuiz();
+  }, 800);
 }
 
-function endRace(reason, winnerId) {
-  if (raceFinished) return;
-  raceFinished = true;
-  clearInterval(raceTimerInt);
-  clearInterval(racePollTimer);
-  document.getElementById('raceInput').disabled = true;
-  const isWinner = winnerId === me?.user_id;
-  const msg = reason === 'time' ? L.time_up : (isWinner ? L.race_won : L.race_lost);
-  document.getElementById('raceStatus').textContent = msg;
-  toast(msg + (isWinner ? ' +20 XP' : ' +5 XP'));
-  tg?.HapticFeedback?.notificationOccurred(isWinner ? 'success' : 'warning');
-  setTimeout(() => showMultiLobby(), 3000);
+async function finishSelectorQuiz() {
+  clearInterval(sqTimer);
+  document.getElementById('selectorGame').style.display   = 'none';
+  document.getElementById('selectorResult').style.display = 'block';
+  const finalScore = sqScore * 10;
+  document.getElementById('sqFinalScore').textContent = finalScore;
+  document.getElementById('sqFinalXp').textContent    = `+${sqXp} XP olindi`;
+  tg?.HapticFeedback?.notificationOccurred('success');
+  const res = await saveScore('selector_quiz', finalScore, sqXp);
+  if (res) showXpModal('🎯', 'Selector Quiz!', sqXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   PROFILE MODAL
-══════════════════════════════════════════════════════════════════════ */
+/* ── Profile Modal ── */
 async function openProfile(userId) {
   document.getElementById('profileModal').style.display = 'flex';
   document.getElementById('pmAvatar').textContent = '⏳';
-  document.getElementById('pmName').textContent = '...';
-  document.getElementById('pmGroup').textContent = '';
-  document.getElementById('pmGames').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('pmName').textContent   = '...';
+  document.getElementById('pmGames').innerHTML    = '<div class="spinner"></div>';
   try {
     const p = await api(`/student/profile/${userId}`);
     document.getElementById('pmAvatar').textContent = p.avatar_emoji || '👤';
     document.getElementById('pmName').textContent   = p.full_name + (p.is_me ? ' (Sen)' : '');
-    document.getElementById('pmGroup').textContent  = p.group_name + ' · ' + p.level_name;
+    document.getElementById('pmGroup').textContent  = (p.group_name||'') + ' · ' + (p.level_name||'');
     document.getElementById('pmXp').textContent     = p.xp;
     document.getElementById('pmLevel').textContent  = 'Lv.' + p.level;
-    document.getElementById('pmStreak').textContent = p.streak_days + '🔥';
-    document.getElementById('pmAttend').textContent = p.attend_count;
-    document.getElementById('pmHw').textContent     = p.hw_conf_count;
-    document.getElementById('pmRank').textContent   = '#' + (p.rank || '—');
+    document.getElementById('pmStreak').textContent = (p.streak_days||0) + '🔥';
     const best = p.game_best || {};
     const gamesHtml = [
-      ['⌨️ Typing', best.typing ? best.typing + ' WPM' : '—'],
-      ['🧠 Quiz',   best.quiz   ? best.quiz  + ' ball' : '—'],
-      ['🔢 2048',   best['2048'] ? best['2048'] + ' ball' : '—'],
-      ['🃏 Memory', best.memory ? best.memory + ' harakatda' : '—'],
-      ['♟ Chess',  best.chess  ? best.chess + ' g\'alaba' : '—'],
+      ['🧠 Test',      best.quiz          ? best.quiz + ' ball' : '—'],
+      ['🎨 CSS Duel',  best.css_duel      ? best.css_duel + ' ball' : '—'],
+      ['🐛 Bug Hunter',best.bug_hunter    ? best.bug_hunter + ' ball' : '—'],
+      ['🔀 Code Order',best.code_order    ? best.code_order + ' ball' : '—'],
+      ['🏷 Tag Match', best.tag_match     ? best.tag_match + ' ball' : '—'],
+      ['🎯 Selector',  best.selector_quiz ? best.selector_quiz + ' ball' : '—'],
     ].map(([n,v]) =>
       `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px"><span>${n}</span><span style="color:var(--gold);font-weight:800">${v}</span></div>`
     ).join('');
     document.getElementById('pmGames').innerHTML = gamesHtml;
   } catch(e) {
-    document.getElementById('pmName').textContent = '⚠️ Yuklanmadi';
-    document.getElementById('pmGames').innerHTML = '';
+    document.getElementById('pmName').textContent = 'Yuklanmadi';
+    document.getElementById('pmGames').innerHTML  = '';
   }
 }
 
@@ -1756,215 +1673,7 @@ function closeProfileModal(e) {
   }
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   LANGUAGE SYSTEM (UZ / RU)
-══════════════════════════════════════════════════════════════════════ */
-const STRINGS = {
-  uz: {
-    // Header & tabs
-    title: "🕹 O'yinlar",
-    tab_home: "Bosh", tab_typing: "Typing", tab_quiz: "Quiz",
-    tab_chess: "Shaxmat", tab_multi: "Race",
-    // Home
-    choose_game: "O'yinni tanlang",
-    my_records: "Mening rekordlarim",
-    no_records: "Rekordlar yuklanmadi",
-    // Game cards
-    typing_name: "Typing Speed", typing_desc: "Yozish tezligini o'lchaymiz — WPM",
-    quiz_name: "Code Quiz", quiz_desc: "Dasturlash savollari",
-    g2048_name: "2048", g2048_desc: "Klassik raqamlar o'yini",
-    memory_name: "Memory", memory_desc: "Karta juftlashtir",
-    chess_name: "Shaxmat", chess_desc: "Bot bilan o'ynash",
-    race_name: "Typing Race 🔥", race_desc: "2 o'yinchi — kim tez yozadi?",
-    xp_win: "G'alaba: +20 XP · Yutqazish: +5 XP",
-    // Stats labels
-    accuracy: "Aniqlik", time: "Vaqt", ball: "Ball", record: "Rekord",
-    max_tile: "Katak", moves: "Harakatlar", pairs: "Juftlar", seconds: "Soniya",
-    score: "Ball",
-    // Buttons
-    play_again: "Qayta o'ynash", new_game: "Yangi o'yin",
-    back: "← Orqaga", start: "Boshlash",
-    // Typing
-    typing_placeholder: "Yozishni boshlang...",
-    xp_earned: "XP olindi",
-    // Quiz
-    quiz_done: "Test yakunlandi!",
-    // Chess
-    chess_hint: "Dona bosib boshlang ♟",
-    your_turn: "Sizning navbat",
-    ai_thinking: "AI o'ylayapti...",
-    ai_thinking_long: "AI o'ylayapti... (10 soniya)",
-    chess_won: "🎉 Siz yutdingiz!",
-    chess_lost: "😔 AI yutdi. Qayta urinib ko'ring!",
-    chess_draw: "🤝 Durang!",
-    finished: "Tugadi",
-    // 2048
-    game_over_sub: "Oyin tugadi",
-    game_over_2048_msg: "🎉 2048! +30 XP",
-    // Memory
-    memory_done: "🎉 Bajarildi!",
-    // Multiplayer
-    open_rooms: "Ochiq xonalar",
-    create_room: "🎯 Xona yaratish",
-    refresh_rooms: "🔄 Xonalarni yangilash",
-    waiting_player: "O'yinchi kutilmoqda",
-    room_id: "Xona ID",
-    cancel: "Bekor qilish",
-    join: "Qo'shilish",
-    waiting_race: "Typing Race kutmoqda",
-    no_rooms: "Hozircha ochiq xona yo'q. Yangi yarating!",
-    // Errors
-    register_first: "Avval botda ro'yxatdan o'ting!",
-    level_up: "🎉 Daraja oshdi! Lv.",
-    time_up: "Vaqt tugadi!",
-    race_won: "🎉 Siz yutdingiz!",
-    race_lost: "😔 Raqib tezroq!",
-  },
-  ru: {
-    // Header & tabs
-    title: "🕹 Игры",
-    tab_home: "Главная", tab_typing: "Typing", tab_quiz: "Тест",
-    tab_chess: "Шахматы", tab_multi: "Гонка",
-    // Home
-    choose_game: "Выберите игру",
-    my_records: "Мои рекорды",
-    no_records: "Рекорды не загружены",
-    // Game cards
-    typing_name: "Typing Speed", typing_desc: "Измеряем скорость набора — WPM",
-    quiz_name: "Code Quiz", quiz_desc: "Вопросы по программированию",
-    g2048_name: "2048", g2048_desc: "Классическая числовая игра",
-    memory_name: "Память", memory_desc: "Найди пары карточек",
-    chess_name: "Шахматы", chess_desc: "Играть с ботом",
-    race_name: "Typing Race 🔥", race_desc: "2 игрока — кто быстрее?",
-    xp_win: "Победа: +20 XP · Поражение: +5 XP",
-    // Stats labels
-    accuracy: "Точность", time: "Время", ball: "Очки", record: "Рекорд",
-    max_tile: "Плитка", moves: "Ходы", pairs: "Пары", seconds: "Секунды",
-    score: "Очки",
-    // Buttons
-    play_again: "Играть снова", new_game: "Новая игра",
-    back: "← Назад", start: "Начать",
-    // Typing
-    typing_placeholder: "Начните вводить...",
-    xp_earned: "XP получено",
-    // Quiz
-    quiz_done: "Тест завершён!",
-    // Chess
-    chess_hint: "Нажмите на фигуру ♟",
-    your_turn: "Ваш ход",
-    ai_thinking: "ИИ думает...",
-    ai_thinking_long: "ИИ думает... (10 секунд)",
-    chess_won: "🎉 Вы победили!",
-    chess_lost: "😔 ИИ победил. Попробуйте снова!",
-    chess_draw: "🤝 Ничья!",
-    finished: "Завершено",
-    // 2048
-    game_over_sub: "Игра окончена",
-    game_over_2048_msg: "🎉 2048! +30 XP",
-    // Memory
-    memory_done: "🎉 Выполнено!",
-    // Multiplayer
-    open_rooms: "Открытые комнаты",
-    create_room: "🎯 Создать комнату",
-    refresh_rooms: "🔄 Обновить комнаты",
-    waiting_player: "Ожидаем игрока",
-    room_id: "ID комнаты",
-    cancel: "Отмена",
-    join: "Присоединиться",
-    waiting_race: "Typing Race ожидает",
-    no_rooms: "Нет открытых комнат. Создайте новую!",
-    // Errors
-    register_first: "Сначала зарегистрируйтесь в боте!",
-    level_up: "🎉 Уровень повышен! Lv.",
-    time_up: "Время вышло!",
-    race_won: "🎉 Вы победили!",
-    race_lost: "😔 Соперник быстрее!",
-  },
-};
-
-let gameLang = localStorage.getItem('gameLang') || 'uz';
-let L = STRINGS[gameLang];
-
-function setGameLang(l) {
-  gameLang = l;
-  L = STRINGS[l];
-  localStorage.setItem('gameLang', l);
-  applyLang();
-}
-
-function applyLang() {
-  // Header
-  const htEl = document.querySelector('.header-title');
-  if (htEl) htEl.textContent = L.title;
-  // Tab labels
-  const tabMap = { home: L.tab_home, typing: L.tab_typing, quiz: L.tab_quiz, chess: L.tab_chess, multi: L.tab_multi };
-  Object.entries(tabMap).forEach(([k,v]) => {
-    const el = document.querySelector(`#tab-${k} .tab-label`);
-    if (el) el.textContent = v;
-  });
-  // Lang button state
-  document.getElementById('gLangUz')?.classList.toggle('active', gameLang==='uz');
-  document.getElementById('gLangRu')?.classList.toggle('active', gameLang==='ru');
-  // data-t attributes
-  const tMap = {
-    accuracy:L.accuracy, time:L.time, ball:L.ball, record:L.record,
-    max_tile:L.max_tile, moves:L.moves, pairs:L.pairs, seconds:L.seconds,
-    score:L.score, play_again:L.play_again, new_game:L.new_game, back:L.back,
-    start:L.start,
-  };
-  document.querySelectorAll('[data-t]').forEach(el => {
-    const key = el.getAttribute('data-t');
-    if (tMap[key]) el.textContent = tMap[key];
-  });
-  // Game cards
-  const gMap = [
-    ['game-card-typing-name', L.typing_name], ['game-card-typing-desc', L.typing_desc],
-    ['game-card-quiz-name',   L.quiz_name],   ['game-card-quiz-desc',   L.quiz_desc],
-    ['game-card-2048-name',   L.g2048_name],  ['game-card-2048-desc',   L.g2048_desc],
-    ['game-card-mem-name',    L.memory_name], ['game-card-mem-desc',    L.memory_desc],
-    ['game-card-chess-name',  L.chess_name],  ['game-card-chess-desc',  L.chess_desc],
-    ['game-card-race-name',   L.race_name],   ['game-card-race-desc',   L.race_desc],
-    ['game-card-race-xp',     L.xp_win],
-  ];
-  gMap.forEach(([id,txt]) => { const el=document.getElementById(id); if(el) el.textContent=txt; });
-  // Section titles
-  document.querySelectorAll('[data-tsec]').forEach(el => {
-    const key = el.getAttribute('data-tsec');
-    const val = { choose_game:L.choose_game, my_records:L.my_records, open_rooms:L.open_rooms }[key];
-    if (val) el.textContent = val;
-  });
-  // Typing placeholder
-  document.getElementById('typInput')?.setAttribute('placeholder', L.typing_placeholder);
-  document.getElementById('raceInput')?.setAttribute('placeholder', L.typing_placeholder);
-  // Chess
-  if (!chessGameOver && chess) {
-    if (chess.turn() === 'w') {
-      document.getElementById('chessStatus').textContent = L.your_turn;
-      document.getElementById('chessMsg').textContent = L.chess_hint;
-    }
-  }
-  // Multiplayer buttons
-  const crBtn = document.getElementById('createRoomBtn');
-  if (crBtn) crBtn.textContent = L.create_room;
-  const rfBtn = document.getElementById('refreshRoomsBtn');
-  if (rfBtn) rfBtn.textContent = L.refresh_rooms;
-  const wpEl = document.getElementById('waitingPlayerText');
-  if (wpEl) wpEl.textContent = L.waiting_player;
-  const riEl = document.getElementById('roomIdLabel');
-  if (riEl) riEl.textContent = L.room_id;
-  const cnBtn = document.getElementById('cancelBtn');
-  if (cnBtn) cnBtn.textContent = L.cancel;
-  // Active lang button visual
-  document.getElementById('gLangUz')?.style && (document.getElementById('gLangUz').style.color = gameLang==='uz' ? 'var(--accent)' : 'var(--sub)');
-  document.getElementById('gLangRu')?.style && (document.getElementById('gLangRu').style.color = gameLang==='ru' ? 'var(--accent)' : 'var(--sub)');
-  // Quiz title
-  const qtEl = document.getElementById('quizDoneTitle');
-  if (qtEl) qtEl.textContent = L.quiz_done;
-  // Reload best scores with new language
-  if (me) loadBestScores();
-}
-
-/* ── Start ───────────────────────────────────────────────────────────── */
+/* ── Start ── */
 init();
 </script>
 </body>

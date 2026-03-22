@@ -6,6 +6,8 @@ import io
 import logging
 from datetime import datetime, timedelta
 
+import pytz
+
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
@@ -14,7 +16,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import BufferedInputFile, CallbackQuery, Message, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import ADMIN_IDS, SEND_HOUR, SEND_MINUTE
+from config import ADMIN_IDS, SEND_HOUR, SEND_MINUTE, TIMEZONE
 from credentials import MARS_GROUPS
 from database import AudienceType, DatabaseService
 from keyboards import kb_back_to_panel, kb_hw_groups
@@ -33,7 +35,8 @@ async def admin_stats(cb: CallbackQuery, db: DatabaseService) -> None:
         await cb.answer("❌", show_alert=True); return
 
     students  = await db.get_all_students()
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    # Asia/Tashkent vaqti bo'yicha bugungi sana (server UTC da ishlasa ham to'g'ri)
+    today_str = datetime.now(pytz.timezone(TIMEZONE)).strftime("%Y-%m-%d")
     att_today = await db.get_attendance_by_date(today_str)
 
     yes_ids  = {a.user_id for a in att_today if a.status == "yes"}
@@ -608,7 +611,16 @@ async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
         await cb.answer("❌", show_alert=True); return
 
-    inactive = await db.get_inactive_students(days=7)
+    all_inactive = await db.get_inactive_students(days=7)
+
+    # So'nggi 7 kunda ro'yxatdan o'tgan yangi o'quvchilarni chiqarib tashlaymiz
+    # (ular hali hech qachon kirmagan bo'lishi tabiiy — o'chirishga layoqatli emas)
+    # registered_at naive datetime saqlanadi, shu sababli tzinfo olib tashlanadi
+    cutoff = datetime.now(pytz.timezone(TIMEZONE)).replace(tzinfo=None) - timedelta(days=7)
+    inactive = [
+        s for s in all_inactive
+        if not (s.registered_at and s.registered_at > cutoff)
+    ]
 
     if not inactive:
         builder = InlineKeyboardBuilder()
@@ -626,7 +638,6 @@ async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
 
     builder = InlineKeyboardBuilder()
     for s in inactive[:20]:  # max 20 ta
-        tg = s.telegram_username or f"ID:{s.user_id}"
         last = s.last_active.strftime("%d.%m") if s.last_active else "Hech qachon"
         builder.row(InlineKeyboardButton(
             text=f"👤 {s.full_name} | {s.group_name} | {last}",

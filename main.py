@@ -1767,11 +1767,17 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         })
 
     async def api_game_leaderboard(request: web.Request) -> web.Response:
-        """O'yin bo'yicha global top-10. Student va admin-mini.html dan ham chaqiriladi."""
+        """O'yin bo'yicha global top-10. Student va admin-mini.html dan ham chaqiriladi.
+        Query params: game_type yoki type (ikkala nom ham qabul qilinadi)."""
         user_id = _mini_admin_auth(request) or _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        game_type = request.rel_url.query.get("type", "typing")
+        # game_type va type — ikkalasini ham qabul qilamiz
+        game_type = (
+            request.rel_url.query.get("game_type")
+            or request.rel_url.query.get("type")
+            or "quiz"
+        )
         rows = await db.get_game_global_scores(game_type, limit=10)
         return web.json_response({"leaders": rows})
 

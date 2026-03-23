@@ -1719,6 +1719,18 @@
   </div>
 </div>
 
+<!-- ── XP Reset Notice Modal ── -->
+<div id="xpResetModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#1a1a2e;border:2px solid #f39c12;border-radius:16px;padding:24px;max-width:380px;width:100%;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">⚠️</div>
+    <h2 id="xpResetModalTitle" style="color:#f39c12;font-size:18px;font-weight:800;margin-bottom:16px;line-height:1.4;"></h2>
+    <p id="xpResetModalMsg" style="color:#e0e0e0;font-size:14px;line-height:1.6;white-space:pre-line;margin-bottom:24px;text-align:left;"></p>
+    <button onclick="closeXpResetModal()" style="background:#f39c12;color:#000;border:none;border-radius:10px;padding:12px 24px;font-size:16px;font-weight:700;cursor:pointer;width:100%;-webkit-tap-highlight-color:transparent;">
+      Tushunarli, davom etaman 💪
+    </button>
+  </div>
+</div>
+
 <!-- ── Block Blast Game Page ── -->
 <div id="blockBlastPage" style="display:none;position:fixed;inset:0;background:#0a0f1a;z-index:200;overflow:auto;">
   <div style="display:flex;align-items:center;padding:16px;gap:12px;">
@@ -1789,6 +1801,26 @@ function showXpModal(icon, title, xpEarned, totalXp, levelName, levelXp, nextXp)
 }
 function closeXpModal() {
   document.getElementById('xpModal').style.display = 'none';
+}
+
+// ── XP Reset Notice Modal ──────────────────────────────────────────────────
+async function checkXpResetNotice() {
+  try {
+    const data = await api('/student/xp-reset-notice');
+    if (data && data.show) {
+      document.getElementById('xpResetModalTitle').textContent = data.title || '';
+      document.getElementById('xpResetModalMsg').textContent = data.message || '';
+      document.getElementById('xpResetModal').style.display = 'flex';
+    }
+  } catch(e) {
+    // Xato bo'lsa modal ko'rsatmaymiz — kritik emas
+  }
+}
+async function closeXpResetModal() {
+  document.getElementById('xpResetModal').style.display = 'none';
+  try {
+    await api('/student/xp-reset-notice/seen', { method: 'POST' });
+  } catch(e) { /* ignore */ }
 }
 
 // ── Daily Game Limits ────────────────────────────────────────────────────────
@@ -2562,7 +2594,7 @@ function renderProgress(prog, lb, glb, mlb) {
     </div>`;
   }).join('');
 
-  // Leaderboard builder helper
+  // Leaderboard builder helper — guruh/global XP reytingi uchun
   function buildLbHtml(leaders) {
     if (!leaders || !leaders.length)
       return `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>`;
@@ -2578,6 +2610,26 @@ function renderProgress(prog, lb, glb, mlb) {
           <div class="lb-sub">Lv.${s.level}${grpBadge} · 🔥${s.streak}</div>
         </div>
         <div class="lb-xp">${s.xp} XP</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Oylik leaderboard builder — monthly_xp ko'rsatadi (streak yo'q)
+  function buildMonthlyLbHtml(leaders) {
+    if (!leaders || !leaders.length)
+      return `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>`;
+    return leaders.map(s => {
+      const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
+      const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
+      const grpBadge = s.group_name ? ` · <span style="color:var(--sub)">${s.group_name}</span>` : '';
+      const clickable = !s.is_me ? `onclick="openStudentProfile(${JSON.stringify(s)})"` : '';
+      return `<div class="lb-item ${s.is_me ? 'is-me' : 'lb-row-clickable'}" ${clickable}>
+        <div class="lb-rank ${rankCls}">${rankIcon}</div>
+        <div class="lb-info">
+          <div class="lb-name">${s.full_name}${s.is_me ? ' 👈' : ''}</div>
+          <div class="lb-sub">Lv.${s.level}${grpBadge}</div>
+        </div>
+        <div class="lb-xp">${s.monthly_xp || 0} XP</div>
       </div>`;
     }).join('');
   }
@@ -2682,8 +2734,7 @@ function renderProgress(prog, lb, glb, mlb) {
         ${(!glb?.leaders || glb.leaders.length === 0) ? `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>` : ''}
       </div>
       <div class="lb-pane" id="lbPaneMonthly">
-        ${buildLbHtml(mlb?.leaders)}
-        ${(!mlb?.leaders || mlb.leaders.length === 0) ? `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>` : ''}
+        ${buildMonthlyLbHtml(mlb?.leaders)}
       </div>
       <div class="lb-pane" id="lbPaneQuiz">          <div class="spinner"></div></div>
       <div class="lb-pane" id="lbPaneCss_duel">      <div class="spinner"></div></div>
@@ -2715,9 +2766,10 @@ async function switchLbTab(tab) {
     if (paneEl) paneEl.classList.toggle('active', tab === t2);
   });
   // O'yin tabiga birinchi marta kirilsa — API dan yukla
+  // Xato holat uchun: _gameLbLoaded ni yuklagandan KEYIN true qilamiz
   if (_GAME_LB_TABS.includes(tab) && !_gameLbLoaded[tab]) {
-    _gameLbLoaded[tab] = true;
-    await loadGameLeaderboard(tab);
+    const ok = await loadGameLeaderboard(tab);
+    if (ok) _gameLbLoaded[tab] = true;
   }
 }
 
@@ -2732,7 +2784,7 @@ async function loadGameLeaderboard(gameType) {
     const myId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 0;
     if (!rows.length) {
       paneEl.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-text">${t('prog.no_data')}</div></div>`;
-      return;
+      return true;
     }
     const scoreLabel = { quiz:'ball', css_duel:'ball', bug_hunter:'ball', code_order:'ball', tag_match:'ball', selector_quiz:'ball' };
     paneEl.innerHTML = rows.map((s, i) => {
@@ -2751,8 +2803,12 @@ async function loadGameLeaderboard(gameType) {
         <div class="lb-score">${s.score} ${scoreLabel[gameType] || ''}</div>
       </div>`;
     }).join('');
+    return true;
   } catch(e) {
-    paneEl.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik</div></div>`;
+    paneEl.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-icon">⚠️</div><div class="empty-text">Xatolik — qayta urinish uchun bosing</div></div>`;
+    // Xato bo'lganda pane ga click orqali qayta yuklash imkonini berish
+    paneEl.onclick = () => { paneEl.onclick = null; loadGameLeaderboard(gameType).then(ok => { if(ok) _gameLbLoaded[gameType] = true; }); };
+    return false;
   }
 }
 
@@ -4106,6 +4162,9 @@ async function init() {
         document.body.appendChild(ov);
       }, 600);
     }
+
+    // XP reset notice — muhim xabar bo'lsa modal ko'rsatamiz
+    checkXpResetNotice();
 
     // Daily checkin (streak + XP) — silent
     api('/student/checkin', { method: 'POST' }).then(async (res) => {

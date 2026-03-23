@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, Integer, String, delete, select, DateTime, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Integer, String, delete, select, update, DateTime, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.sql import func
 from sqlalchemy.ext.asyncio import (
@@ -110,6 +110,7 @@ class Student(Base):
     last_streak_date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     avatar_emoji:     Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     game_wins:        Mapped[int]           = mapped_column(Integer, default=0, nullable=False, server_default="0")
+    xp_notice_seen:   Mapped[bool]          = mapped_column(Boolean, default=True, nullable=False, server_default="1")
 
     def __repr__(self) -> str:
         return f"<Student {self.full_name!r} | {self.group_name}>"
@@ -499,6 +500,7 @@ class DatabaseService:
                 ("last_streak_date", "VARCHAR(20)"),
                 ("avatar_emoji",     "VARCHAR(20)"),
                 ("game_wins",        "INTEGER NOT NULL DEFAULT 0"),
+                ("xp_notice_seen",   "BOOLEAN NOT NULL DEFAULT 1"),
             ]:
                 try:
                     await conn.execute(
@@ -601,6 +603,17 @@ class DatabaseService:
             result = await session.execute(select(Group))
             return list(result.scalars().all())
 
+    async def get_parent_groups(self) -> list[Group]:
+        """Barcha aktiv ota-onalar guruhlarini qaytaradi (AudienceType.PARENT)."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Group).where(
+                    Group.audience  == AudienceType.PARENT,
+                    Group.is_active == True,  # noqa: E712
+                )
+            )
+            return list(result.scalars().all())
+
     async def get_group_by_chat_id(self, chat_id: int) -> Optional[Group]:
         async with self.session_factory() as session:
             result = await session.execute(
@@ -659,14 +672,21 @@ class DatabaseService:
         mars_id: str,
         group_name: str,
         phone_number: Optional[str] = None,
-    ) -> "Student":
-        """Yangi o'quvchi qo'shadi yoki mavjudini yangilaydi."""
+    ) -> tuple["Student", bool]:
+        """Yangi o'quvchi qo'shadi yoki mavjudini yangilaydi.
+
+        Returns: (student, is_new)
+          is_new=True  → haqiqatan yangi o'quvchi (XP bonusi berish mumkin)
+          is_new=False → mavjud o'quvchi yangilandi (XP, level, streak SAQLANADI)
+        """
         async with self.session_factory() as session:
             result = await session.execute(
                 select(Student).where(Student.user_id == user_id)
             )
             existing = result.scalar_one_or_none()
             if existing:
+                # Faqat profil ma'lumotlarini yangilaymiz —
+                # xp, level, streak_days, last_streak_date ni TEGINMAYMIZ
                 existing.telegram_username = telegram_username
                 existing.full_name         = full_name
                 existing.mars_id           = mars_id
@@ -674,7 +694,11 @@ class DatabaseService:
                 if phone_number:
                     existing.phone_number  = phone_number
                 await session.commit()
-                return existing
+                logger.info(
+                    f"O'quvchi yangilandi (XP saqlanadi): {full_name} | "
+                    f"xp={existing.xp} | TG:{user_id}"
+                )
+                return existing, False
             student = Student(
                 user_id=user_id,
                 telegram_username=telegram_username,
@@ -687,7 +711,7 @@ class DatabaseService:
             await session.commit()
             await session.refresh(student)
             logger.info(f"Yangi o'quvchi: {full_name} | {group_name} | TG:{user_id}")
-            return student
+            return student, True
 
     async def update_student_phone(self, user_id: int, phone_number: str) -> bool:
         """O'quvchining telefon raqamini yangilaydi."""
@@ -1753,7 +1777,15 @@ class DatabaseService:
             return result.scalar_one() or 0
 
     async def award_referral_xp(self, referrer_id: int, rs_id: int) -> bool:
-        """Referal uchun XP beradi (bir marta). True — yangi XP; False — allaqachon berilgan."""
+        """Referal uchun taklif qilganga (referrer) XP beradi — bir marta.
+
+        True  → yangi XP berildi
+        False → allaqachon berilgan yoki ariza topilmadi
+
+        MUHIM: faqat referrer +500 XP oladi.
+        Yangi o'quvchi bu funksiyada XP OLMAYDI — u keyinchalik
+        daily check-in va o'yinlar orqali o'z XP sini to'playdi.
+        """
         async with self.session_factory() as session:
             result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
             rs = result.scalar_one_or_none()
@@ -1762,8 +1794,6 @@ class DatabaseService:
             rs.xp_awarded = True
             await session.commit()
         await self.add_xp(referrer_id, 500)
-        if rs.telegram_user_id:
-            await self.add_xp(rs.telegram_user_id, 500)
         return True
 
     # ── ADMIN PROFILE ────────────────────────────────────────────────────────────
@@ -1836,6 +1866,10 @@ class DatabaseService:
         Kutayotgan o'quvchini tasdiqlaydi, guruhga qo'shadi va
         students jadvaliga qo'shadi (agar telegram_user_id bo'lsa).
         Generated Mars ID: P{id:06d} ko'rinishida.
+
+        Qayta chaqirilsa (allaqachon approved) — hech narsa o'zgarmaydi,
+        mavjud rs qaytariladi. Shu sababli XP ikki marta berilmaydi
+        (award_referral_xp ichida xp_awarded tekshiruvi bor).
         """
         import hashlib
         async with self.session_factory() as session:
@@ -1843,6 +1877,13 @@ class DatabaseService:
             rs = result.scalar_one_or_none()
             if not rs:
                 return None
+            # Allaqachon tasdiqlangan — qayta register qilmaymiz
+            if rs.status == "approved":
+                logger.warning(
+                    f"approve_and_register: rs_id={rs_id} allaqachon approved, "
+                    f"qayta register qilinmaydi"
+                )
+                return rs
             rs.status     = "approved"
             rs.group_name = group_name
             await session.commit()
@@ -1853,8 +1894,11 @@ class DatabaseService:
             password = hashlib.md5(f"{rs.telegram_user_id}".encode()).hexdigest()[:6]
             # Student credentials ga qo'shamiz (login uchun)
             await self.add_student_credential(mars_id, rs.full_name, password, group_name)
-            # Students jadvaliga qo'shamiz
-            await self.register_student(
+            # Students jadvaliga qo'shamiz.
+            # register_student (student, is_new) qaytaradi:
+            #   is_new=True  → yangi o'quvchi
+            #   is_new=False → mavjud o'quvchi, xp/level/streak SAQLANADI
+            _student, _is_new = await self.register_student(
                 user_id           = rs.telegram_user_id,
                 telegram_username = None,
                 full_name         = rs.full_name,
@@ -1921,6 +1965,12 @@ class DatabaseService:
     async def get_monthly_leaderboard(self, year_month: str, limit: int = 50) -> list[dict]:
         """Oy bo'yicha o'quvchilar reytingi — o'sha oyda topilgan XP (game_scores dan)."""
         from sqlalchemy import func as sqlfunc
+        import calendar
+        # Oyning birinchi va oxirgi kunini hisoblash
+        year, month = int(year_month.split("-")[0]), int(year_month.split("-")[1])
+        _, last_day = calendar.monthrange(year, month)
+        date_from = f"{year_month}-01"
+        date_to   = f"{year_month}-{last_day:02d} 23:59:59"
         async with self.session_factory() as session:
             # game_scores dan o'sha oy uchun XP summasi
             result = await session.execute(
@@ -1928,8 +1978,8 @@ class DatabaseService:
                     GameScore.user_id,
                     sqlfunc.sum(GameScore.xp_earned).label("monthly_xp"),
                 )
-                .where(GameScore.created_at >= f"{year_month}-01")
-                .where(GameScore.created_at < f"{year_month}-32")
+                .where(GameScore.created_at >= date_from)
+                .where(GameScore.created_at <= date_to)
                 .group_by(GameScore.user_id)
                 .order_by(sqlfunc.sum(GameScore.xp_earned).desc())
                 .limit(limit)
@@ -2056,3 +2106,30 @@ class DatabaseService:
                 select(Student).where(Student.streak_days >= 7)
             )
             return list(result.scalars().all())
+
+    # ── XP RESET ──────────────────────────────────────────────────────────────────
+
+    async def reset_all_xp(self) -> int:
+        """Barcha o'quvchilarning XP va level larini 0/1 ga qaytaradi.
+        xp_notice_seen=False — keyingi kirishda xabarnoma ko'rsatiladi.
+        Qaytaradi: ta'sirlangan o'quvchilar soni."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                update(Student).values(
+                    xp=0,
+                    level=1,
+                    xp_notice_seen=False,
+                )
+            )
+            await session.commit()
+            return result.rowcount
+
+    async def mark_xp_notice_seen(self, user_id: int) -> None:
+        """Foydalanuvchi XP reset xabarnomasini ko'rdi deb belgilash."""
+        async with self.session_factory() as session:
+            await session.execute(
+                update(Student)
+                .where(Student.user_id == user_id)
+                .values(xp_notice_seen=True)
+            )
+            await session.commit()

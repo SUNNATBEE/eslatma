@@ -2,13 +2,14 @@
 handlers/attendance.py — Darsga boraman / kela olmayman tugmalari.
 
 attend:yes:DATE  → darhol "boraman" saqlanadi
-attend:no:DATE   → FSM: sabab so'raladi → admin + kuratorga yuboriladi
+attend:no:DATE   → FSM: sabab so'raladi → admin + kurator + ota-onalar guruhiga yuboriladi
 """
 import logging
 from datetime import datetime
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
@@ -115,7 +116,7 @@ async def handle_attendance_no(
 
 # ─── Sabab qabul qilish ────────────────────────────────────────────────────────
 
-@router.message(AbsenceReasonFSM.waiting_reason)
+@router.message(StateFilter(AbsenceReasonFSM.waiting_reason))
 async def handle_absence_reason(
     msg: Message, db: DatabaseService, bot: Bot, state: FSMContext
 ) -> None:
@@ -138,19 +139,18 @@ async def handle_absence_reason(
         "✅ Sababingiz qabul qilindi. Tezroq tuzalib keling! 💪"
     )
 
-    # Admin va kuratorlarga bildirish
+    # Bildirishnoma matni
     time_str = datetime.now().strftime("%H:%M")
     notify_text = (
-        f"❌ <b>{student.full_name}</b> — Kela olmayman\n"
-        f"📚 Guruh: <b>{student.group_name}</b>\n"
-        f"📅 Kun: {date_str} | 🕐 {time_str}\n"
-        f"💬 Sabab: <i>{reason}</i>"
+        f"📌 <b>{student.full_name}</b> — <b>{student.group_name}</b>\n"
+        f"Kela olmayman sababi: {reason}\n"
+        f"📅 Kun: {date_str} | 🕐 {time_str}"
     )
 
     # Adminlarga
     for admin_id in ADMIN_IDS:
         try:
-            await bot.send_message(admin_id, notify_text)
+            await bot.send_message(admin_id, notify_text, parse_mode="HTML")
         except Exception:
             pass
 
@@ -164,10 +164,21 @@ async def handle_absence_reason(
         for cs in curator_sessions:
             if cs.telegram_id not in ADMIN_IDS:  # Adminga ikki marta yubormaslik
                 try:
-                    await bot.send_message(cs.telegram_id, notify_text)
+                    await bot.send_message(cs.telegram_id, notify_text, parse_mode="HTML")
                 except Exception:
                     pass
     except Exception as e:
         logger.warning(f"Kuratorgа bildirishnoma yuborishda xato: {e}")
+
+    # Ota-onalar guruhlariga bildiramiz
+    try:
+        parent_groups = await db.get_parent_groups()
+        for group in parent_groups:
+            try:
+                await bot.send_message(group.chat_id, notify_text, parse_mode="HTML")
+            except Exception as ge:
+                logger.warning(f"Ota-onalar guruhiga ({group.name}) yuborishda xato: {ge}")
+    except Exception as e:
+        logger.warning(f"Ota-onalar guruhlarini olishda xato: {e}")
 
     logger.info(f"Davomat: {student.full_name} — Kelmaydi | {date_str} | Sabab: {reason}")

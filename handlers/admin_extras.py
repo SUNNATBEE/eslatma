@@ -10,7 +10,7 @@ import pytz
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import StateFilter
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import BufferedInputFile, CallbackQuery, Message, InlineKeyboardButton
@@ -751,4 +751,22 @@ async def admin_grp_msg_send(
         f"✅ Yetdi: <b>{ok}</b> ta guruh\n"
         f"❌ Yetmadi: <b>{fail}</b> ta guruh",
         reply_markup=kb_back_to_panel(),
+    )
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# XP RESET — /reset_all_xp
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.message(Command("reset_all_xp"))
+async def cmd_reset_all_xp(message: Message, db: DatabaseService) -> None:
+    """Barcha o'quvchilarning XP larini 0 ga tushuradi (faqat adminlar)."""
+    if message.from_user.id not in ADMIN_IDS:
+        await message.answer("❌ Bu buyruq faqat adminlar uchun!")
+        return
+    count = await db.reset_all_xp()
+    await message.answer(
+        f"✅ <b>{count} ta o'quvchining XP si 0 ga tushirildi.</b>\n\n"
+        f"O'quvchilar botga kirganda avtomatik xabarnoma ko'rishadi.",
+        parse_mode="HTML",
     )

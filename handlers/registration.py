@@ -190,7 +190,9 @@ async def reg_enter_phone(
     user      = message.from_user
     tg_user   = f"@{user.username}" if user.username else str(user.id)
 
-    await db.register_student(
+    # register_student (student, is_new) qaytaradi
+    # is_new=False bo'lsa — mavjud o'quvchi qaytadan kirdi, XP SAQLANADI
+    _student, is_new = await db.register_student(
         user_id=user.id,
         telegram_username=tg_user,
         full_name=full_name,
@@ -200,9 +202,14 @@ async def reg_enter_phone(
     )
     await state.clear()
 
+    if is_new:
+        reg_msg = "Siz muvaffaqiyatli ro'yxatdan o'tdingiz! 🎉"
+    else:
+        reg_msg = "Ma'lumotlaringiz yangilandi. XP va daraja saqlanib qoldi. ✅"
+
     await message.answer(
         f"✅ <b>Salom, {full_name}!</b>\n\n"
-        f"Siz muvaffaqiyatli ro'yxatdan o'tdingiz! 🎉\n"
+        f"{reg_msg}\n"
         f"📚 Guruh: <b>{sel_group}</b>\n"
         f"📱 Telefon: <code>{phone}</code>\n\n"
         f"Quyidagi tugmalardan foydalaning:",
@@ -210,8 +217,13 @@ async def reg_enter_phone(
     )
 
     # ── Adminga bildirishnoma ────────────────────────────────────────────────
+    notif_header = (
+        "🔔 <b>Yangi o'quvchi ro'yxatdan o'tdi!</b>"
+        if is_new
+        else "🔄 <b>Mavjud o'quvchi qayta kirdi (ma'lumotlar yangilandi)</b>"
+    )
     admin_text = (
-        f"🔔 <b>Yangi o'quvchi ro'yxatdan o'tdi!</b>\n\n"
+        f"{notif_header}\n\n"
         f"👤 Ism: <b>{full_name}</b>\n"
         f"📚 Guruh: <b>{sel_group}</b>\n"
         f"🆔 Mars ID: <code>{mars_id}</code>\n"

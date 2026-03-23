@@ -51,10 +51,16 @@ class _CuratorHasActiveChat(BaseFilter):
 
 
 class _StudentInCuratorChat(BaseFilter):
-    """Faqat o'quvchi faol kurator chatida bo'lganda True (kuratorlar bundan mustasno)."""
-    async def __call__(self, message: Message, db: DatabaseService) -> bool:
+    """Faqat o'quvchi faol kurator chatida bo'lganda True (kuratorlar bundan mustasno).
+    FSM holati bo'lsa (masalan, AbsenceReasonFSM) — relay qilmaymiz, FSM handleri ishlaydi."""
+    async def __call__(self, message: Message, db: DatabaseService,
+                       state: FSMContext) -> bool:
         if await db.get_curator_session(message.from_user.id):
             return False   # kurator — uning uchun alohida filter
+        # Agar foydalanuvchi hozir biror FSM holatida bo'lsa — relay qilmaymiz
+        current_state = await state.get_state()
+        if current_state is not None:
+            return False   # FSM ishlamoqda — unga yo'l beramiz
         return await db.get_active_curator_chat_by_student(message.from_user.id) is not None
 
 

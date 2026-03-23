@@ -92,6 +92,18 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
     student = await db.get_student(user_id)
     if student:
         await db.update_last_active(user_id)
+        # XP reset xabarnomasi — bir marta ko'rsatiladi
+        if not student.xp_notice_seen:
+            await db.mark_xp_notice_seen(user_id)
+            await message.answer(
+                "⚠️ <b>XP tizimi qayta boshlandi</b>\n\n"
+                "Hurmatli o'quvchi!\n\n"
+                "Tizimimizda texnik nosozliklar sababli ko'pchilik o'quvchilar "
+                "noto'g'ri XP yig'ishdi. Adolatlilik va teng raqobat uchun "
+                "barcha o'quvchilarning XP lari <b>0 ga</b> qayta boshlandi.\n\n"
+                "Kechirasiz noqulaylik uchun va yangi boshlang! 💪",
+                parse_mode="HTML",
+            )
 
     if _WA:
         markup = InlineKeyboardMarkup(inline_keyboard=[[

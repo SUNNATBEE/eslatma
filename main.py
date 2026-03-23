@@ -1353,15 +1353,23 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         tg_udata = json.loads(parsed.get("user", "{}")) if parsed else {}
         tg_un    = f"@{tg_udata['username']}" if tg_udata.get("username") else str(user_id)
 
-        await db.register_student(
+        # register_student (student, is_new) qaytaradi:
+        #   is_new=True  → yangi o'quvchi
+        #   is_new=False → mavjud o'quvchi qayta kirdi, xp/level/streak SAQLANADI
+        _student, is_new = await db.register_student(
             user_id=user_id, telegram_username=tg_un,
             full_name=cred["name"], mars_id=mars_id,
             group_name=group_name, phone_number=phone,
         )
 
         # Adminga bildirishnoma
+        notif_header = (
+            "🔔 <b>Yangi o'quvchi (Mini App)</b>"
+            if is_new
+            else "🔄 <b>Mavjud o'quvchi qayta kirdi (Mini App)</b>"
+        )
         notify = (
-            f"🔔 <b>Yangi o'quvchi (Mini App)</b>\n\n"
+            f"{notif_header}\n\n"
             f"👤 {cred['name']}\n"
             f"📚 Guruh: {group_name}\n"
             f"🆔 Mars ID: <code>{mars_id}</code>\n"
@@ -1374,7 +1382,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             except Exception:
                 pass
 
-        return web.json_response({"ok": True, "full_name": cred["name"], "group_name": group_name})
+        return web.json_response({"ok": True, "full_name": cred["name"], "group_name": group_name, "is_new": is_new})
 
     # ── Student Gamification API ──────────────────────────────────────────────
 
@@ -1440,12 +1448,15 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         for i, s in enumerate(leaders):
             result.append({
                 "rank":       i + 1,
+                "user_id":    s.user_id,
                 "full_name":  s.full_name,
+                "group_name": s.group_name,
                 "xp":         s.xp or 0,
                 "level":      s.level or 1,
                 "level_name": _level_name(s.level or 1),
                 "streak":     s.streak_days or 0,
                 "is_me":      s.user_id == user_id,
+                "avatar":     s.avatar_emoji or "",
             })
         return web.json_response({
             "group_name": student.group_name,
@@ -2435,6 +2446,35 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             "streak":     streak,
         })
 
+    # ── Student: XP reset notice ───────────────────────────────────────────────
+    async def api_xp_reset_notice(request: web.Request) -> web.Response:
+        """O'quvchiga XP reset xabarnomasi borligini tekshiradi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        student = await db.get_student(user_id)
+        if not student or student.xp_notice_seen:
+            return web.json_response({"show": False})
+        return web.json_response({
+            "show": True,
+            "title": "⚠️ XP tizimi qayta boshlandi",
+            "message": (
+                "Hurmatli o'quvchi!\n\n"
+                "Tizimimizda texnik nosozliklar sababli ko'pchilik o'quvchilar "
+                "noto'g'ri XP yig'ishdi. Adolatlilik va teng raqobat uchun "
+                "barcha o'quvchilarning XP lari 0 ga qayta boshlandi.\n\n"
+                "Kechirasiz noqulaylik uchun va yangi boshlang! 💪"
+            ),
+        })
+
+    async def api_xp_reset_notice_seen(request: web.Request) -> web.Response:
+        """O'quvchi xabarnomani ko'rganini belgilaydi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        await db.mark_xp_notice_seen(user_id)
+        return web.json_response({"ok": True})
+
     # ── OPTIONS preflight ──────────────────────────────────────────────────────
     async def options_handler(request: web.Request) -> web.Response:
         return web.Response(status=204, headers={
@@ -2539,6 +2579,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/admin/send-homework",        api_admin_send_homework)
     app.router.add_get("/api/admin/weekly-stats",          api_admin_weekly_stats)
     app.router.add_get("/api/student/daily-challenge",     api_student_daily_challenge)
+    app.router.add_get("/api/student/xp-reset-notice",    api_xp_reset_notice)
+    app.router.add_post("/api/student/xp-reset-notice/seen", api_xp_reset_notice_seen)
 
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):

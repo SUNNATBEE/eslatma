@@ -487,7 +487,11 @@
 <script>
 /* ── Telegram WebApp ── */
 const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color'); }
+if (tg) {
+  tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color');
+  tg.BackButton.show();
+  tg.BackButton.onClick(() => { window.location.href = window.location.origin + '/student.html'; });
+}
 const INIT_DATA = tg?.initData || '';
 const BASE_URL  = window.location.origin;
 

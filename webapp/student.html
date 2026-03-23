@@ -3078,12 +3078,7 @@ function showGame(id) {
   if (el) el.style.display = '';
 }
 function openGamesPage() {
-  const WEBAPP_URL = window.location.origin;
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.openLink(WEBAPP_URL + '/games.html');
-  } else {
-    window.open(WEBAPP_URL + '/games.html', '_blank');
-  }
+  window.location.href = window.location.origin + '/games.html';
 }
 
 /* ── Save game score to backend ── */

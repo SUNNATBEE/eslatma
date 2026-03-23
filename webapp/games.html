@@ -820,7 +820,11 @@ function showQuizQ() {
   document.getElementById('quizXpSoFar').textContent = quizXp;
   document.getElementById('quizProgFill').style.width = ((quizIdx+1)/10*100) + '%';
   document.getElementById('quizQ').textContent = q.q;
-  document.getElementById('quizOpts').innerHTML = q.opts.map((o,i) =>
+  // Variantlarni shuffle qilish — to'g'ri javob qiymatini eslab qolish
+  const correctText = q.opts[q.ans];
+  const shuffled = [...q.opts].sort(() => Math.random() - 0.5);
+  q._shuffledAns = shuffled.indexOf(correctText);
+  document.getElementById('quizOpts').innerHTML = shuffled.map((o,i) =>
     `<button class="quiz-opt" onclick="answerQuiz(${i})">${o}</button>`
   ).join('');
   quizTimeLeft  = 30;
@@ -846,11 +850,12 @@ function answerQuiz(chosen) {
   clearInterval(quizTimer);
   const q = quizQ[quizIdx];
   const opts = document.getElementById('quizOpts').querySelectorAll('.quiz-opt');
-  const isOk = chosen === q.ans;
+  const correctIdx = q._shuffledAns ?? q.ans;
+  const isOk = chosen === correctIdx;
   if (isOk) { quizScore++; quizXp += 2; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
   else { playSound(300,'square',0.3); }
   opts.forEach((el,i) => {
-    if (i === q.ans) el.classList.add('show-correct');
+    if (i === correctIdx) el.classList.add('show-correct');
     if (i === chosen && !isOk) el.classList.add('wrong');
   });
   setTimeout(() => {
@@ -986,7 +991,11 @@ function showCssDuelQ() {
   document.getElementById('cssDuelXpSoFar').textContent = cdXp;
   document.getElementById('cssDuelProgFill').style.width = ((cdIdx+1)/10*100) + '%';
   document.getElementById('cssDuelCode').textContent    = q.code;
-  document.getElementById('cssDuelOpts').innerHTML = q.opts.map((o,i) =>
+  // Variantlarni shuffle qilish
+  const correctText = q.opts[q.ans];
+  const shuffled = [...q.opts].sort(() => Math.random() - 0.5);
+  q._shuffledAns = shuffled.indexOf(correctText);
+  document.getElementById('cssDuelOpts').innerHTML = shuffled.map((o,i) =>
     `<button class="css-duel-opt" onclick="answerCssDuel(${i})">${o}</button>`
   ).join('');
   cdTimeLeft = 20; cdAnswered = false;
@@ -1011,11 +1020,12 @@ function answerCssDuel(chosen) {
   clearInterval(cdTimer);
   const q = cdQ[cdIdx];
   const opts = document.getElementById('cssDuelOpts').querySelectorAll('.css-duel-opt');
-  const isOk = chosen === q.ans;
+  const correctIdx = q._shuffledAns ?? q.ans;
+  const isOk = chosen === correctIdx;
   if (isOk) { cdScore++; cdXp += 3; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
   else { playSound(300,'square',0.3); }
   opts.forEach((el,i) => {
-    if (i === q.ans) el.classList.add('show-correct');
+    if (i === correctIdx) el.classList.add('show-correct');
     if (i === chosen && !isOk) el.classList.add('wrong');
   });
   setTimeout(() => {
@@ -1496,7 +1506,11 @@ function showTagQ() {
   document.getElementById('tmProgFill').style.width = ((tmIdx+1)/10*100) + '%';
   document.getElementById('tmTagDisplay').textContent = q.tag;
   document.getElementById('tmQ').textContent = q.q;
-  document.getElementById('tmOpts').innerHTML = q.opts.map((o,i) =>
+  // Variantlarni shuffle qilish
+  const correctText = q.opts[q.ans];
+  const shuffled = [...q.opts].sort(() => Math.random() - 0.5);
+  q._shuffledAns = shuffled.indexOf(correctText);
+  document.getElementById('tmOpts').innerHTML = shuffled.map((o,i) =>
     `<button class="quiz-opt" onclick="answerTagMatch(${i})">${o}</button>`
   ).join('');
   tmTimeLeft = 25; tmAnswered = false;
@@ -1521,11 +1535,12 @@ function answerTagMatch(chosen) {
   clearInterval(tmTimer);
   const q = tmQ[tmIdx];
   const opts = document.getElementById('tmOpts').querySelectorAll('.quiz-opt');
-  const isOk = chosen === q.ans;
+  const correctIdx = q._shuffledAns ?? q.ans;
+  const isOk = chosen === correctIdx;
   if (isOk) { tmScore++; tmXp += 2; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
   else { playSound(300,'square',0.3); }
   opts.forEach((el,i) => {
-    if (i === q.ans) el.classList.add('show-correct');
+    if (i === correctIdx) el.classList.add('show-correct');
     if (i === chosen && !isOk) el.classList.add('wrong');
   });
   setTimeout(() => {
@@ -1588,7 +1603,11 @@ function showSqQ() {
   document.getElementById('sqProgFill').style.width = ((sqIdx+1)/10*100) + '%';
   document.getElementById('sqSelectorDisplay').textContent = q.sel;
   document.getElementById('sqQ').textContent = q.q;
-  document.getElementById('sqOpts').innerHTML = q.opts.map((o,i) =>
+  // Variantlarni shuffle qilish
+  const correctText = q.opts[q.ans];
+  const shuffled = [...q.opts].sort(() => Math.random() - 0.5);
+  q._shuffledAns = shuffled.indexOf(correctText);
+  document.getElementById('sqOpts').innerHTML = shuffled.map((o,i) =>
     `<button class="quiz-opt" onclick="answerSq(${i})">${o}</button>`
   ).join('');
   sqTimeLeft = 25; sqAnswered = false;
@@ -1613,11 +1632,12 @@ function answerSq(chosen) {
   clearInterval(sqTimer);
   const q = sqQ[sqIdx];
   const opts = document.getElementById('sqOpts').querySelectorAll('.quiz-opt');
-  const isOk = chosen === q.ans;
+  const correctIdx = q._shuffledAns ?? q.ans;
+  const isOk = chosen === correctIdx;
   if (isOk) { sqScore++; sqXp += 2; tg?.HapticFeedback?.impactOccurred('light'); playSoundSeq([523,659,784],0.12); }
   else { playSound(300,'square',0.3); }
   opts.forEach((el,i) => {
-    if (i === q.ans) el.classList.add('show-correct');
+    if (i === correctIdx) el.classList.add('show-correct');
     if (i === chosen && !isOk) el.classList.add('wrong');
   });
   setTimeout(() => {

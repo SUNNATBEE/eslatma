@@ -175,6 +175,14 @@
     /* ─────────────────────────────────────────────────────── */
     #page-main { padding: 0; }
 
+    /* Dashboard stats */
+    .dash-stat {
+      flex: 1; background: var(--bg2); border-radius: 8px;
+      padding: 8px 6px; text-align: center;
+    }
+    .dash-stat-val { font-size: 18px; font-weight: 800; }
+    .dash-stat-lbl { font-size: 10px; color: var(--sub); margin-top: 2px; }
+
     /* Search + filter */
     .search-bar {
       padding: 12px 16px 8px;
@@ -702,6 +710,9 @@
       <button class="header-logout" onclick="doLogout()">Chiqish</button>
     </div>
 
+    <!-- Dashboard stats -->
+    <div id="dashboardStats" style="display:flex;gap:8px;padding:10px 16px 4px;flex-shrink:0"></div>
+
     <!-- Search -->
     <div class="search-bar">
       <input class="search-input" id="searchInput"
@@ -867,17 +878,23 @@ const BASE_URL  = window.location.origin;
 
 /* ── API ─────────────────────────────────────────────────── */
 async function api(path, opts = {}) {
-  const res = await fetch(BASE_URL + '/api' + path, {
-    headers: {
-      'X-Init-Data': INIT_DATA,
-      'Content-Type': 'application/json',
-      ...(opts.headers || {}),
-    },
-    ...opts,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || res.statusText);
-  return data;
+  try {
+    const res = await fetch(BASE_URL + '/api' + path, {
+      headers: {
+        'X-Init-Data': INIT_DATA,
+        'Content-Type': 'application/json',
+        ...(opts.headers || {}),
+      },
+      ...opts,
+    });
+    let data;
+    try { data = await res.json(); } catch { data = {}; }
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    return data;
+  } catch (e) {
+    if (e instanceof TypeError) throw new Error('Tarmoq xatosi');
+    throw e;
+  }
 }
 
 /* ── State ───────────────────────────────────────────────── */
@@ -907,8 +924,11 @@ async function init() {
       setupMain(me);
       showPage('main');
       loadStudents();
+      loadDashboardStats();
     }
-  } catch {}
+  } catch (e) {
+    console.warn('init xato:', e);
+  }
 }
 
 /* ── Login ───────────────────────────────────────────────── */
@@ -967,6 +987,34 @@ function setupMain(info) {
   document.getElementById('curName').textContent   = name;
   document.getElementById('curAvatar').textContent = name.charAt(0).toUpperCase();
   document.getElementById('attAvatar').textContent = name.charAt(0).toUpperCase();
+}
+
+/* ── Dashboard stats ─────────────────────────────────────── */
+async function loadDashboardStats() {
+  try {
+    const stats = await api('/curator/dashboard-stats');
+    const el = document.getElementById('dashboardStats');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="dash-stat" style="border-left:3px solid #4caf7d">
+        <div class="dash-stat-val" style="color:#4caf7d">${stats.present}</div>
+        <div class="dash-stat-lbl">Keldi</div>
+      </div>
+      <div class="dash-stat" style="border-left:3px solid #e05c5c">
+        <div class="dash-stat-val" style="color:#e05c5c">${stats.absent}</div>
+        <div class="dash-stat-lbl">Kelmadi</div>
+      </div>
+      <div class="dash-stat" style="border-left:3px solid #f0ad4e">
+        <div class="dash-stat-val" style="color:#f0ad4e">${stats.pending}</div>
+        <div class="dash-stat-lbl">Kutilmoqda</div>
+      </div>
+      <div class="dash-stat" style="border-left:3px solid #5288c1">
+        <div class="dash-stat-val" style="color:#5288c1">${stats.homework_done}</div>
+        <div class="dash-stat-lbl">Uy ishi ✅</div>
+      </div>`;
+  } catch (e) {
+    console.warn('Dashboard stats xato:', e);
+  }
 }
 
 /* ── Load students ───────────────────────────────────────── */
@@ -1037,13 +1085,16 @@ function renderStudents() {
       ? '<span style="color:var(--success);font-size:11px">✓ Bot</span>'
       : '<span style="color:var(--sub);font-size:11px">Bot\'ga kirmagan</span>';
     const cardClass = s.registered ? 'has-tg' : 'no-tg';
+    const xpBadge  = s.xp  ? `<span style="color:#f0ad4e;font-size:10px">🏅${s.xp}XP</span>` : '';
+    const lvlBadge = (s.level||1)>1 ? `<span style="color:#5288c1;font-size:10px">⭐L${s.level}</span>` : '';
+    const strBadge = s.streak_days > 0 ? `<span style="color:#e67e22;font-size:10px">🔥${s.streak_days}</span>` : '';
     return `
     <div class="student-card ${cardClass}"
          onclick="openSheet('${esc(s.mars_id)}')">
       <div class="student-avatar" style="${s.registered ? '' : 'opacity:.5'}">${s.full_name.charAt(0).toUpperCase()}</div>
       <div class="student-info">
         <div class="student-name">${esc(s.full_name)}</div>
-        <div class="student-meta">📚 ${esc(s.group_name)} · ${regBadge}</div>
+        <div class="student-meta">📚 ${esc(s.group_name)} · ${regBadge} ${xpBadge} ${lvlBadge} ${strBadge}</div>
       </div>
       <div class="student-arrow">›</div>
     </div>`;

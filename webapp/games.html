@@ -281,6 +281,24 @@
           <div style="font-size:18px;font-weight:800;margin-bottom:8px">Dasturlash Testi yakunlandi!</div>
           <div class="result-score" id="quizFinalScore">0</div>
           <div class="result-sub">ball</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;text-align:center;">
+            <div style="background:rgba(76,175,125,.15);border-radius:10px;padding:10px;">
+              <div style="font-size:22px;font-weight:900;color:#4caf7d" id="quizCorrectCount">0</div>
+              <div style="font-size:11px;color:var(--sub)">To'g'ri</div>
+            </div>
+            <div style="background:rgba(224,92,92,.12);border-radius:10px;padding:10px;">
+              <div style="font-size:22px;font-weight:900;color:#e05c5c" id="quizWrongCount">0</div>
+              <div style="font-size:11px;color:var(--sub)">Noto'g'ri</div>
+            </div>
+            <div style="background:rgba(82,136,193,.15);border-radius:10px;padding:10px;">
+              <div style="font-size:22px;font-weight:900;color:#5288c1" id="quizAccuracy">0%</div>
+              <div style="font-size:11px;color:var(--sub)">Aniqlik</div>
+            </div>
+            <div style="background:rgba(255,215,0,.12);border-radius:10px;padding:10px;">
+              <div style="font-size:22px;font-weight:900;color:#ffd700" id="quizPersonalBest">—</div>
+              <div style="font-size:11px;color:var(--sub)">Rekord</div>
+            </div>
+          </div>
           <div class="result-xp" id="quizFinalXp"></div>
           <div id="quizResultRows" style="text-align:left;margin-bottom:14px;"></div>
           <button class="btn btn-primary" onclick="startQuiz()">Qayta o'ynash</button>
@@ -869,11 +887,22 @@ async function finishQuiz() {
   clearInterval(quizTimer);
   document.getElementById('quizGame').style.display   = 'none';
   document.getElementById('quizResult').style.display = 'block';
-  document.getElementById('quizFinalScore').textContent = quizScore * 10;
-  document.getElementById('quizFinalXp').textContent    = `+${quizXp} XP olindi`;
+  const finalScore = quizScore * 10;
+  const wrongCount = quizQ.length - quizScore;
+  const accuracy   = quizQ.length ? Math.round(quizScore / quizQ.length * 100) : 0;
+  document.getElementById('quizFinalScore').textContent  = finalScore;
+  document.getElementById('quizFinalXp').textContent     = `+${quizXp} XP olindi`;
+  document.getElementById('quizCorrectCount').textContent = quizScore;
+  document.getElementById('quizWrongCount').textContent   = wrongCount;
+  document.getElementById('quizAccuracy').textContent     = accuracy + '%';
   tg?.HapticFeedback?.notificationOccurred('success');
-  const res = await saveScore('quiz', quizScore * 10, quizXp);
-  if (res) showXpModal('🧠', 'Dasturlash Testi!', quizXp, res.new_xp || 0, 'Lv.' + (res.new_level || 1), 0, 0);
+  const res = await saveScore('quiz', finalScore, quizXp);
+  if (res) {
+    const pbEl = document.getElementById('quizPersonalBest');
+    if (pbEl) pbEl.textContent = (res.best_score || finalScore) + ' ball';
+    showXpModal('🧠', 'Dasturlash Testi!', quizXp, res.new_xp || 0,
+      res.level_name || 'Lv.' + (res.new_level || 1), 0, res.next_level_xp || 0);
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -1044,7 +1073,7 @@ async function finishCssDuel() {
   document.getElementById('cssDuelFinalXp').textContent    = `+${cdXp} XP olindi`;
   tg?.HapticFeedback?.notificationOccurred('success');
   const res = await saveScore('css_duel', finalScore, cdXp);
-  if (res) showXpModal('🎨', 'CSS Duel!', cdXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
+  if (res) showXpModal('🎨', 'CSS Duel!', cdXp, res.new_xp||0, res.level_name||'Lv.'+(res.new_level||1), 0, res.next_level_xp||0);
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -1253,7 +1282,7 @@ async function finishBugHunter() {
   document.getElementById('bugFinalXp').textContent    = `+${bhXp} XP olindi`;
   tg?.HapticFeedback?.notificationOccurred('success');
   const res = await saveScore('bug_hunter', finalScore, bhXp);
-  if (res) showXpModal('🐛', 'Bug Hunter!', bhXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
+  if (res) showXpModal('🐛', 'Bug Hunter!', bhXp, res.new_xp||0, res.level_name||'Lv.'+(res.new_level||1), 0, res.next_level_xp||0);
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -1462,7 +1491,7 @@ async function finishCodeOrder() {
   document.getElementById('coFinalXp').textContent    = `+${coXp} XP olindi`;
   tg?.HapticFeedback?.notificationOccurred('success');
   const res = await saveScore('code_order', finalScore, coXp);
-  if (res) showXpModal('🔀', 'Code Order!', coXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
+  if (res) showXpModal('🔀', 'Code Order!', coXp, res.new_xp||0, res.level_name||'Lv.'+(res.new_level||1), 0, res.next_level_xp||0);
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -1559,7 +1588,7 @@ async function finishTagMatch() {
   document.getElementById('tmFinalXp').textContent    = `+${tmXp} XP olindi`;
   tg?.HapticFeedback?.notificationOccurred('success');
   const res = await saveScore('tag_match', finalScore, tmXp);
-  if (res) showXpModal('🏷', 'Tag Match!', tmXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
+  if (res) showXpModal('🏷', 'Tag Match!', tmXp, res.new_xp||0, res.level_name||'Lv.'+(res.new_level||1), 0, res.next_level_xp||0);
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -1656,7 +1685,7 @@ async function finishSelectorQuiz() {
   document.getElementById('sqFinalXp').textContent    = `+${sqXp} XP olindi`;
   tg?.HapticFeedback?.notificationOccurred('success');
   const res = await saveScore('selector_quiz', finalScore, sqXp);
-  if (res) showXpModal('🎯', 'Selector Quiz!', sqXp, res.new_xp||0, 'Lv.'+(res.new_level||1), 0, 0);
+  if (res) showXpModal('🎯', 'Selector Quiz!', sqXp, res.new_xp||0, res.level_name||'Lv.'+(res.new_level||1), 0, res.next_level_xp||0);
 }
 
 /* ── Profile Modal ── */

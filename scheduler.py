@@ -6,6 +6,7 @@ Yuborilgan xabar ID lari bazaga saqlanadi (keyinchalik o'chirish uchun).
 """
 
 import logging
+import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -62,19 +63,49 @@ def get_tomorrow_info(timezone_str: str) -> TomorrowInfo:
 
 # ─── Xabar shablonlari ────────────────────────────────────────────────────────
 
+_MOTIVATSION_GAPLAR = [
+    "Bugun yangi bilim olish vaqti! 💡",
+    "Har bir dars seni kelajakka yaqinlashtiradi! 🚀",
+    "Ustoz seni kutmoqda! ⭐",
+    "Bilim — eng katta boylik! 📖",
+    "Har kun o'qish — muvaffaqiyat kaliti! 🔑",
+    "Zo'r natijalar zo'r harakat talab qiladi! 💪",
+    "Qiyinchilik — o'sishning boshlanishi! 🌱",
+    "Bugun maksimal kuch bilan kel! ⚡",
+]
+
+_WEEKDAY_EXTRA: dict[int, str] = {
+    0: "Yangi hafta, yangi g'alabalar! 🎯",
+    4: "Hafta yakunida zo'r dars! 🏆",
+    5: "Shanba darsi — ikki baravar qiziqarli! 🎉",
+}
+
+
 def build_reminder_message(info: TomorrowInfo, audience: AudienceType) -> str:
     """
     Auditoriyaga qarab turli xabar matnini qaytaradi:
       PARENT  — ota-onalarga yo'naltirilgan
       STUDENT — o'quvchilarga yo'naltirilgan
     """
+    motiv = random.choice(_MOTIVATSION_GAPLAR)
+    extra = _WEEKDAY_EXTRA.get(info.date.weekday(), "")
+    extra_line = f"\n{extra}" if extra else ""
+
     if audience == AudienceType.PARENT:
         return (
-            f"👨‍👩‍👧 Assalomu alaykum ertaga farzandlaringiz uyga vazifasini tekshiraman iltimos uyga vazifa qilishini nazoratga olishigiz so'rayman"
+            f"👨‍👩‍👧 <b>Assalomu alaykum!</b>\n\n"
+            f"Ertaga — <b>{info.weekday_uz}, {info.date_str}</b>{extra_line}\n\n"
+            f"Farzandingizning darsga tayyorligini nazorat qiling.\n"
+            f"Uy vazifasini bajarganini tekshiring! 📚\n\n"
+            f"💡 {motiv}"
         )
     else:  # STUDENT
         return (
-            f"📚 Bolalar ertaga darsga kechikib kemanglar uy vazifani hammadan soriyman !"
+            f"📚 <b>Assalomu alaykum!</b>\n\n"
+            f"Ertaga — <b>{info.weekday_uz}, {info.date_str}</b>{extra_line}\n\n"
+            f"Uy vazifasini bajarmaganlar — hoziroq bajaring!\n"
+            f"Darsga kechikib kelmang! ⏰\n\n"
+            f"🚀 {motiv}"
         )
 
 

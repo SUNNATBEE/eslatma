@@ -1894,7 +1894,14 @@ class DatabaseService:
             s = result.scalar_one_or_none()
             if not s:
                 return None
-            return {"xp": s.xp or 0, "level": s.level or 1, "streak_days": s.streak_days or 0}
+            lvl = s.level or 1
+            return {
+                "xp":            s.xp or 0,
+                "level":         lvl,
+                "streak_days":   s.streak_days or 0,
+                "level_name":    _level_name(lvl),
+                "next_level_xp": _next_level_xp(lvl),
+            }
 
     # ── GROUP LEADERBOARD ────────────────────────────────────────────────────────
 
@@ -1921,8 +1928,8 @@ class DatabaseService:
                     GameScore.user_id,
                     sqlfunc.sum(GameScore.xp_earned).label("monthly_xp"),
                 )
-                .where(GameScore.played_at >= f"{year_month}-01")
-                .where(GameScore.played_at < f"{year_month}-32")
+                .where(GameScore.created_at >= f"{year_month}-01")
+                .where(GameScore.created_at < f"{year_month}-32")
                 .group_by(GameScore.user_id)
                 .order_by(sqlfunc.sum(GameScore.xp_earned).desc())
                 .limit(limit)
@@ -1997,6 +2004,7 @@ class DatabaseService:
                         "full_name": s.full_name,
                         "group_name": s.group_name,
                         "telegram_username": s.telegram_username or "",
+                        "absent_days": days,
                     })
             return result
 
@@ -2021,6 +2029,7 @@ class DatabaseService:
                 "present": present,
                 "total": students_count,
                 "pct": pct,
+            "present_pct": pct,
             })
         return result
 

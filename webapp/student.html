@@ -229,7 +229,28 @@
 
     /* ── Pages ── */
     .page { display: none; }
-    .page.active { display: block; }
+    .page.active { display: block; animation: pageSlideIn .18s ease; }
+    @keyframes pageSlideIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+    /* ── Motivatsion banner ── */
+    .motiv-banner { background:linear-gradient(135deg,rgba(82,136,193,.15),rgba(76,175,125,.1));
+      border:1px solid rgba(82,136,193,.25); border-radius:var(--radius-sm); padding:10px 14px;
+      margin-bottom:10px; display:flex; align-items:center; gap:10px;
+      animation:motivFadeIn .4s ease; }
+    @keyframes motivFadeIn { from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);} }
+    .motiv-icon { font-size:22px; flex-shrink:0; }
+    .motiv-text { font-size:13px; font-weight:600; color:var(--text); line-height:1.4; }
+
+    /* ── Skeleton loader ── */
+    .skeleton { background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.12) 50%,rgba(255,255,255,.06) 75%);
+      background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:8px; }
+    @keyframes shimmer { to { background-position:-200% 0; } }
+    .skel-line { height:14px; margin-bottom:8px; }
+    .skel-line.wide{width:80%;} .skel-line.mid{width:60%;} .skel-line.short{width:40%;}
+    .skel-card { background:var(--bg2); border-radius:var(--radius); padding:16px; margin-bottom:12px; }
+
+    /* ── Flame pulse (streak) ── */
+    @keyframes flamePulse { 0%,100%{transform:scale(1);}50%{transform:scale(1.3);} }
 
     .section-title {
       font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
@@ -918,6 +939,12 @@
 
     <!-- ═════════════════════════ HOME PAGE ═════════════════════════ -->
     <div class="page active" id="page-home">
+      <!-- Motivatsion banner -->
+      <div class="motiv-banner" id="motivBanner" style="display:none">
+        <div class="motiv-icon" id="motivIcon">🚀</div>
+        <div class="motiv-text" id="motivText">Bugun ham zo'r qilding!</div>
+      </div>
+
       <div id="classCard"><div class="spinner"></div></div>
 
       <!-- Mood row -->
@@ -1772,8 +1799,8 @@ let _limitCountdownTimers = {};
 function _fmtCountdown(secs) {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
-  if (h > 0) return h + ' soat ' + m + ' daqiqa';
-  return m + ' daqiqa';
+  const s = secs % 60;
+  return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
 }
 
 async function loadPlaysToday() {
@@ -2290,6 +2317,7 @@ const ACHIEVEMENTS = new Proxy([], {
 
 /* ── Pages ───────────────────────────────────────────────────────── */
 function goPage(name) {
+  tg?.HapticFeedback?.selectionChanged();
   PAGES.forEach(p => {
     document.getElementById('page-' + p)?.classList.remove('active');
     document.getElementById('tab-'  + p)?.classList.remove('active');
@@ -2416,6 +2444,12 @@ function updateStatsStrip(prog) {
   document.getElementById('statRank').textContent    = prog.rank ? '#' + prog.rank : '—';
   // Level badge in header
   document.getElementById('hdrLevel').textContent = 'Lv.' + (prog.level ?? 1);
+  // Streak flame animation (7+ kun bo'lsa)
+  const streakEl = document.getElementById('statStreak');
+  if (streakEl && (prog.streak_days || 0) >= 7) {
+    streakEl.style.animation = 'flamePulse 1.2s ease-in-out infinite';
+    streakEl.title = prog.streak_days + ' kun ketma-ket! 🔥';
+  }
 }
 
 /* ── Homework ────────────────────────────────────────────────────── */
@@ -2423,7 +2457,10 @@ let _hwDateStr = null;
 
 async function loadHomework() {
   const el = document.getElementById('hwContent');
-  el.innerHTML = '<div class="spinner"></div>';
+  el.innerHTML = `<div class="skel-card"><div class="skeleton skel-line short"></div>
+    <div class="skeleton skel-line wide" style="height:18px;margin-top:8px"></div>
+    <div class="skeleton skel-line mid"></div>
+    <div class="skeleton skel-line" style="width:120px;height:36px;margin-top:12px;border-radius:10px"></div></div>`;
   try {
     const hw = await api('/homework');
     if (!hw.exists) {
@@ -4023,6 +4060,52 @@ async function init() {
     }
 
     renderClassCard(sched);
+
+    // Motivatsion xabar
+    const MOTIV = [
+      {icon:'🚀', text:'Bugun ham ajoyib ish qilding! Mars IT eng yaxshilari!'},
+      {icon:'💪', text:'Ketma-ket o\'qiyapsan — bu muvaffaqiyat yo\'li!'},
+      {icon:'🌟', text:'Har bir qadam seni maqsad sari yaqinlashtiradi!'},
+      {icon:'🔥', text:'To\'xtatma! Sening kelajaging ajoyib bo\'ladi!'},
+      {icon:'🏆', text:'Top o\'quvchilar ham shu yo\'ldan boshlagan!'},
+      {icon:'💡', text:'Bilim — eng qimmatli boylik. Davom et!'},
+      {icon:'🎯', text:'Bugun vazifalarni bajarsang — XP oshadi!'},
+      {icon:'😎', text:'Mars IT o\'quvchisi — bu kuchli bo\'lishni anglatadi!'},
+      {icon:'⚡', text:'Har bir dars seni professionalga yaqinlashtiradi!'},
+      {icon:'🌈', text:'Qiyinchilik — o\'sishning boshlanishi!'},
+    ];
+    const motiv = MOTIV[Math.floor(Math.random() * MOTIV.length)];
+    const motivBanner = document.getElementById('motivBanner');
+    if (motivBanner) {
+      document.getElementById('motivIcon').textContent = motiv.icon;
+      document.getElementById('motivText').textContent = motiv.text;
+      motivBanner.style.display = 'flex';
+    }
+
+    // Onboarding (birinchi marta kirish)
+    if (!localStorage.getItem('onboarding_done')) {
+      setTimeout(() => {
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:99998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;';
+        ov.innerHTML = `<div style="background:var(--bg2);border-radius:20px;padding:24px;max-width:320px;width:100%;text-align:center;">
+          <div style="font-size:52px;margin-bottom:12px;">🎓</div>
+          <div style="font-size:19px;font-weight:800;margin-bottom:8px;">Mars IT ga xush kelibsiz!</div>
+          <div style="font-size:13px;color:var(--sub);margin-bottom:20px;line-height:1.7;">
+            Bu yerda siz:<br>
+            📚 Uy vazifasini ko'ring<br>
+            ✅ Davomatni belgilang (+10 XP)<br>
+            🎮 O'yinlar o'ynab XP yig'ing<br>
+            💬 Do'stlar bilan chatda suhbatlashing<br>
+            🏆 Reyting da yuqoriga ko'tariling!
+          </div>
+          <button onclick="this.closest('div[style]').remove();localStorage.setItem('onboarding_done','1');"
+            style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;">
+            Boshlash! 🚀
+          </button>
+        </div>`;
+        document.body.appendChild(ov);
+      }, 600);
+    }
 
     // Daily checkin (streak + XP) — silent
     api('/student/checkin', { method: 'POST' }).then(async (res) => {

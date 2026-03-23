@@ -55,10 +55,18 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
                     web_app=WAI(url=ref_url),
                 )
             ]])
+            referrer_student = await db.get_student(int(ref_user_id))
+            referrer_name = referrer_student.full_name if referrer_student else None
+            taklif_text = (
+                f"<b>{referrer_name}</b> sizi Mars IT ga taklif qildi!"
+                if referrer_name else "Do'stingiz sizi Mars IT ga taklif qildi!"
+            )
             await message.answer(
-                f"👋 Do'stingiz sizi MARS IT ga taklif qildi!\n\n"
-                f"Quyidagi tugmani bosib ro'yxatdan o'ting va <b>+500 XP</b> oling!\n"
-                f"Ikkalangizga ham XP beriladi 🎉",
+                f"🎓 <b>Mars IT O'quv Markaziga xush kelibsiz!</b>\n\n"
+                f"{taklif_text}\n\n"
+                f"Ro'yxatdan o'ting va <b>+500 XP</b> oling!\n"
+                f"Ikkalangizga ham XP beriladi 🎉\n\n"
+                f"👇 Quyidagi tugmani bosing:",
                 reply_markup=markup,
             )
             return

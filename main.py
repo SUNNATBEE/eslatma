@@ -427,10 +427,49 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
                 "user_id":    reg.user_id if reg else None,
                 "username":   reg.telegram_username if reg else None,
                 "last_active": reg.last_active.strftime("%d.%m.%Y %H:%M") if reg and reg.last_active else None,
+                "xp":          reg.xp if reg else 0,
+                "level":       reg.level if reg else 1,
+                "streak_days": reg.streak_days if reg else 0,
             })
 
         result.sort(key=lambda x: (x["group_name"], x["full_name"]))
         return web.json_response({"students": result})
+
+    async def api_curator_dashboard_stats(request: web.Request) -> web.Response:
+        """Kurator uchun bugungi dashboard statistikasi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        all_students = await db.get_all_students()
+        total        = len(all_students)
+        att_records  = await db.get_attendance_by_date(today)
+        present_count = sum(1 for r in att_records if r.status == "yes")
+        absent_count  = sum(1 for r in att_records if r.status == "no")
+        pending_count = max(total - present_count - absent_count, 0)
+
+        from database import HomeworkConfirmation
+        from sqlalchemy import func as sa_func
+        async with db.session_factory() as sess:
+            hw_result = await sess.execute(
+                select(sa_func.count(HomeworkConfirmation.id)).where(
+                    HomeworkConfirmation.date_str == today
+                )
+            )
+            hw_done = hw_result.scalar() or 0
+
+        return web.json_response({
+            "date":          today,
+            "total":         total,
+            "present":       present_count,
+            "absent":        absent_count,
+            "pending":       pending_count,
+            "homework_done": hw_done,
+        })
 
     # ── Mini Admin Session (parol orqali login) ───────────────────────────────
     # token → {"username": str, "expires": datetime}
@@ -519,6 +558,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         present = sum(1 for r in att_recs if r.status == "yes")
         absent  = sum(1 for r in att_recs if r.status == "no")
 
+        total_xp = sum(s.xp or 0 for s in students)
+        avg_xp   = round(total_xp / len(students)) if students else 0
         return web.json_response({
             "total_students":  len(students),
             "active_groups":   sum(1 for g in groups if g.is_active),
@@ -527,6 +568,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             "today_absent":    absent,
             "today_pending":   len(students) - present - absent,
             "today":           today,
+            "avg_xp":          avg_xp,
+            "total_xp":        total_xp,
         })
 
     async def api_admin_students(request: web.Request) -> web.Response:
@@ -550,6 +593,10 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
                     "phone":      s.phone_number or "",
                     "last_active": s.last_active.strftime("%d.%m.%Y %H:%M") if s.last_active else None,
                     "att_today":  att_map.get(s.user_id),
+                    "xp":         s.xp or 0,
+                    "level":      s.level or 1,
+                    "streak":     s.streak_days or 0,
+                    "avatar":     s.avatar_emoji or "",
                 }
                 for s in students
             ]
@@ -1660,10 +1707,12 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         best = await db.get_game_best_scores(user_id)
         return web.json_response({
             "ok": True, "xp_earned": xp_earned,
-            "new_xp": prog.get("xp", 0) if prog else 0,
-            "new_level": prog.get("level", 1) if prog else 1,
-            "leveled_up": lvup,
-            "best_score": best.get(game_type, score),
+            "new_xp":       prog.get("xp", 0) if prog else 0,
+            "new_level":    prog.get("level", 1) if prog else 1,
+            "level_name":   prog.get("level_name", "") if prog else "",
+            "next_level_xp": prog.get("next_level_xp", 0) if prog else 0,
+            "leveled_up":   lvup,
+            "best_score":   best.get(game_type, score),
         })
 
     async def api_game_rooms_get(request: web.Request) -> web.Response:
@@ -2436,6 +2485,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_post("/api/curator/logout",    api_curator_logout)
     app.router.add_get("/api/curator/students",       api_curator_students)
     app.router.add_get("/api/curator/all-students",  api_curator_all_students)
+    app.router.add_get("/api/curator/dashboard-stats", api_curator_dashboard_stats)
     app.router.add_get("/api/curator/attendance",     api_curator_attendance)
     app.router.add_get("/api/curator/parent-groups",         api_curator_parent_groups)
     app.router.add_post("/api/curator/send-yoqlama",         api_curator_send_yoqlama)

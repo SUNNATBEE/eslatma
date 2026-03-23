@@ -41,9 +41,12 @@ async def start_registration(message: Message, state: FSMContext) -> None:
     """commands.py /start dan chaqiriladi — ro'yxatdan o'tishni boshlaydi."""
     await state.set_state(RegFSM.waiting_group)
     await message.answer(
-        "👋 <b>Xush kelibsiz!</b>\n\n"
-        "Botdan foydalanish uchun ro'yxatdan o'ting.\n\n"
-        "📚 <b>Guruhingizni tanlang:</b>",
+        "🎓 <b>Mars IT O'quv Markaziga xush kelibsiz!</b>\n\n"
+        "Ro'yxatdan o'tish — 3 qadam:\n"
+        "1️⃣ Guruhni tanlash\n"
+        "2️⃣ Mars Space ID va parol\n"
+        "3️⃣ Telefon raqam\n\n"
+        "📚 <b>1/3 — Guruhingizni tanlang:</b>",
         reply_markup=kb_mars_groups(MARS_GROUPS),
     )
 
@@ -56,8 +59,9 @@ async def reg_select_group(cb: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(group=group)
     await state.set_state(RegFSM.waiting_mars_id)
     await cb.message.edit_text(
+        f"<b>2/3 — Mars Space ID</b>\n\n"
         f"✅ Guruh: <b>{group}</b>\n\n"
-        f"🔑 <b>Mars Space ID</b> raqamingizni kiriting:\n"
+        f"🔑 Mars Space ID raqamingizni kiriting:\n"
         f"<i>(Masalan: 1342455)</i>",
     )
     await cb.answer()
@@ -67,13 +71,23 @@ async def reg_select_group(cb: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(StateFilter(RegFSM.waiting_mars_id))
 async def reg_enter_mars_id(message: Message, state: FSMContext) -> None:
-    mars_id = message.text.strip() if message.text else ""
-    if not mars_id.isdigit():
-        await message.answer("❌ ID faqat raqamlardan iborat bo'lishi kerak. Qayta kiriting:")
+    raw    = message.text.strip() if message.text else ""
+    upper  = raw.upper()
+    is_num = raw.isdigit()
+    is_p   = upper.startswith("P") and len(upper) >= 2 and upper[1:].isdigit()
+    mars_id = upper if is_p else raw
+
+    if not (is_num or is_p):
+        await message.answer(
+            "❌ <b>Noto'g'ri format!</b>\n\n"
+            "Mars Space ID faqat raqamlardan iborat bo'lishi kerak.\n"
+            "Masalan: <code>1342455</code>\n\n"
+            "Qayta kiriting:"
+        )
         return
     await state.update_data(mars_id=mars_id)
     await state.set_state(RegFSM.waiting_password)
-    await message.answer("🔐 <b>Mars Space parolingizni</b> kiriting:")
+    await message.answer("🔐 <b>3/3 — Mars Space parolingizni</b> kiriting:")
 
 
 # ── 3-qadam: parol → tekshirish → ro'yxatga olish ─────────────────────────────

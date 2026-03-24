@@ -787,36 +787,36 @@ async function loadBestScores() {
    1. DASTURLASH TESTI (Quiz)
 ───────────────────────────────────────────────────────────────────── */
 const QUIZ_QUESTIONS = [
-  {q:"typeof null natijasi qanday?", opts:['"null"','"object"','"undefined"','"boolean"'], ans:1},
+  {q:"typeof null natijasi qanday?", opts:['"object"','"null"','"undefined"','"boolean"'], ans:0},
   {q:"console.log(0.1 + 0.2 === 0.3) natijasi?", opts:["true","false","NaN","Error"], ans:1},
-  {q:"var bilan e'lon qilingan o'zgaruvchi qayerga hoisting bo'ladi?", opts:["Blok boshiga","Funksiya boshiga","Fayl boshiga","Hoisting bo'lmaydi"], ans:1},
-  {q:"Arrow function da 'this' qayerdan olinadi?", opts:["O'z kontekstidan","Leksik (tashqi) kontekstdan","window dan","undefined bo'ladi"], ans:1},
-  {q:"'==' va '===' farqi?", opts:["Farqi yo'q","=== tur va qiymatni tekshiradi, == koertsiya bilan qiymatni","== tezroq","=== faqat primitivlar uchun"], ans:1},
-  {q:"async/await ichida xatoni ushlash uchun?", opts:["try/catch","async catch","await.catch","error()"], ans:0},
-  {q:"Promise.race([p1,p2]) qachon hal bo'ladi?", opts:["Ikkalasi hal bo'lganda","Birinchisi hal yoki rad bo'lganda","Ikkalasi rad bo'lganda","Faqat birinchisi hal bo'lganda"], ans:1},
-  {q:"Python da list comprehension: [x*x for x in range(4)] natijasi?", opts:["[1,4,9,16]","[0,1,4,9]","[0,1,2,3]","[1,2,3,4]"], ans:1},
-  {q:"@classmethod da birinchi argument nima?", opts:["self","cls","class","this"], ans:1},
-  {q:"Python da generator ifodasi qaysi?", opts:["[x for x in lst]","(x for x in lst)","<x for x in lst>","{x for x in lst}"], ans:1},
-  {q:"Python da 'is' operatori nima tekshiradi?", opts:["Qiymat tengligini","Ob'ekt identifikatorini (xotira manzilini)","Tur tengligini","Mavjudligini"], ans:1},
-  {q:"dict.get(key, default) va dict[key] farqi?", opts:["Farqi yo'q","get() kalit topilmasa default qaytaradi, [] KeyError tashiydi","[] tezroq","get() faqat string kalit uchun"], ans:1},
-  {q:"Binary search ning vaqt murakkabligi?", opts:["O(n)","O(log n)","O(n²)","O(1)"], ans:1},
-  {q:"Stack qaysi printsipda ishlaydi?", opts:["FIFO","LIFO","Random","Chiziqli"], ans:1},
-  {q:"SQL da INNER JOIN va LEFT JOIN farqi?", opts:["Farqi yo'q","INNER faqat ikkala jadvalda mavjud, LEFT chap jadval barcha qatorlarini qaytaradi","LEFT INNER dan tezroq","INNER faqat bir jadval uchun"], ans:1},
-  {q:"HTTP 401 va 403 farqi?", opts:["Farqi yo'q","401 autentifikatsiya talab, 403 ruxsat yo'q","401 server xatosi","403 yo'qolgan sahifa"], ans:1},
-  {q:"REST API da idempotent metod qaysi?", opts:["POST","PUT","PATCH","GET va PUT/DELETE"], ans:3},
-  {q:"git rebase va git merge farqi?", opts:["Farqi yo'q","rebase tarixni qayta yozadi (chiziqli), merge qo'shish commit yaratadi","rebase tezroq","merge xavfliroq"], ans:1},
-  {q:"git stash nima qiladi?", opts:["O'zgarishlarni o'chiradi","O'zgarishlarni vaqtincha saqlaydi va ish direktoriysini tozalaydi","Yangi branch yaratadi","Remote ga push qiladi"], ans:1},
-  {q:"CSS specificity tartibida eng kuchli qaysi?", opts:["class","element","!important","ID"], ans:2},
-  {q:"CSS 'em' va 'rem' farqi?", opts:["Farqi yo'q","em ota elementga, rem root elementga nisbatan","rem eski brauzerlar uchun","em aniqroq"], ans:1},
-  {q:"Flexbox da 'flex: 1' nima anglatadi?", opts:["width:100%","flex-grow:1, flex-shrink:1, flex-basis:0","Faqat flex-grow","height:1px"], ans:1},
-  {q:"Docker container va VM farqi?", opts:["Farqi yo'q","Container OS ni ulashadi (yengil), VM o'z OS iga ega (og'ir)","VM tezroq","Container Windows da ishlamaydi"], ans:1},
-  {q:"SQL Injection oldini olish uchun?", opts:["Antivirus","Parametrlangan so'rovlar (prepared statements)","Firewall","CORS"], ans:1},
-  {q:"XSS (Cross-Site Scripting) nima?", opts:["Server hujumi","Foydalanuvchi brauzerida zararli skript ishlatish","Parol o'g'irlash usuli","SQL hujumi turi"], ans:1},
-  {q:"JWT da payload ma'lumotlari xavfsizmi?", opts:["Ha, shifrlangan","Yo'q, base64 encode (ochiq o'qiladi); imzo faqat o'zgartirishni bloklaydi","Ha, faqat server o'qiydi","Umuman ishlatib bo'lmaydi"], ans:1},
-  {q:"WebSocket va HTTP farqi?", opts:["Farqi yo'q","WebSocket ikki tomonlama doimiy ulanish, HTTP so'rov-javob modeli","WebSocket faqat JSON da","WebSocket serverdan serverga"], ans:1},
-  {q:"CORS nima?", opts:["Xatolarni ushlash","Boshqa manzildan so'rovga brauzer cheklovi","Shifrlash protokoli","Cache mexanizmi"], ans:1},
-  {q:"Closure nima?", opts:["Funksiya turi","Tashqi funksiya o'zgaruvchilariga kirishni saqlaydigan funksiya","Xatolikni ushlash","Ob'ekt nusxasi"], ans:1},
-  {q:"Dynamic programming asosi?", opts:["Rekursiya","Kichik muammolar natijalarini cache da saqlash","Greedy tanlov","Parallellashtirish"], ans:1},
+  {q:"var bilan e'lon qilingan o'zgaruvchi qayerga hoisting bo'ladi?", opts:["Funksiya yoki global boshiga","Hoisting bo'lmaydi","Blok boshiga","Fayl boshiga"], ans:0},
+  {q:"Arrow function da 'this' qayerdan olinadi?", opts:["O'z chaqiruv kontekstidan","window ob'ektidan","Har doim undefined","Leksik (tashqi) kontekstdan"], ans:3},
+  {q:"'===' operatori '==' dan qanday farq qiladi?", opts:["=== tur va qiymatni birga tekshiradi","Farqi yo'q, tezligi boshqa","=== faqat primitivlar uchun ishlaydi","== yanada qat'iyroq qiyosidir"], ans:0},
+  {q:"async/await ichida xatoni ushlash uchun qaysi konstruksiya ishlatiladi?", opts:["async.catch() metodi","try/catch bloki","await.error() metodi","Promise.reject() handler"], ans:1},
+  {q:"Promise.race([p1,p2]) qachon hal bo'ladi?", opts:["Ikkalasi ham hal bo'lganda","Ikkalasi ham rad etilganda","Faqat p1 hal bo'lganda","Birinchi hal yoki rad bo'lganda"], ans:3},
+  {q:"[x*x for x in range(4)] Python list comprehension natijasi?", opts:["[1, 4, 9, 16]","[0, 1, 2, 3]","[1, 2, 3, 4]","[0, 1, 4, 9]"], ans:3},
+  {q:"Python da @classmethod dekoratorida birinchi argument nima?", opts:["cls — sinf o'zi","self — ob'ekt nusxasi","this — joriy kontekst","class — kalit so'z"], ans:0},
+  {q:"Python da generator ifodasining to'g'ri sintaksisi qaysi?", opts:["[x for x in lst]","(x for x in lst)","{x for x in lst}","<x for x in lst>"], ans:1},
+  {q:"Python da 'is' operatori nima tekshiradi?", opts:["Qiymat tengligini (==)","Ob'ekt identifikatorini (xotira manzilini)","Satr ekanligini","Tur mosligini"], ans:1},
+  {q:"dict.get(key, default) va dict[key] orasidagi asosiy farq?", opts:["dict[key] default qaytaradi, get() xato beradi","get() faqat string kalit qabul qiladi","ikkalasi teng, faqat sintaksis farqi","get() kalit yo'q bo'lsa default qaytaradi, dict[key] KeyError beradi"], ans:3},
+  {q:"Binary search algoritmining eng yomon holat vaqt murakkabligi?", opts:["O(log n) — logarifmik","O(n) — chiziqli","O(1) — doimiy","O(n²) — kvadratik"], ans:0},
+  {q:"Stack ma'lumotlar tuzilmasi qaysi printsipda ishlaydi?", opts:["FIFO — birinchi kirgan birinchi chiqadi","LIFO — oxirgi kirgan birinchi chiqadi","Chiziqli indeks bo'yicha","Tasodifiy tartibda"], ans:1},
+  {q:"INNER JOIN va LEFT JOIN farqi nimada?", opts:["LEFT faqat o'ng jadval qatorlarini qaytaradi","Sintaksis farqi bor, natija bir xil","INNER faqat mos qatorlar, LEFT chap jadval barcha qatorlarini saqlaydi","INNER ikkala jadval barcha qatorlarini chiqaradi"], ans:2},
+  {q:"HTTP 401 va 403 status kodlari qanday farqlanadi?", opts:["Ikkalasi ham server xatosi, farqi yo'q","403 autentifikatsiya, 401 ruxsat muammosi","401 sahifa topilmadi, 403 yo'naltirildi","401 autentifikatsiya talab qiladi, 403 ruxsat yo'q"], ans:3},
+  {q:"REST API da qaysi metodlar idempotent hisoblanadi?", opts:["GET, PUT va DELETE","Faqat POST","Faqat GET","Faqat DELETE"], ans:0},
+  {q:"git rebase va git merge orasidagi farq?", opts:["rebase yangi remote branch yaratadi","rebase tarixni chiziqli qayta yozadi, merge birlashma commit yaratadi","merge barcha commit larni o'chirib tashlaydi","Farqi yo'q, faqat nomlanish boshqacha"], ans:1},
+  {q:"git stash buyrug'i nima qiladi?", opts:["Barcha o'zgarishlarni o'chiradi","Remote ga push qiladi","O'zgarishlarni vaqtincha saqlab, ish katalogini tozalaydi","Yangi branch yaratadi"], ans:2},
+  {q:"CSS specificity tartibida eng yuqori ustuvorlik kimga tegishli?", opts:["element selektoriga","class selektoriga","ID selektoriga","!important qoidasiga"], ans:3},
+  {q:"CSS da 'em' va 'rem' birliklari qanday farqlanadi?", opts:["em ota elementga, rem root (html) elementga nisbatan hisoblanadi","em aniqroq hisob-kitob beradi","Farqi yo'q, ikkalasi bir xil","rem eski brauzerlar uchun mo'ljallangan"], ans:0},
+  {q:"Flexbox da 'flex: 1' qisqartmasi nimani anglatadi?", opts:["width: 100% bilan tengdir","flex-grow:1, flex-shrink:1 va flex-basis:0 kombinatsiyasi","height: 1px qiymatini o'rnatadi","Faqat flex-grow: 1 ni belgilaydi"], ans:1},
+  {q:"Docker container va virtual mashina (VM) orasidagi asosiy farq?", opts:["VM konteynerdan ancha tezroq ishga tushadi","Container OS yadrosini ulashadi, VM alohida OS ishlatadi","Farqi yo'q, ikkalasi bir xil arxitektura","Container faqat Linux da ishlaydi, VM hamma joyda"], ans:1},
+  {q:"SQL Injection hujumidan himoyalanish uchun qaysi usul eng samarali?", opts:["Antivirus dasturi o'rnatish","Faqat HTTPS ishlatish","CORS sarlavhasi qo'shish","Parametrlangan so'rovlar (prepared statements) ishlatish"], ans:3},
+  {q:"XSS (Cross-Site Scripting) hujumi nima?", opts:["Foydalanuvchi brauzerida zararli skript ishlatish","Server ma'lumotlar bazasiga hujum","SQL kodini sahifaga kiritish","Parolni brute-force qilish"], ans:0},
+  {q:"JWT payload ma'lumotlari qanchalik himoyalangan?", opts:["AES-256 bilan shifrlangan","Base64 kodlangan (ochiq o'qiladi), imzo faqat o'zgartirishni bloklaydi","Faqat server tomon o'qiy oladi","Umuman ishonchli emas, ishlatib bo'lmaydi"], ans:1},
+  {q:"WebSocket va HTTP protokollari qanday farqlanadi?", opts:["WebSocket faqat JSON format qabul qiladi","Farqi yo'q, ikkalasi so'rov-javob modelida","WebSocket ikki tomonlama doimiy ulanish, HTTP esa so'rov-javob sikli","HTTP WebSocket dan tezroq ishlaydi"], ans:2},
+  {q:"CORS (Cross-Origin Resource Sharing) nima?", opts:["Server tomonidagi ma'lumot shifrlash protokoli","Brauzerda kesh boshqaruv mexanizmi","JavaScript da xatolikni ushlash usuli","Boshqa domendan so'rovga brauzer tomonidagi ruxsat tizimi"], ans:3},
+  {q:"Closure (yopilish) dasturlashda nima anglatadi?", opts:["Tashqi funksiya o'zgaruvchilariga kirishni saqlaydigan funksiya","Xatolikni ushlash bloki","Ob'ektning nusxasi","Rekursiv funksiya turi"], ans:0},
+  {q:"Dynamic programming (dinamik dasturlash) ning asosiy g'oyasi?", opts:["Har doim greedy tanlov qilish","Kichik muammolar natijalarini yodda saqlash va qayta hisoblashdan qochish","Rekursiyani maksimal ishlatish","Muammoni parallel hisoblash"], ans:1},
 ];
 
 let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false, quizXp=0;
@@ -911,93 +911,93 @@ async function finishQuiz() {
 const CSS_DUEL_QUESTIONS = [
   {
     code: "div {\n  background: red;\n  width: 100px;\n  height: 100px;\n  border-radius: 50%;\n}",
-    q: "Bu CSS qanday element ko'rsatadi?",
-    opts: ["Qizil kvadrat","Qizil doira","Qizil uchburchak","Qizil chiziq"],
-    ans: 1
+    q: "Bu CSS qanday shakl hosil qiladi?",
+    opts: ["Qizil doira","Qizil kvadrat","Qizil uchburchak","Qizil oval"],
+    ans: 0
   },
   {
     code: "p {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}",
-    q: "Flex konteyner ichidagi elementlar qaerda joylashadi?",
-    opts: ["Yuqori chap","Markazda (horizontal va vertikal)","Pastda","O'ng tomonda"],
-    ans: 1
+    q: "Flex konteyner ichidagi elementlar qayerda joylashadi?",
+    opts: ["Yuqori chap burchakda","Pastki markazda","Markazda (horizontal va vertikal)","O'ng tomonda vertikal"],
+    ans: 2
   },
   {
     code: ".box {\n  position: absolute;\n  top: 0;\n  right: 0;\n}",
     q: "Bu element qayerda joylashadi?",
-    opts: ["Yuqori chap burchak","Yuqori o'ng burchak","Pastki chap","Markazda"],
-    ans: 1
+    opts: ["Yuqori o'ng burchakda","Pastki o'ng burchakda","Markazda gorizontal","Yuqori chap burchakda"],
+    ans: 0
   },
   {
     code: "div {\n  opacity: 0;\n  visibility: hidden;\n}",
-    q: "Bu element qanday bo'ladi?",
-    opts: ["Ko'rinmaydi va joy egallaydi","Ko'rinmaydi va joy egallaMaydi","Ko'rinadi lekin bosilmaydi","O'chib ketadi"],
-    ans: 1
+    q: "Bu element sahifada qanday ko'rinadi?",
+    opts: ["Ko'rinmaydi lekin joy egallaydi","Ko'rinadi, bosilmaydi","Ko'rinmaydi va joy egallaMaydi","Yashirin, lekin bosiladi"],
+    ans: 2
   },
   {
     code: "span {\n  display: block;\n  width: 200px;\n}",
-    q: "span elementi odatda inline. display:block qo'shilganda nima bo'ladi?",
-    opts: ["Hech narsa o'zgarmaydi","Blok elementi kabi ishlaydi, width ishlaydi","width ishlaydi lekin yangi qatorga tushmaydi","Xato chiqadi"],
-    ans: 1
+    q: "display:block qo'shilgan span elementga nima bo'ladi?",
+    opts: ["Blok kabi ishlaydi, width qo'llaniladi","width ishlaydi, satr o'zgarmaydi","Xato chiqadi, span block bo'lmaydi","Hech narsa o'zgarmaydi"],
+    ans: 0
   },
   {
     code: "div {\n  margin: 10px 20px;\n}",
     q: "Bu margin shorthand nima anglatadi?",
-    opts: ["Hamma tomondan 10px","Yuqori/pastdan 10px, chap/o'ngdan 20px","Chap/o'ngdan 10px, yuqori/pastdan 20px","Faqat yuqoridan 10px"],
+    opts: ["Hamma tomondan 20px","Yuqori/pastdan 10px, chap/o'ngdan 20px","Faqat yuqoridan 10px, pastdan 20px","Chap/o'ngdan 10px, yuqori/pastdan 20px"],
     ans: 1
   },
   {
     code: ".a { z-index: 1; }\n.b { z-index: 10; }",
-    q: "Qaysi element yuqorida (ustida) ko'rinadi?",
-    opts: [".a","  .b","Ikkalasi teng","z-index ishlamaydi"],
+    q: "Qaysi element ko'rsatish qatlamida ustida bo'ladi?",
+    opts: ["z-index faqat flex ichida ishlaydi",".b — yuqoriroq z-index qiymati tufayli","Ikkalasi bir xil darajada","z-index bu holda e'tiborga olinmaydi"],
     ans: 1
   },
   {
     code: "body {\n  font-size: 16px;\n}\n.child {\n  font-size: 2em;\n}",
     q: ".child elementi font-size qancha bo'ladi?",
-    opts: ["16px","32px","2px","8px"],
-    ans: 1
+    opts: ["16px — meros qilingan","2px — em kichik birlik","32px — ota 16px x 2em","8px — em bo'linadi"],
+    ans: 2
   },
   {
     code: "div {\n  box-sizing: border-box;\n  width: 200px;\n  padding: 20px;\n  border: 5px solid;\n}",
-    q: "Elementning umumiy kengligi qancha?",
-    opts: ["250px","200px","170px","220px"],
+    q: "border-box qoidasi bilan elementning haqiqiy kengligi qancha?",
+    opts: ["250px — padding va border qo'shiladi","200px — border-box kenglikni saqlaydi","170px — padding va border ichidan chiqariladi","220px — faqat border qo'shiladi"],
     ans: 1
   },
   {
     code: "ul {\n  list-style: none;\n  padding: 0;\n  margin: 0;\n}",
-    q: "Bu CSS nima qiladi?",
-    opts: ["Ro'yxatni o'chiradi","Ro'yxat belgilarini va standart padding/margin ni olib tashlaydi","Faqat padding ni 0 qiladi","Hech narsa o'zgarmaydi"],
-    ans: 1
+    q: "Bu CSS qoidalar nima qiladi?",
+    opts: ["Ro'yxat belgisi va padding/margin ni olib tashlaydi","Faqat padding ni nolga tushiradi","Ro'yxatni sahifadan butunlay o'chiradi","Hech narsa o'zgarmaydi, default qiymatlar"],
+    ans: 0
   },
   {
     code: ".btn:hover {\n  background: blue;\n  transform: scale(1.1);\n}",
-    q: "Foydalanuvchi tugmachani sichqoncha bilan ustiga borganida nima bo'ladi?",
-    opts: ["Hech narsa","Fon ko'k bo'ladi va 10% kattalashadi","Faqat fon o'zgaradi","Element o'chadi"],
-    ans: 1
+    q: "Sichqoncha tugmachani ustiga kelganda nima sodir bo'ladi?",
+    opts: ["Faqat fon rangi ko'kka o'zgaradi","Element sahifadan o'chib ketadi","Fon ko'kka o'zgaradi va element 10% kattalashadi","Hech narsa bo'lmaydi"],
+    ans: 2
   },
   {
     code: "@media (max-width: 768px) {\n  .sidebar {\n    display: none;\n  }\n}",
-    q: "Bu media query qachon ishlaydi?",
-    opts: ["Ekran 768px dan katta bo'lganda","Ekran 768px yoki kichik bo'lganda","Har doim","Faqat mobil qurilmalarda"],
+    q: "Bu media query qanday holatlarda ishlaydi?",
+    opts: ["Faqat telefon qurilmalarda","Ekran kengligi 768px yoki undan kichik bo'lganda","Har doim, media query ta'sir qilmaydi","Ekran kengligi 768px dan oshganda"],
     ans: 1
   },
   {
     code: "div {\n  transition: all 0.3s ease;\n}",
-    q: "Bu CSS nima qiladi?",
-    opts:["Hech narsa","Barcha CSS o'zgarishlarini 0.3 soniya davomida silliq animatsiya qiladi","Faqat rangni animatsiya qiladi","Element 0.3s da o'chadi"],
+    q: "Bu transition xususiyati nima ta'sir qiladi?",
+    opts: ["Element 0.3s da avtomatik yo'qoladi","Barcha CSS o'zgarishlarini 0.3s da silliq animatsiya qiladi","Faqat rang o'zgarishini animatsiya qiladi","Sahifa yuklanishini 0.3s kechiktiradi"],
     ans: 1
   },
   {
     code: ".grid {\n  display: grid;\n  grid-template-columns: 1fr 2fr 1fr;\n}",
-    q: "Grid ustunlari nisbati qanday?",
-    opts: ["Teng 3 ta ustun","1:2:1 nisbatida 3 ta ustun","2 ta ustun","Faqat bitta ustun"],
-    ans: 1
+    q: "Grid ustunlari qanday nisbatda taqsimlanadi?",
+    opts: ["Teng uchta ustun (33% dan)","Ikki teng ustun va bitta yashirin","Faqat bitta keng ustun","1:2:1 nisbatida uchta ustun"],
+    ans: 3
   },
   {
     code: "a {\n  text-decoration: none;\n  color: inherit;\n}",
-    q: "Bu stillar linkga nima qiladi?",
-    opts:["Linkni o'chiradi","Chiziqni va standart rangni (ko'k) olib tashlaydi, ota element rangini oladi","Faqat chiziqni olib tashlaydi","Link bosilmaydi"],
-    ans: 1
+    q: "Bu qoidalar linkka qanday ta'sir qiladi?",
+    opts: ["Tagchiziq va ko'k standart rang olib tashlanadi, ota rang qabul qilinadi","Linkni bosib bo'lmaydi, disabled bo'ladi","Faqat tagchiziq olib tashlanadi, rang saqlanadi","Link sahifadan vizual yo'qoladi"],
+    ans: 0
   },
 ];
 
@@ -1498,21 +1498,21 @@ async function finishCodeOrder() {
    5. TAG MATCH
 ───────────────────────────────────────────────────────────────────── */
 const TAG_MATCH_QUESTIONS = [
-  {tag:"<div>",    q:"Bu teg qanday element yaratadi?",       opts:["Blok element (bo'linish)","Inline element","Jadval qatori","Forma elementi"],        ans:0},
-  {tag:"<span>",   q:"Bu teg qanday element yaratadi?",       opts:["Blok element","Inline element (satr ichida)","Ro'yxat elementi","Tasvirchi"],         ans:1},
-  {tag:"<a href>", q:"href atributi nima uchun?",             opts:["Surat manzili","Havola manzili (URL)","Sahifa sarlavhasi","CSS ulanish"],              ans:1},
-  {tag:"<input type='checkbox'>", q:"Bu input qanday ko'rinadi?", opts:["Matn maydoni","Belgilash katagini (checkbox)","Radio tugma","Ochiladigan ro'yxat"],ans:1},
-  {tag:"<meta charset='UTF-8'>", q:"Bu teg nima qiladi?",    opts:["Sahifa stilini belgilaydi","Sahifa belgilar kodlashini belgilaydi","Kalit so'zlar","Muallif"],ans:1},
-  {tag:"<script defer>",q:"defer atributi nima qiladi?",     opts:["Skriptni to'xtatadi","HTML yuklangandan keyin skriptni ishlatadi","Skriptni tezlashtiradi","Xatolarni bloklaydi"],ans:1},
-  {tag:"<picture>", q:"Bu teg nima uchun ishlatiladi?",      opts:["Audio reproduksiya","Responsive rasmlar (responsive images)","Video","Grafik chizish"],  ans:1},
-  {tag:"<datalist>",q:"Bu teg nima qiladi?",                 opts:["Ma'lumotlar jadval","Input uchun tavsiyalar ro'yxati","Qator guruhi","Fayllar ro'yxati"],ans:1},
-  {tag:"<details>", q:"Bu teg nima uchun?",                  opts:["Uslublar","Yig'iladigan/ochiluvchi kontent bloki","Jadval tafsilotlari","Forma yordami"],ans:1},
-  {tag:"<canvas>",  q:"Bu teg nima uchun?",                  opts:["Rasmlarni ko'rsatish","2D/3D grafika chizish uchun JavaScript bilan","Video ko'rsatish","Xarita ko'rsatish"],ans:1},
-  {tag:"<abbr title>",q:"title atributi bu tegda nima qiladi?", opts:["Sahifa sarlavhasi","Qisqartma to'liq matnini tooltip sifatida ko'rsatadi","CSS klassi","JavaScript funksiyasi"],ans:1},
-  {tag:"<fieldset>", q:"Bu teg nima uchun?",                 opts:["Matn guruhi","Forma elementlarini guruhlash va ramka bilan o'rash","Jadval guruhi","Sanavar"],ans:1},
-  {tag:"<time datetime>",q:"datetime atributi nima uchun?",  opts:["Ko'rsatish formati","Mashina o'qiydigan sana/vaqt formati (ISO 8601)","Zona","Til"],   ans:1},
-  {tag:"<output>",  q:"Bu teg nima uchun?",                  opts:["Fayl chiqishi","Hisoblash yoki foydalanuvchi amali natijasini ko'rsatish","Konsol","Debug"],ans:1},
-  {tag:"<template>",q:"Bu teg nima qiladi?",                 opts:["Boshqa sahifani yuklaydi","Render qilinmaydigan, JavaScript bilan ishlatish uchun HTML shabloni","Parametrlar","Stil shabloni"],ans:1},
+  {tag:"<div>",    q:"Bu teg qanday turdagi element yaratadi?",  opts:["Inline element — satr ichida","Jadval qatori elementi","Blok element — bo'linish","Forma kiritish elementi"],        ans:2},
+  {tag:"<span>",   q:"Bu teg qanday turdagi element yaratadi?",  opts:["Blok element — yangi qator","Inline element — satr ichida joylashadi","Jadval katakchasi","Ro'yxat elementi"],      ans:1},
+  {tag:"<a href>", q:"href atributi qanday ma'lumot saqlaydi?",  opts:["CSS fayl manzilini","Sahifa asosiy sarlavhasini","Bosiladigan havola manzilini (URL)","Rasm fayl yo'lini"],         ans:2},
+  {tag:"<input type='checkbox'>", q:"Bu input sahifada qanday ko'rinadi?", opts:["Ko'p qatorli matn maydoni","Belgilash katagini (checkbox)","Aylana tanlov tugmasi","Ochiladigan tanlov ro'yxati"], ans:1},
+  {tag:"<meta charset='UTF-8'>", q:"Bu meta teg brauzerga nima bildiradi?", opts:["Sahifaning CSS stilini","Sahifaning muallif ismini","Sahifaning kalit so'zlarini","Sahifaning belgilar kodlashini (UTF-8)"], ans:3},
+  {tag:"<script defer>", q:"defer atributi skriptni qachon ishlatadi?", opts:["HTML to'liq yuklangandan so'ng, ketma-ket tartibda","Sahifa yuklanishini to'xtatib, skriptni darhol","Skriptni asinxron parallel yuklaydi","Sahifaning boshida, boshqa resurslardan oldin"], ans:0},
+  {tag:"<picture>", q:"Bu teg asosan qanday maqsadda ishlatiladi?",  opts:["Audio fayllarni ijro etish","Video kontent ko'rsatish","JavaScript bilan grafik chizish","Turli qurilmalarga moslashtirilgan responsive rasmlar"], ans:3},
+  {tag:"<datalist>", q:"Bu teg input maydoniga qanday funksiya qo'shadi?", opts:["Ma'lumotlarni jadval ko'rinishida saqlash","Foydalanuvchi yozayotganda tavsiyalar ro'yxatini ko'rsatish","Fayllar ro'yxatini render qilish","Forma ma'lumotlarini serverlga yuborish"], ans:1},
+  {tag:"<details>", q:"Bu teg sahifada qanday interaktiv element hosil qiladi?", opts:["Doim ko'rinadigan kengaytirilgan panel","Jadval tafsilot qatori","Foydalanuvchi bosganda ochiluvchi/yopiladigan blok","Forma validatsiya yordami"], ans:2},
+  {tag:"<canvas>",  q:"Bu teg qanday maqsadda ishlatiladi?",   opts:["SVG rasmlarni ko'rsatish","Interaktiv xarita ko'rsatish","Video fayllarni ijro etish","JavaScript orqali 2D va 3D grafika chizish"], ans:3},
+  {tag:"<abbr title>", q:"title atributi bu tegda foydalanuvchiga qanday ko'rinadi?", opts:["CSS hover effekti sifatida","Qisqartma ustiga kelganda tooltip (maslahat matn)","Sahifa tepa sarlavhasi sifatida","JavaScript funksiyasini chaqirish"], ans:1},
+  {tag:"<fieldset>", q:"Bu teg forma ichida qanday rol o'ynaydi?", opts:["Forma matnini formatlash","Jadval elementlarini guruhlash","Forma elementlarini vizual ramka bilan guruhlash","Sanab o'tiladigan ro'yxat yaratish"], ans:2},
+  {tag:"<time datetime>", q:"datetime atributi nima uchun kerak?", opts:["Mashina o'qiydigan standart sana/vaqt (ISO 8601)","Brauzer soat mintaqasini belgilash","Sahifa tilini aniqlash","Sanani foydalanuvchiga chiroyli ko'rsatish"], ans:0},
+  {tag:"<output>",  q:"Bu teg qanday ma'lumotni ko'rsatish uchun mo'ljallangan?", opts:["Fayl yuklanishi natijasini","Hisoblash yoki foydalanuvchi amali natijasini","Server javob kodini","Konsolga debug xabarini"], ans:1},
+  {tag:"<template>", q:"Bu teg oddiy HTML teglardan qanday farq qiladi?", opts:["Boshqa sahifani iframe kabi yuklaydi","Faqat CSS stillarni saqlaydi","Brauzer render qilmaydi, JS uni klonlab ishlatadi","Serverda render qilinadi, brauzerda emas"], ans:2},
 ];
 
 let tmQ=[], tmIdx=0, tmScore=0, tmTimer=null, tmTimeLeft=25, tmAnswered=false, tmXp=0;
@@ -1595,21 +1595,21 @@ async function finishTagMatch() {
    6. SELECTOR QUIZ
 ───────────────────────────────────────────────────────────────────── */
 const SELECTOR_QUESTIONS = [
-  {sel:".btn",              q:"Bu selector qaysi elementni tanlaydi?",     opts:["id='btn' element","class='btn' element","btn tegi","Barcha button lar"],ans:1},
-  {sel:"#header",           q:"Bu selector nima tanlaydi?",                opts:["header tegidagi barcha","id='header' element","class='header'","head tegi"],ans:1},
-  {sel:"div > p",           q:"Bu selector qaysi elementni tanlaydi?",     opts:["div ichidagi barcha p","div ning to'g'ridan-to'g'ri farzand p lari","div dan oldingi p","div bilan p orasidagi"],ans:1},
-  {sel:"a:hover",           q:"Bu selector qachon ishlaydi?",              opts:["Sahifa yuklanganda","Sichqoncha a ustiga kelganda","a bosilganda","a fokus olganda"],ans:1},
-  {sel:"input[type='text']",q:"Bu selector nima tanlaydi?",                opts:["Barcha input lar","type='text' bo'lgan input lar","text klassi bo'lgan input","#text id li input"],ans:1},
-  {sel:"p:first-child",     q:"Bu selector nima tanlaydi?",                opts:["Birinchi p tegi","Ota elementning birinchi farzandi bo'lgan p","Oxirgi p","Faqat bitta p"],ans:1},
-  {sel:"h1 ~ p",            q:"Bu general sibling selector nima tanlaydi?",opts:["h1 ichidagi p","h1 dan keyin keluvchi barcha sibling p lar","h1 dan oldingi p","h1 ning ota elementi"],ans:1},
-  {sel:".container .item",  q:"Bu selector nima tanlaydi?",                opts:["Faqat to'g'ridan-to'g'ri farzand .item","container klassidagi barcha avlod .item lar","container va item bir elementda","#container #item"],ans:1},
-  {sel:"button:disabled",   q:"Bu selector nima tanlaydi?",                opts:["class='disabled' tugma","disabled atributi bo'lgan tugma","Bosilmagan tugma","aria-disabled tugma"],ans:1},
-  {sel:"li:nth-child(odd)", q:"Bu selector nima tanlaydi?",                opts:["Toq tartibli li elementlar (1,3,5...)","Juft tartibli li lar","Faqat birinchi li","Oxirgi li"],ans:0},
-  {sel:"::before",          q:"Bu pseudo-element nima qiladi?",            opts:["Elementdan oldin real HTML qo'shadi","Elementdan oldin CSS bilan kontent qo'shadi","Birinchi farzand","Before klasi"],ans:1},
-  {sel:"[data-type]",       q:"Bu attribute selector nima tanlaydi?",      opts:["type atributli elementlar","data-type atributi bo'lgan barcha elementlar","data klassi","type='data' elementlar"],ans:1},
-  {sel:"nav a:not(.active)",q:"Bu selector nima tanlaydi?",                opts:["nav ichidagi aktiv linklar","nav ichidagi active klassi bo'lmagan a lar","nav ning o'zi","a:active holatdagilar"],ans:1},
-  {sel:"*",                 q:"Universal selector nima tanlaydi?",         opts:["Barcha teglar","Faqat div lar","Faqat blok elementlar","Faqat HTML5 teglari"],ans:0},
-  {sel:".parent + .child",  q:"Bu adjacent sibling selector nima tanlaydi?",opts:[".parent ning farzandlari",".parent dan keyin darhol keluvchi .child sibling",".child ning .parent si","Ixtiyoriy .child"],ans:1},
+  {sel:".btn",              q:"Bu selector qaysi elementni tanlaydi?",      opts:["class='btn' bo'lgan elementlar","id='btn' bo'lgan element","btn nomli teg","Barcha tugmalar"],ans:0},
+  {sel:"#header",           q:"Bu selector nima tanlaydi?",                 opts:["header tegidagi barcha elementlar","class='header' bo'lgan elementlar","id='header' bo'lgan yagona element","head tegi ichidagi elementlar"],ans:2},
+  {sel:"div > p",           q:"Bu selector qaysi elementni tanlaydi?",      opts:["div dan keyingi sibling p lar","div ichidagi barcha avlod p lar","div bilan p mos kelgan elementlar","div ning bevosita farzand p elementlari"],ans:3},
+  {sel:"a:hover",           q:"Bu pseudo-class selector qachon faollashadi?", opts:["a elementi fokus olganda","Sichqoncha a elementi ustiga kelganda","Sahifa birinchi yuklanganda","a elementi bosilgandan keyin"],ans:1},
+  {sel:"input[type='text']",q:"Bu selector qaysi input larni tanlaydi?",    opts:["text klassi bo'lgan input lar","id='text' bo'lgan input","type='text' atributi bo'lgan input lar","Barcha input elementlari"],ans:2},
+  {sel:"p:first-child",     q:"Bu selector qaysi elementni tanlaydi?",      opts:["Sahifadagi birinchi p tegi","Ota elementning birinchi farzandi bo'lgan p","Barcha p larning birinchi matni","Faqat bittasi mavjud p"],ans:1},
+  {sel:"h1 ~ p",            q:"Bu general sibling selector nima tanlaydi?", opts:["h1 ichidagi p elementlar","h1 dan oldin keluvchi p lar","h1 ning ota elementi","h1 dan keyin bir xil ota ostida keluvchi barcha p lar"],ans:3},
+  {sel:".container .item",  q:"Bu selector nima tanlaydi?",                 opts:[".container ichidagi barcha avlod .item lar","#container ichidagi #item",".container va .item bir elementda","Faqat to'g'ridan-to'g'ri farzand .item lar"],ans:0},
+  {sel:"button:disabled",   q:"Bu selector qaysi tugmalarni tanlaydi?",     opts:["class='disabled' bo'lgan tugmalar","disabled atributi bo'lgan tugmalar","Bosilmagan holat tugmalari","aria-disabled='true' tugmalar"],ans:1},
+  {sel:"li:nth-child(odd)", q:"Bu selector qaysi li elementlarini tanlaydi?", opts:["Oxirgi li elementi","Juft tartib raqamli (2,4,6...) li lar","Toq tartib raqamli (1,3,5...) li lar","Faqat birinchi li elementi"],ans:2},
+  {sel:"::before",          q:"Bu pseudo-element sahifaga nima qo'shadi?",  opts:["Birinchi farzand elementni ajratib ko'rsatadi","before klassiga mos real HTML elementlarni","Elementdan oldin CSS content xususiyati orqali kontent","Elementdan oldin yangi DOM tegi"],ans:2},
+  {sel:"[data-type]",       q:"Bu attribute selector nima tanlaydi?",       opts:["Barcha data klassidagi elementlar","type='data' atributi bo'lgan elementlar","data-type atributi mavjud barcha elementlar","type atributi bo'lgan barcha elementlar"],ans:2},
+  {sel:"nav a:not(.active)",q:"Bu selector nima tanlaydi?",                 opts:["nav ichidagi .active klass bo'lmagan a lar","a:active pseudoklassdagi elementlar","nav ning o'zi","nav ichidagi barcha aktiv linklar"],ans:0},
+  {sel:"*",                 q:"Universal selector qaysi elementlarga ta'sir qiladi?", opts:["Faqat blok elementlarga","Faqat div va span larga","Faqat HTML5 semantik teglarga","Sahifadagi barcha elementlarga"],ans:3},
+  {sel:".parent + .child",  q:"Bu adjacent sibling selector nima tanlaydi?", opts:[".parent dan keyin darhol keluvchi .child sibling","parent klassining barcha farzandlari",".child ning .parent elementi","Ixtiyoriy .child elementi"],ans:0},
 ];
 
 let sqQ=[], sqIdx=0, sqScore=0, sqTimer=null, sqTimeLeft=25, sqAnswered=false, sqXp=0;

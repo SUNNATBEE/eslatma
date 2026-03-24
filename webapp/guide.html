@@ -497,6 +497,21 @@ function render() {
       </div>`;
   }
 
+  // Levels table — only for student role
+  if (role === 'student') {
+    const levelsTitle = lang === 'uz' ? 'Darajalar va XP Chegaralari' : 'Уровни и пороги XP';
+    html += `
+      <div class="section">
+        <div class="section-header">
+          <div class="section-icon">🏆</div>
+          <div class="section-title">${levelsTitle}</div>
+        </div>
+        <div class="level-grid">
+          ${renderLevels(lang)}
+        </div>
+      </div>`;
+  }
+
   // Warning
   html += `<div class="warn-card"><div class="tip-icon">⚠️</div><div class="tip-text">${esc(d.warn)}</div></div>`;
 

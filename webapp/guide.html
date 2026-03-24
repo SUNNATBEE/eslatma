@@ -239,36 +239,37 @@ if (urlRole === 'curator') role = 'curator';
 
 // Rang: [bg, text] — 1-5 yashil, 6-10 oltin, 11-15 binafsha/qizil, 16-20 gradient oltin
 const LEVELS = [
-  { num:1,  name:"Yangi boshlovchi", xp:0,     color:"#27ae60", bg:"rgba(39,174,96,.18)"  },
-  { num:2,  name:"O'quvchi",         xp:100,   color:"#2ecc71", bg:"rgba(46,204,113,.18)" },
-  { num:3,  name:"Faol o'quvchi",    xp:250,   color:"#1abc9c", bg:"rgba(26,188,156,.18)" },
-  { num:4,  name:"Bilimdon",         xp:500,   color:"#16a085", bg:"rgba(22,160,133,.18)" },
-  { num:5,  name:"A'lochi",          xp:800,   color:"#2980b9", bg:"rgba(41,128,185,.18)" },
-  { num:6,  name:"Yulduz o'quvchi",  xp:1200,  color:"#f39c12", bg:"rgba(243,156,18,.18)" },
-  { num:7,  name:"Ustoz",            xp:1800,  color:"#e67e22", bg:"rgba(230,126,34,.18)" },
-  { num:8,  name:"Mohir",            xp:2500,  color:"#d4ac0d", bg:"rgba(212,172,13,.18)" },
-  { num:9,  name:"Tajribali",        xp:3500,  color:"#f1c40f", bg:"rgba(241,196,15,.18)" },
-  { num:10, name:"Expert",           xp:5000,  color:"#ffd700", bg:"rgba(255,215,0,.18)"  },
-  { num:11, name:"Master",           xp:6500,  color:"#e74c3c", bg:"rgba(231,76,60,.18)"  },
-  { num:12, name:"Grand Master",     xp:8500,  color:"#c0392b", bg:"rgba(192,57,43,.18)"  },
-  { num:13, name:"Chempion",         xp:11000, color:"#9b59b6", bg:"rgba(155,89,182,.18)" },
-  { num:14, name:"Super Chempion",   xp:14000, color:"#8e44ad", bg:"rgba(142,68,173,.18)" },
-  { num:15, name:"Professor",        xp:18000, color:"#6c3483", bg:"rgba(108,52,131,.18)" },
-  { num:16, name:"Elita",            xp:22000, color:"#ff8c00", bg:"rgba(255,140,0,.2)"   },
-  { num:17, name:"Legenda",          xp:28000, color:"#ff6b00", bg:"rgba(255,107,0,.2)"   },
-  { num:18, name:"Super Legenda",    xp:35000, color:"#ff4500", bg:"rgba(255,69,0,.2)"    },
-  { num:19, name:"Milliy Qahramon",  xp:43000, color:"#e8b800", bg:"rgba(232,184,0,.22)"  },
-  { num:20, name:"Kosmik Daho",      xp:52000, color:"#ffd700", bg:"rgba(255,215,0,.25)"  },
+  { num:1,  nameUz:"Yangi boshlovchi", nameRu:"Новичок",            xp:0,     color:"#27ae60", bg:"rgba(39,174,96,.18)"  },
+  { num:2,  nameUz:"O'quvchi",         nameRu:"Ученик",             xp:100,   color:"#2ecc71", bg:"rgba(46,204,113,.18)" },
+  { num:3,  nameUz:"Faol o'quvchi",    nameRu:"Активный ученик",    xp:250,   color:"#1abc9c", bg:"rgba(26,188,156,.18)" },
+  { num:4,  nameUz:"Bilimdon",         nameRu:"Знаток",             xp:500,   color:"#16a085", bg:"rgba(22,160,133,.18)" },
+  { num:5,  nameUz:"A'lochi",          nameRu:"Отличник",           xp:800,   color:"#2980b9", bg:"rgba(41,128,185,.18)" },
+  { num:6,  nameUz:"Yulduz o'quvchi",  nameRu:"Звёздный ученик",   xp:1200,  color:"#f39c12", bg:"rgba(243,156,18,.18)" },
+  { num:7,  nameUz:"Ustoz",            nameRu:"Наставник",          xp:1800,  color:"#e67e22", bg:"rgba(230,126,34,.18)" },
+  { num:8,  nameUz:"Mohir",            nameRu:"Умелый",             xp:2500,  color:"#d4ac0d", bg:"rgba(212,172,13,.18)" },
+  { num:9,  nameUz:"Tajribali",        nameRu:"Опытный",            xp:3500,  color:"#f1c40f", bg:"rgba(241,196,15,.18)" },
+  { num:10, nameUz:"Expert",           nameRu:"Эксперт",            xp:5000,  color:"#ffd700", bg:"rgba(255,215,0,.18)"  },
+  { num:11, nameUz:"Master",           nameRu:"Мастер",             xp:6500,  color:"#e74c3c", bg:"rgba(231,76,60,.18)"  },
+  { num:12, nameUz:"Grand Master",     nameRu:"Грандмастер",        xp:8500,  color:"#c0392b", bg:"rgba(192,57,43,.18)"  },
+  { num:13, nameUz:"Chempion",         nameRu:"Чемпион",            xp:11000, color:"#9b59b6", bg:"rgba(155,89,182,.18)" },
+  { num:14, nameUz:"Super Chempion",   nameRu:"Супер Чемпион",      xp:14000, color:"#8e44ad", bg:"rgba(142,68,173,.18)" },
+  { num:15, nameUz:"Professor",        nameRu:"Профессор",          xp:18000, color:"#6c3483", bg:"rgba(108,52,131,.18)" },
+  { num:16, nameUz:"Elita",            nameRu:"Элита",              xp:22000, color:"#ff8c00", bg:"rgba(255,140,0,.2)"   },
+  { num:17, nameUz:"Legenda",          nameRu:"Легенда",            xp:28000, color:"#ff6b00", bg:"rgba(255,107,0,.2)"   },
+  { num:18, nameUz:"Super Legenda",    nameRu:"Супер Легенда",      xp:35000, color:"#ff4500", bg:"rgba(255,69,0,.2)"    },
+  { num:19, nameUz:"Milliy Qahramon",  nameRu:"Национальный герой", xp:43000, color:"#e8b800", bg:"rgba(232,184,0,.22)"  },
+  { num:20, nameUz:"Kosmik Daho",      nameRu:"Космический Гений",  xp:52000, color:"#ffd700", bg:"rgba(255,215,0,.25)"  },
 ];
 
 function renderLevels(lang) {
   return LEVELS.map(lv => {
+    const name = lang === 'uz' ? lv.nameUz : lv.nameRu;
     const xpLabel = lv.xp === 0
       ? (lang === 'uz' ? 'Boshlang\'ich' : 'Начальный')
       : lv.xp.toLocaleString() + ' XP';
     return `<div class="level-row" style="background:${lv.bg};">
       <div class="level-num" style="background:${lv.color};">${lv.num}</div>
-      <div class="level-name">${lv.name}</div>
+      <div class="level-name">${name}</div>
       <div class="level-xp" style="background:${lv.bg};color:${lv.color};border:1px solid ${lv.color}40;">${xpLabel}</div>
     </div>`;
   }).join('');

@@ -407,26 +407,15 @@ def kb_curator_panel() -> InlineKeyboardMarkup:
     if WEBAPP_URL:
         builder.row(
             InlineKeyboardButton(
-                text="🚀 Kurator Mini App",
+                text="🎛 Kurator Paneli",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/curator.html"),
             )
         )
+    else:
+        # WEBAPP_URL yo'q bo'lsa chiqish tugmasi ko'rsatiladi
         builder.row(
-            InlineKeyboardButton(
-                text="📖 Qo'llanma / Инструкция",
-                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/guide.html?role=curator"),
-            )
+            InlineKeyboardButton(text="🚪 Chiqish", callback_data="cur:logout"),
         )
-    builder.row(
-        InlineKeyboardButton(text="👥 O'quvchilar ro'yxati", callback_data="cur:list:all"),
-    )
-    builder.row(
-        InlineKeyboardButton(text="📋 Davomat yoqlama", callback_data="cur:davomat_menu"),
-    )
-    builder.row(
-        InlineKeyboardButton(text="⚠️ Muammo bildirish",     callback_data="cur:report"),
-        InlineKeyboardButton(text="🚪 Chiqish",              callback_data="cur:logout"),
-    )
     return builder.as_markup()
 
 

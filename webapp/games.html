@@ -265,6 +265,10 @@
         <div class="quiz-prog-row">
           <span id="quizQNum">1/10</span>
           <span>XP: <b id="quizXpSoFar">0</b></span>
+          <div id="quizLangToggle" style="display:flex;gap:4px;margin-left:auto;">
+            <button id="qlBtn-uz" onclick="setQuizLang('uz')" style="padding:4px 10px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:var(--accent);color:#fff;">UZ</button>
+            <button id="qlBtn-ru" onclick="setQuizLang('ru')" style="padding:4px 10px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:rgba(255,255,255,.1);color:var(--text);">RU</button>
+          </div>
         </div>
         <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="quizProgFill" style="width:10%"></div></div>
         <div class="quiz-timer">
@@ -746,6 +750,7 @@ async function saveScore(game_type, score, xp_earned) {
 async function init() {
   const sBtn = document.getElementById('soundBtn');
   if (sBtn) sBtn.textContent = _soundOn ? '🔊' : '🔇';
+  setQuizLang(quizLang);
   loadPlaysToday();
   loadGameLeaderboard('quiz');
   try {
@@ -1074,13 +1079,86 @@ const QUIZ_QUESTIONS = [
   {q:"React-da \"State\" va \"Props\" o'rtasidagi eng katta farq?", opts:["Farqi yo'q","State komponent ichida o'zgaradi, Props esa tashqaridan (otadan) keladi","Props o'zgarishi mumkin, State esa yo'q","Props faqat funksiyalarda bo'ladi"], ans:1},
 ];
 
+/* ─────────────────────────────────────────────────────────────────────
+   1b. DASTURLASH TESTI — RUS TILI savollari
+───────────────────────────────────────────────────────────────────── */
+const QUIZ_QUESTIONS_RU = [
+  {q:"Какова основная задача <!DOCTYPE html>?", opts:["Загрузка HTML5","Перевод браузера в \"Standards mode\"","Проверка XML ошибок","Активация CSS селекторов"], ans:1},
+  {q:"Какой элемент НЕ является самозакрывающимся (Self-closing)?", opts:["<br>","<img>","<li>","<hr>"], ans:2},
+  {q:"В каком случае атрибут alt считается обязательным?", opts:["Для улучшения SEO","Когда изображение не загружается и для Accessibility","Для корректного отображения дизайна","Только для изображений-ссылок"], ans:1},
+  {q:"Зачем в теге <a> используется атрибут rel=\"noopener\"?", opts:["Для безопасности (предотвращение доступа через window.opener)","Для повышения SEO показателей","Для открытия ссылки в новом окне","Для очистки кэша"], ans:0},
+  {q:"Какие из атрибутов в HTML5 являются \"Global attributes\"?", opts:["src, href, alt","class, id, title, style","value, type, name","action, method, target"], ans:1},
+  {q:"Где рекомендуется размещать <meta charset=\"UTF-8\">?", opts:["В конце <body>","Внутри <head> первым элементом","В любом месте","Внутри CSS файла"], ans:1},
+  {q:"Как ограничить действия контента внутри <iframe>?", opts:["hidden","sandbox","disable","readonly"], ans:1},
+  {q:"Какой тег семантически определяет текст как \"очень важный\"?", opts:["<b>","<i>","<strong>","<em>"], ans:2},
+  {q:"Куда передаются данные формы при method=\"POST\"?", opts:["В URL-адрес","В тело HTTP-запроса (Request Body)","В кэш браузера","В историю посещений"], ans:1},
+  {q:"Какой тип (type) имеет тег <button> по умолчанию?", opts:["button","reset","submit","menu"], ans:2},
+  {q:"Выберите блочный (Block-level) элемент:", opts:["<span>","<a>","<div>","<img>"], ans:2},
+  {q:"Что делает target=\"_parent\"?", opts:["Открывает в новом окне","Загружает в родительский фрейм","Загружает в верхнее окно","Загружает в текущее окно"], ans:1},
+  {q:"Как получить состояние <input type=\"checkbox\"> в JavaScript?", opts:[".value",".checked",".status",".selected"], ans:1},
+  {q:"Назначение тегов <dl>, <dt>, <dd>?", opts:["Обычные списки","Список определений/терминов","Создание таблиц","Группировка ссылок"], ans:1},
+  {q:"В чем разница между id и class?", opts:["Разницы нет","id должен быть уникальным на странице","class только для CSS","id только для JavaScript"], ans:1},
+  {q:"Как установить «Poster» (заставку) для видео?", opts:["<canvas>","Атрибут poster у <video>","<source>","<embed>"], ans:1},
+  {q:"Для чего нужен атрибут aria-label?", opts:["Для CSS стилей","Для описания элемента экранным дикторам","Для анимаций","Для выделения ссылок"], ans:1},
+  {q:"Функция тега <datalist>?", opts:["База данных","Список вариантов для input","Заголовок таблицы","Группировка скриптов"], ans:1},
+  {q:"Где пишется подпись к <figure>?", opts:["<h3>","<figcaption>","<header>","<caption>"], ans:1},
+  {q:"Какой тег устарел в HTML5?", opts:["<font>","<article>","<section>","<nav>"], ans:0},
+  {q:"В каком элементе placeholder НЕ работает?", opts:["<input>","<textarea>","<div>","<input type=\"text\">"], ans:2},
+  {q:"Что делает атрибут novalidate в <form>?", opts:["Отключает валидацию браузера","Принимает только цифры","Запрещает отправку данных","Скрывает ошибки"], ans:0},
+  {q:"Что даёт атрибут multiple в <select>?", opts:["Выбор нескольких вариантов","Выбор одного варианта","Выбор цвета","Выбор файла"], ans:0},
+  {q:"Роль атрибута required?", opts:["Поле обязательно для заполнения","Поле только для чтения","Поле должно быть скрытым","Только числа"], ans:0},
+  {q:"Где применяется autocomplete=\"off\"?", opts:["Для защиты конфиденциальных данных","Для обновления страницы","Для выбора цвета","Для SEO"], ans:0},
+  {q:"Удаляет ли атрибут hidden элемент из DOM?", opts:["Да","Нет, только скрывает визуально","Только через JavaScript","Только через CSS"], ans:1},
+  {q:"К чему привязывается for в <label>?", opts:["К name инпута","К id инпута","К class инпута","К type инпута"], ans:1},
+  {q:"Как вставить SVG в HTML?", opts:["Через <svg>","Через <img>","Оба варианта верны","Только через CSS"], ans:2},
+  {q:"Сколько раз можно использовать <main> на странице?", opts:["Неограниченно","Только один раз","По одному в каждой секции","Только в сайдбаре"], ans:1},
+  {q:"Для чего async и defer в теге <script>?", opts:["Для стилей","Для управления загрузкой скриптов","Для изображений","Для фреймов"], ans:1},
+  {q:"Когда выполняется скрипт с defer?", opts:["Немедленно","После полной отрисовки HTML","В начале <body>","До загрузки DOM"], ans:1},
+  {q:"Где может находиться тег <th>?", opts:["В <thead> или <tr>","Только в <tbody>","Только в <tfoot>","В <caption>"], ans:0},
+  {q:"Чем заменён cellpadding в HTML5?", opts:["CSS padding (атрибут устарел)","Атрибутом spacing","Атрибутом margin","Атрибутом gap"], ans:0},
+  {q:"Что делает rowspan=\"2\"?", opts:["Объединяет 2 столбца","Объединяет 2 строки","Увеличивает таблицу","Центрирует текст"], ans:1},
+  {q:"Где располагается тег <base>?", opts:["В начале <body>","Внутри <head>","В конце <body>","Внутри <footer>"], ans:1},
+  {q:"Зачем нужен атрибут lang=\"uz\"?", opts:["Для поисковых систем и переводчика","Для стилизации","Для шрифтов","Для кодировки"], ans:0},
+  {q:"Для чего тег <address>?", opts:["Домашний адрес","Контактная информация автора","Интерактивная карта","Почтовый индекс"], ans:1},
+  {q:"Что указывает cite в <blockquote>?", opts:["URL источника цитаты","Имя автора","Дату публикации","Название книги"], ans:0},
+  {q:"Разница между <progress> и <meter>?", opts:["Нет разницы","progress — процесс, meter — измерение в диапазоне","meter — время, progress — проценты","progress — файлы, meter — текст"], ans:1},
+  {q:"Что позволяет draggable=\"true\"?", opts:["Перемещать (перетаскивать) элемент","Удалять элемент","Скрывать элемент","Копировать элемент"], ans:0},
+  {q:"Важны ли заголовки h1-h6 для SEO?", opts:["Нет","Да, определяют структуру контента","Важен только h1","Только в мобильных версиях"], ans:1},
+  {q:"Роль тега <optgroup>?", opts:["Группирует варианты в <select>","Открывает новый список","Удаляет опции","Поиск по списку"], ans:0},
+  {q:"Что делает tabindex=\"0\"?", opts:["Позволяет элементу получать фокус (Tab)","Удаляет из фокуса","Делает элемент первым","Скрывает от клавиатуры"], ans:0},
+  {q:"Разница readonly и disabled?", opts:["Нет разницы","Значение readonly отправляется на сервер, disabled — нет","Значение disabled отправляется, readonly — нет","readonly меняет цвет текста"], ans:1},
+  {q:"Когда виден код внутри <template>?", opts:["При загрузке страницы","Только после активации через JavaScript","Никогда","При наличии CSS"], ans:1},
+  {q:"Для чего <picture>?", opts:["Адаптивные изображения (Art Direction)","Галерея","Вставка видео","Рамка для картинки"], ans:0},
+  {q:"Для чего ранее использовался manifest?", opts:["Офлайн-работа приложения (AppCache)","SEO-продвижение","Хранение настроек","Подключение библиотек"], ans:0},
+  {q:"Что делает spellcheck=\"true\"?", opts:["Проверяет орфографию","Проверяет код","Проверяет ссылки","Проверяет alt текст"], ans:0},
+  {q:"Функция accesskey=\"h\"?", opts:["Назначает горячую клавишу (Alt+h)","Закрывает страницу","Открывает справку","Сохраняет прогресс"], ans:0},
+  {q:"Что такое \"Semantic elements\" в HTML5?", opts:["Теги с понятным назначением (header, nav)","Теги только для оформления","Устаревшие теги","Только теги ссылок"], ans:0},
+];
+
+/* ── Quiz til tanlash ── */
+let quizLang = localStorage.getItem('quizLang') || 'uz';
+
+function setQuizLang(lang) {
+  quizLang = lang;
+  localStorage.setItem('quizLang', lang);
+  const uzBtn = document.getElementById('qlBtn-uz');
+  const ruBtn = document.getElementById('qlBtn-ru');
+  if (uzBtn && ruBtn) {
+    uzBtn.style.background = lang === 'uz' ? 'var(--accent)' : 'rgba(255,255,255,.1)';
+    uzBtn.style.color      = lang === 'uz' ? '#fff' : 'var(--text)';
+    ruBtn.style.background = lang === 'ru' ? 'var(--accent)' : 'rgba(255,255,255,.1)';
+    ruBtn.style.color      = lang === 'ru' ? '#fff' : 'var(--text)';
+  }
+}
+
 let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false, quizXp=0;
 
 function startQuiz() {
   if (checkDailyLimit('quiz')) { showLimitModal('quiz'); return; }
   recordPlay('quiz').catch(()=>{});
   quizScore = 0; quizIdx = 0; quizXp = 0;
-  quizQ = [...QUIZ_QUESTIONS].sort(() => Math.random() - .5).slice(0, 10);
+  const pool = quizLang === 'ru' ? QUIZ_QUESTIONS_RU : QUIZ_QUESTIONS;
+  quizQ = [...pool].sort(() => Math.random() - .5).slice(0, 10);
   document.getElementById('quizGame').style.display   = 'block';
   document.getElementById('quizResult').style.display = 'none';
   showQuizQ();

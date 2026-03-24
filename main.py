@@ -426,6 +426,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
                 "registered": reg is not None,
                 "user_id":    reg.user_id if reg else None,
                 "username":   reg.telegram_username if reg else None,
+                "phone":      reg.phone_number if reg else None,
                 "last_active": reg.last_active.strftime("%d.%m.%Y %H:%M") if reg and reg.last_active else None,
                 "xp":          reg.xp if reg else 0,
                 "level":       reg.level if reg else 1,
@@ -1120,7 +1121,16 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             return web.json_response({"error": "Not logged in"}, status=403)
 
         group_filter = request.rel_url.query.get("group", "all")
-        today = datetime.now(tz).strftime("%Y-%m-%d")
+        # offset=0 bugun, offset=1 kecha, offset=2 undan avval
+        try:
+            day_offset = int(request.rel_url.query.get("offset", "0"))
+            day_offset = max(0, min(day_offset, 30))
+        except (ValueError, TypeError):
+            day_offset = 0
+
+        from datetime import timedelta as _td_att
+        target_date = datetime.now(tz).date() - _td_att(days=day_offset)
+        today = target_date.strftime("%Y-%m-%d")
 
         all_students = await db.get_all_students()
         if group_filter != "all":
@@ -1263,6 +1273,136 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
             pass
 
         return web.json_response({"ok": True})
+
+    async def api_curator_send_message(request: web.Request) -> web.Response:
+        """Kurator Mini App dan o'quvchiga bot orqali xabar yuboradi."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "Bad JSON"}, status=400)
+
+        student_tg_id = body.get("student_telegram_id")
+        text          = (body.get("text") or "").strip()
+        if not student_tg_id or not text:
+            return web.json_response({"error": "student_telegram_id va text majburiy"}, status=400)
+        if len(text) > 4000:
+            return web.json_response({"error": "Xabar juda uzun (maks 4000 belgi)"}, status=400)
+
+        from curator_credentials import CURATORS as _CURATORS
+        cname = _CURATORS.get(session.curator_key, {}).get("full_name", session.curator_key)
+        try:
+            await bot.send_message(
+                int(student_tg_id),
+                f"📩 <b>Kuratordan xabar</b>\n\n"
+                f"👩‍💼 {cname}:\n\n{text}",
+            )
+            return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def api_curator_statistics(request: web.Request) -> web.Response:
+        """Kurator uchun davomat statistikasi: guruh foizi, TOP-5, oxirgi 7 kun."""
+        user_id = _auth(request)
+        if not user_id:
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        session = await db.get_curator_session(user_id)
+        if not session:
+            return web.json_response({"error": "Not logged in"}, status=403)
+
+        from datetime import timedelta as _td
+        today       = datetime.now(tz).date()
+        all_studs   = await db.get_all_students()
+        if not all_studs:
+            return web.json_response({"groups": [], "top_present": [], "top_absent": [], "chart": []})
+
+        # Guruh bo'yicha bugungi davomat foizi
+        today_str = today.strftime("%Y-%m-%d")
+        att_today = await db.get_attendance_by_date(today_str)
+        att_map   = {r.user_id: r for r in att_today}
+
+        group_stats: dict[str, dict] = {}
+        for s in all_studs:
+            g = s.group_name
+            if g not in group_stats:
+                group_stats[g] = {"total": 0, "present": 0}
+            group_stats[g]["total"] += 1
+            rec = att_map.get(s.user_id)
+            if rec and rec.status == "yes":
+                group_stats[g]["present"] += 1
+
+        groups_list = [
+            {
+                "group":   g,
+                "total":   v["total"],
+                "present": v["present"],
+                "pct":     round(v["present"] / v["total"] * 100) if v["total"] else 0,
+            }
+            for g, v in sorted(group_stats.items())
+        ]
+
+        # Oxirgi 30 kunlik yig'ilgan davomat: har bir o'quvchi uchun present soni
+        present_counts: dict[int, int] = {}
+        absent_counts:  dict[int, int] = {}
+        for i in range(30):
+            d_str = (today - _td(days=i)).strftime("%Y-%m-%d")
+            for r in await db.get_attendance_by_date(d_str):
+                if r.status == "yes":
+                    present_counts[r.user_id] = present_counts.get(r.user_id, 0) + 1
+                else:
+                    absent_counts[r.user_id] = absent_counts.get(r.user_id, 0) + 1
+
+        stud_map = {s.user_id: s for s in all_studs}
+
+        top_present = sorted(present_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_absent  = sorted(absent_counts.items(),  key=lambda x: x[1], reverse=True)[:5]
+
+        top_present_list = [
+            {
+                "full_name":  stud_map[uid].full_name  if uid in stud_map else str(uid),
+                "group_name": stud_map[uid].group_name if uid in stud_map else "—",
+                "count":      cnt,
+            }
+            for uid, cnt in top_present if uid in stud_map
+        ]
+        top_absent_list = [
+            {
+                "full_name":  stud_map[uid].full_name  if uid in stud_map else str(uid),
+                "group_name": stud_map[uid].group_name if uid in stud_map else "—",
+                "count":      cnt,
+            }
+            for uid, cnt in top_absent if uid in stud_map
+        ]
+
+        # Oxirgi 7 kunlik grafik (jami o'quvchilarga nisbatan %)
+        total_studs = len(all_studs)
+        chart = []
+        day_names_uz = ["Yak", "Dush", "Sesh", "Chor", "Pay", "Juma", "Shan"]
+        for i in range(6, -1, -1):
+            d      = today - _td(days=i)
+            d_str  = d.strftime("%Y-%m-%d")
+            recs   = await db.get_attendance_by_date(d_str)
+            p_cnt  = sum(1 for r in recs if r.status == "yes")
+            pct    = round(p_cnt / total_studs * 100) if total_studs else 0
+            chart.append({
+                "date":    d_str,
+                "label":   day_names_uz[d.weekday()],
+                "present": p_cnt,
+                "total":   total_studs,
+                "pct":     pct,
+            })
+
+        return web.json_response({
+            "groups":      groups_list,
+            "top_present": top_present_list,
+            "top_absent":  top_absent_list,
+            "chart":       chart,
+        })
 
     async def api_class_schedule(request: web.Request) -> web.Response:
         """O'quvchi uchun bugungi dars vaqtini qaytaradi."""
@@ -2530,6 +2670,8 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     app.router.add_get("/api/curator/parent-groups",         api_curator_parent_groups)
     app.router.add_post("/api/curator/send-yoqlama",         api_curator_send_yoqlama)
     app.router.add_post("/api/curator/update-attendance",    api_curator_update_attendance)
+    app.router.add_post("/api/curator/send-message",         api_curator_send_message)
+    app.router.add_get("/api/curator/statistics",            api_curator_statistics)
     app.router.add_get("/api/class-schedule",                api_class_schedule)
     # Gamification
     app.router.add_post("/api/student/checkin",         api_student_checkin)

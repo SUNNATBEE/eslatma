@@ -296,6 +296,35 @@
     .has-tg { border-left: 3px solid var(--success); }
     .no-tg  { border-left: 3px solid rgba(255,255,255,.1); }
 
+    /* Skeleton loading */
+    .skeleton {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid rgba(255,255,255,.04);
+    }
+    .skel-avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: rgba(255,255,255,.07);
+      flex-shrink: 0;
+      animation: shimmer 1.4s ease infinite;
+    }
+    .skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .skel-line {
+      height: 12px; border-radius: 6px;
+      background: rgba(255,255,255,.07);
+      animation: shimmer 1.4s ease infinite;
+    }
+    .skel-line.short { width: 55%; }
+    @keyframes shimmer {
+      0%, 100% { opacity: .6; }
+      50% { opacity: 1; }
+    }
+
     /* Empty state */
     .empty {
       text-align: center;
@@ -323,6 +352,8 @@
       width: 100%;
       padding: 0 0 32px;
       animation: slideUp .25s ease;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     @keyframes slideUp {
       from { transform: translateY(100%); }
@@ -363,6 +394,21 @@
     .sir-label { color: var(--sub); flex-shrink: 0; width: 90px; }
     .sir-value { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    /* Attendance mini timeline */
+    .sheet-att-row {
+      display: flex; gap: 6px; padding: 12px 20px;
+      border-top: 1px solid rgba(255,255,255,.05);
+      flex-wrap: wrap;
+    }
+    .att-dot {
+      width: 30px; height: 30px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      background: rgba(255,255,255,.06);
+    }
+    .att-dot.yes { background: rgba(76,175,125,.2); }
+    .att-dot.no  { background: rgba(224,92,92,.2); }
+
     .sheet-actions { padding: 4px 20px 0; display: flex; flex-direction: column; gap: 10px; }
     .action-btn {
       display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -377,7 +423,9 @@
     }
     .action-btn:active { opacity: .8; }
     .btn-tg    { background: var(--accent);  color: #fff; }
+    .btn-msg   { background: rgba(76,175,125,.2); color: var(--success); border: 1px solid rgba(76,175,125,.3); }
     .btn-bot   { background: rgba(82,136,193,.2); color: var(--accent); border: 1px solid rgba(82,136,193,.3); }
+    .btn-phone { background: rgba(240,173,78,.2); color: var(--warn); border: 1px solid rgba(240,173,78,.3); }
     .btn-close { background: rgba(255,255,255,.06); color: var(--sub); }
 
     /* ─────────────────────────────────────────────────────── */
@@ -391,10 +439,12 @@
       background: var(--bg2);
       border-bottom: 1px solid rgba(255,255,255,.05);
       flex-shrink: 0;
+      overflow-x: auto;
     }
+    .att-tabs::-webkit-scrollbar { display: none; }
     .att-tab {
-      flex: 1; text-align: center;
-      padding: 7px 10px;
+      flex-shrink: 0;
+      padding: 7px 12px;
       border-radius: 20px;
       font-size: 12px; font-weight: 700;
       cursor: pointer;
@@ -402,6 +452,7 @@
       transition: background .15s, color .15s;
       background: rgba(255,255,255,.06);
       color: var(--sub);
+      white-space: nowrap;
     }
     .att-tab.active { background: var(--accent); color: #fff; }
 
@@ -462,6 +513,27 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* Date selector for attendance */
+    .att-date-bar {
+      display: flex; gap: 8px; padding: 8px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      flex-shrink: 0;
+    }
+    .att-date-chip {
+      flex: 1; text-align: center;
+      padding: 7px 8px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      background: rgba(255,255,255,.06);
+      color: var(--sub);
+      border: none;
+      white-space: nowrap;
+    }
+    .att-date-chip.active { background: var(--accent); color: #fff; }
+
     /* Group filter for attendance */
     .att-group-filter {
       padding: 8px 16px;
@@ -483,27 +555,265 @@
     }
     .att-gf-btn.active { background: var(--accent); color: #fff; }
 
-    /* Bottom tab bar for curator main */
-    .cur-tabbar {
-      display: flex;
+    /* ─────────────────────────────────────────────────────── */
+    /* MESSAGES PAGE                                           */
+    /* ─────────────────────────────────────────────────────── */
+    #page-messages { padding: 0; }
+
+    .msg-header {
       background: var(--bg2);
-      border-top: 1px solid rgba(255,255,255,.06);
+      padding: 12px 16px 10px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
       flex-shrink: 0;
     }
-    .cur-tab {
+    .msg-header-info { flex: 1; }
+    .msg-header-title { font-size: 15px; font-weight: 700; }
+    .msg-header-sub   { font-size: 12px; color: var(--sub); }
+
+    .msg-body {
       flex: 1;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 8px 4px 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Step 1: student search */
+    .msg-search-wrap {
+      padding: 12px 16px 8px;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      flex-shrink: 0;
+    }
+    .msg-selected-student {
+      display: none;
+      align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: rgba(82,136,193,.12);
+      border: 1px solid rgba(82,136,193,.3);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    .msg-selected-student.show { display: flex; }
+    .msg-sel-name { flex: 1; font-weight: 600; font-size: 14px; }
+    .msg-sel-clear {
+      background: none; border: none; color: var(--sub);
+      font-size: 18px; cursor: pointer; padding: 0 4px;
+    }
+
+    .msg-student-results {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 16px 8px;
+    }
+    .msg-student-results::-webkit-scrollbar { display: none; }
+
+    .msg-student-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      background: var(--bg2);
+      border-radius: var(--radius-sm);
+      margin-top: 8px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      transition: color .15s;
-      color: var(--sub);
+      transition: opacity .1s;
+      border: 1px solid rgba(255,255,255,.04);
     }
-    .cur-tab.active { color: var(--accent); }
-    .cur-tab .tab-icon  { font-size: 20px; }
-    .cur-tab .tab-label { font-size: 10px; font-weight: 600; margin-top: 2px; }
+    .msg-student-item:active { opacity: .75; }
+    .msg-si-av {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .msg-si-info { flex: 1; min-width: 0; }
+    .msg-si-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-si-meta { font-size: 12px; color: var(--sub); }
+    .msg-si-tg   { font-size: 11px; color: var(--accent); }
+
+    /* Step 2: compose message */
+    .msg-compose {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    .msg-compose.show { display: flex; }
+
+    .msg-compose-header {
+      padding: 12px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .msg-compose-to {
+      font-size: 12px; color: var(--sub); margin-bottom: 2px;
+    }
+    .msg-compose-name { font-size: 15px; font-weight: 700; }
+    .msg-compose-group { font-size: 12px; color: var(--sub); }
+
+    .msg-textarea-wrap {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+    .msg-textarea {
+      flex: 1;
+      min-height: 120px;
+      background: var(--bg2);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+      outline: none;
+      resize: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+    }
+    .msg-textarea:focus { border-color: var(--accent); }
+    .msg-textarea::placeholder { color: var(--sub); }
+    .msg-char-count { font-size: 12px; color: var(--sub); text-align: right; }
+
+    .msg-send-footer {
+      padding: 12px 16px;
+      background: var(--bg2);
+      border-top: 1px solid rgba(255,255,255,.06);
+      display: flex; gap: 10px; flex-shrink: 0;
+    }
+    .msg-back-btn {
+      background: rgba(255,255,255,.07);
+      border: none; border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 14px 18px;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .msg-send-btn {
+      flex: 1;
+      background: var(--accent);
+      color: #fff; border: none;
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity .15s;
+    }
+    .msg-send-btn:active { opacity: .8; }
+    .msg-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ─────────────────────────────────────────────────────── */
+    /* STATISTICS PAGE                                         */
+    /* ─────────────────────────────────────────────────────── */
+    #page-stats { padding: 0; }
+
+    .stats-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .stats-scroll::-webkit-scrollbar { display: none; }
+
+    .stats-section {
+      margin-bottom: 20px;
+    }
+    .stats-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 10px;
+    }
+
+    /* Group attendance cards */
+    .group-att-card {
+      background: var(--bg2);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .group-att-name { flex: 1; font-size: 14px; font-weight: 600; }
+    .group-att-bar-wrap { flex: 2; height: 6px; background: rgba(255,255,255,.1); border-radius: 3px; overflow: hidden; }
+    .group-att-bar { height: 100%; border-radius: 3px; transition: width .5s ease; background: var(--success); }
+    .group-att-pct { font-size: 13px; font-weight: 700; width: 36px; text-align: right; flex-shrink: 0; }
+
+    /* Top lists */
+    .top-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .top-item:last-child { border-bottom: none; }
+    .top-rank {
+      width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
+      flex-shrink: 0;
+    }
+    .top-rank.r1 { background: #f0ad4e; color: #000; }
+    .top-rank.r2 { background: #aaa; color: #000; }
+    .top-rank.r3 { background: #cd7f32; color: #fff; }
+    .top-rank.rn { background: rgba(255,255,255,.1); color: var(--sub); }
+    .top-info { flex: 1; min-width: 0; }
+    .top-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-group { font-size: 12px; color: var(--sub); }
+    .top-count { font-size: 14px; font-weight: 700; flex-shrink: 0; }
+    .top-count.green { color: var(--success); }
+    .top-count.red   { color: var(--danger); }
+
+    /* 7-day chart */
+    .chart-wrap {
+      background: var(--bg2);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 80px;
+    }
+    .chart-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .chart-bar {
+      width: 100%;
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      background: var(--accent);
+      opacity: .8;
+      transition: height .5s ease;
+    }
+    .chart-bar.today { background: var(--success); opacity: 1; }
+    .chart-label {
+      font-size: 10px;
+      color: var(--sub);
+      margin-top: 6px;
+      text-align: center;
+    }
+    .chart-pct {
+      font-size: 10px;
+      color: var(--text);
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
 
     /* ─────────────────────────────────────────────────────── */
     /* YOQLAMA PAGE                                            */
@@ -632,6 +942,28 @@
     .yoq-parent-icon { font-size: 28px; flex-shrink: 0; }
     .yoq-parent-name { flex: 1; font-weight: 700; font-size: 15px; }
 
+    /* ── Bottom tabbar ── */
+    .cur-tabbar {
+      display: flex;
+      background: var(--bg2);
+      border-top: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .cur-tab {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 8px 4px 10px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: color .15s;
+      color: var(--sub);
+    }
+    .cur-tab.active { color: var(--accent); }
+    .cur-tab .tab-icon  { font-size: 20px; }
+    .cur-tab .tab-label { font-size: 10px; font-weight: 600; margin-top: 2px; }
+
     /* ── Spinner ── */
     .spinner {
       display: flex; align-items: center; justify-content: center;
@@ -649,9 +981,9 @@
     /* ── Toast ── */
     #toast {
       position: fixed;
-      bottom: 24px; left: 50%;
+      bottom: 80px; left: 50%;
       transform: translateX(-50%) translateY(20px);
-      background: rgba(30,40,55,.95);
+      background: rgba(30,40,55,.97);
       color: #fff;
       padding: 10px 20px;
       border-radius: 20px;
@@ -662,8 +994,20 @@
       z-index: 999;
       backdrop-filter: blur(10px);
       border: 1px solid rgba(255,255,255,.1);
+      max-width: calc(100vw - 32px);
+      text-align: center;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Pull refresh indicator ── */
+    .ptr-indicator {
+      text-align: center;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--sub);
+      display: none;
+    }
+    .ptr-indicator.show { display: block; }
   </style>
 </head>
 <body>
@@ -697,7 +1041,7 @@
     </div>
   </div>
 
-  <!-- ── MAIN PAGE ───────────────────────────────────────────── -->
+  <!-- ── MAIN PAGE (students) ─────────────────────────────────── -->
   <div class="page" id="page-main">
 
     <!-- Header -->
@@ -723,14 +1067,14 @@
     <!-- Group tabs -->
     <div class="group-tabs" id="groupTabs"></div>
 
-    <!-- Stats -->
+    <!-- Stats row -->
     <div class="stats-row">
       <div class="stat-chip">Jami: <span id="statTotal">0</span></div>
       <div class="stat-chip">Ko'rsatilmoqda: <span id="statShown">0</span></div>
-      <div class="stat-chip">Telegram: <span id="statTg">0</span></div>
+      <div class="stat-chip">Bot: <span id="statTg">0</span></div>
     </div>
 
-    <!-- List -->
+    <!-- Student list -->
     <div class="students-list" id="studentsList"></div>
 
     <!-- Tab bar -->
@@ -740,6 +1084,12 @@
       </div>
       <div class="cur-tab" id="curtab-attendance" onclick="switchCurTab('attendance')">
         <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
+      </div>
+      <div class="cur-tab" id="curtab-messages" onclick="switchCurTab('messages')">
+        <div class="tab-icon">💬</div><div class="tab-label">Xabarlar</div>
+      </div>
+      <div class="cur-tab" id="curtab-stats" onclick="switchCurTab('stats')">
+        <div class="tab-icon">📈</div><div class="tab-label">Statistika</div>
       </div>
       <div class="cur-tab" id="curtab-yoqlama" onclick="switchCurTab('yoqlama')">
         <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
@@ -760,16 +1110,26 @@
       <button class="header-logout" onclick="doLogout()">Chiqish</button>
     </div>
 
+    <!-- Date chips -->
+    <div class="att-date-bar" id="attDateBar">
+      <button class="att-date-chip active" data-offset="0" onclick="setAttDate(0,this)">Bugun</button>
+      <button class="att-date-chip"        data-offset="1" onclick="setAttDate(1,this)">Kecha</button>
+      <button class="att-date-chip"        data-offset="2" onclick="setAttDate(2,this)">Ilgarigi</button>
+    </div>
+
     <!-- Status filter tabs -->
     <div class="att-tabs">
       <div class="att-tab active" id="atab-all"     onclick="setAttTab('all')">Hammasi</div>
       <div class="att-tab"        id="atab-present" onclick="setAttTab('present')">✅ Bor</div>
       <div class="att-tab"        id="atab-absent"  onclick="setAttTab('absent')">❌ Yo'q</div>
-      <div class="att-tab"        id="atab-pending" onclick="setAttTab('pending')">⏳ Javob yo'q</div>
+      <div class="att-tab"        id="atab-pending" onclick="setAttTab('pending')">⏳ Kutilmoqda</div>
     </div>
 
     <!-- Group filter chips -->
     <div class="att-group-filter" id="attGroupFilter"></div>
+
+    <!-- Pull-to-refresh indicator -->
+    <div class="ptr-indicator" id="ptrIndicator">Yangilanmoqda...</div>
 
     <!-- List -->
     <div class="att-list" id="attList"><div class="spinner"></div></div>
@@ -782,7 +1142,127 @@
       <div class="cur-tab active" id="curtab2-attendance" onclick="switchCurTab('attendance')">
         <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
       </div>
+      <div class="cur-tab" id="curtab2-messages" onclick="switchCurTab('messages')">
+        <div class="tab-icon">💬</div><div class="tab-label">Xabarlar</div>
+      </div>
+      <div class="cur-tab" id="curtab2-stats" onclick="switchCurTab('stats')">
+        <div class="tab-icon">📈</div><div class="tab-label">Statistika</div>
+      </div>
       <div class="cur-tab" id="curtab2-yoqlama" onclick="switchCurTab('yoqlama')">
+        <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MESSAGES PAGE ─────────────────────────────────────────── -->
+  <div class="page" id="page-messages">
+
+    <div class="msg-header">
+      <div class="header-avatar" id="msgAvatar">👩‍💼</div>
+      <div class="msg-header-info">
+        <div class="msg-header-title">Xabar yuborish</div>
+        <div class="msg-header-sub">O'quvchiga bot orqali xabar</div>
+      </div>
+      <button class="header-logout" onclick="doLogout()">Chiqish</button>
+    </div>
+
+    <div class="msg-body" id="msgBody">
+
+      <!-- Step 1: search & select student -->
+      <div id="msgStep1">
+        <div class="msg-search-wrap">
+          <div class="msg-selected-student" id="msgSelectedWrap">
+            <span id="msgSelectedName" class="msg-sel-name"></span>
+            <button class="msg-sel-clear" onclick="clearMsgStudent()">✕</button>
+          </div>
+          <input class="search-input" id="msgSearchInput"
+                 placeholder="O'quvchini qidirish..."
+                 oninput="renderMsgStudents()" style="background-image:none;padding-left:14px"/>
+        </div>
+        <div class="msg-student-results" id="msgStudentResults">
+          <div class="empty" style="padding-top:32px">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-text">O'quvchi ismini kiriting</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: compose & send -->
+      <div class="msg-compose" id="msgCompose">
+        <div class="msg-compose-header">
+          <div class="msg-compose-to">Kimga:</div>
+          <div class="msg-compose-name" id="msgComposeName"></div>
+          <div class="msg-compose-group" id="msgComposeGroup"></div>
+        </div>
+        <div class="msg-textarea-wrap">
+          <textarea class="msg-textarea" id="msgTextarea"
+                    placeholder="Xabar matnini yozing..."
+                    oninput="updateMsgCharCount()"
+                    maxlength="4000"
+                    rows="6"></textarea>
+          <div class="msg-char-count"><span id="msgCharCount">0</span>/4000</div>
+        </div>
+        <div class="msg-send-footer">
+          <button class="msg-back-btn" onclick="msgBackToSearch()">‹ Orqaga</button>
+          <button class="msg-send-btn" id="msgSendBtn" onclick="sendMessage()">
+            📩 Yuborish
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tab bar -->
+    <div class="cur-tabbar">
+      <div class="cur-tab" id="curtab3-students" onclick="switchCurTab('students')">
+        <div class="tab-icon">👥</div><div class="tab-label">O'quvchilar</div>
+      </div>
+      <div class="cur-tab" id="curtab3-attendance" onclick="switchCurTab('attendance')">
+        <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
+      </div>
+      <div class="cur-tab active" id="curtab3-messages" onclick="switchCurTab('messages')">
+        <div class="tab-icon">💬</div><div class="tab-label">Xabarlar</div>
+      </div>
+      <div class="cur-tab" id="curtab3-stats" onclick="switchCurTab('stats')">
+        <div class="tab-icon">📈</div><div class="tab-label">Statistika</div>
+      </div>
+      <div class="cur-tab" id="curtab3-yoqlama" onclick="switchCurTab('yoqlama')">
+        <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STATISTICS PAGE ──────────────────────────────────────── -->
+  <div class="page" id="page-stats">
+
+    <div class="header">
+      <div class="header-avatar" id="statsAvatar">👩‍💼</div>
+      <div class="header-info">
+        <div class="header-name">Statistika</div>
+        <div class="header-role">Davomat tahlili</div>
+      </div>
+      <button class="header-logout" onclick="doLogout()">Chiqish</button>
+    </div>
+
+    <div class="stats-scroll" id="statsScroll">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="cur-tabbar">
+      <div class="cur-tab" id="curtab4-students" onclick="switchCurTab('students')">
+        <div class="tab-icon">👥</div><div class="tab-label">O'quvchilar</div>
+      </div>
+      <div class="cur-tab" id="curtab4-attendance" onclick="switchCurTab('attendance')">
+        <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
+      </div>
+      <div class="cur-tab" id="curtab4-messages" onclick="switchCurTab('messages')">
+        <div class="tab-icon">💬</div><div class="tab-label">Xabarlar</div>
+      </div>
+      <div class="cur-tab active" id="curtab4-stats" onclick="switchCurTab('stats')">
+        <div class="tab-icon">📈</div><div class="tab-label">Statistika</div>
+      </div>
+      <div class="cur-tab" id="curtab4-yoqlama" onclick="switchCurTab('yoqlama')">
         <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
       </div>
     </div>
@@ -791,7 +1271,6 @@
   <!-- ── YOQLAMA PAGE ──────────────────────────────────────── -->
   <div class="page" id="page-yoqlama">
 
-    <!-- Dynamic header -->
     <div class="yoq-header">
       <button class="yoq-back-btn" id="yoqBackBtn" onclick="yoqBack()" hidden>‹</button>
       <div class="yoq-title" id="yoqTitle">📋 Guruh tanlang</div>
@@ -820,13 +1299,19 @@
 
     <!-- Tab bar -->
     <div class="cur-tabbar">
-      <div class="cur-tab" id="curtab3-students" onclick="switchCurTab('students')">
+      <div class="cur-tab" id="curtab5-students" onclick="switchCurTab('students')">
         <div class="tab-icon">👥</div><div class="tab-label">O'quvchilar</div>
       </div>
-      <div class="cur-tab" id="curtab3-attendance" onclick="switchCurTab('attendance')">
+      <div class="cur-tab" id="curtab5-attendance" onclick="switchCurTab('attendance')">
         <div class="tab-icon">📊</div><div class="tab-label">Davomat</div>
       </div>
-      <div class="cur-tab active" id="curtab3-yoqlama" onclick="switchCurTab('yoqlama')">
+      <div class="cur-tab" id="curtab5-messages" onclick="switchCurTab('messages')">
+        <div class="tab-icon">💬</div><div class="tab-label">Xabarlar</div>
+      </div>
+      <div class="cur-tab" id="curtab5-stats" onclick="switchCurTab('stats')">
+        <div class="tab-icon">📈</div><div class="tab-label">Statistika</div>
+      </div>
+      <div class="cur-tab active" id="curtab5-yoqlama" onclick="switchCurTab('yoqlama')">
         <div class="tab-icon">📋</div><div class="tab-label">Yoqlama</div>
       </div>
     </div>
@@ -852,9 +1337,19 @@
         <span class="sir-value" id="siGroup"></span>
       </div>
       <div class="sheet-info-row">
+        <span class="sir-icon">🆔</span>
+        <span class="sir-label">Mars ID</span>
+        <span class="sir-value" id="siMarsId"></span>
+      </div>
+      <div class="sheet-info-row">
         <span class="sir-icon">📱</span>
         <span class="sir-label">Telegram</span>
         <span class="sir-value" id="siTg"></span>
+      </div>
+      <div class="sheet-info-row">
+        <span class="sir-icon">📞</span>
+        <span class="sir-label">Telefon</span>
+        <span class="sir-value" id="siPhone"></span>
       </div>
       <div class="sheet-info-row">
         <span class="sir-icon">🕐</span>
@@ -862,6 +1357,8 @@
         <span class="sir-value" id="siActive"></span>
       </div>
     </div>
+    <!-- Last 5 attendance dots -->
+    <div class="sheet-att-row" id="sheetAttRow"></div>
     <div class="sheet-actions" id="sheetActions"></div>
   </div>
 </div>
@@ -901,13 +1398,16 @@ async function api(path, opts = {}) {
 let allStudents   = [];
 let activeGroup   = 'all';
 let selectedSt    = null;
+let msgTargetSt   = null;   // selected student for messaging
 
 /* ── Toast ───────────────────────────────────────────────── */
+let _toastTimer = null;
 function toast(msg, dur = 2500) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), dur);
 }
 
 /* ── Page switch ─────────────────────────────────────────── */
@@ -923,7 +1423,7 @@ async function init() {
     if (me.logged_in) {
       setupMain(me);
       showPage('main');
-      loadStudents();
+      loadStudentsWithSkeleton();
       loadDashboardStats();
     }
   } catch (e) {
@@ -956,7 +1456,8 @@ async function doLogin() {
     tg?.HapticFeedback?.notificationOccurred('success');
     setupMain(res);
     showPage('main');
-    loadStudents();
+    loadStudentsWithSkeleton();
+    loadDashboardStats();
   } catch (e) {
     errEl.textContent = e.message || 'Xatolik yuz berdi';
     errEl.classList.add('show');
@@ -972,8 +1473,9 @@ async function doLogout() {
   try {
     await api('/curator/logout', { method: 'POST' });
   } catch {}
-  allStudents = [];
-  activeGroup = 'all';
+  allStudents  = [];
+  activeGroup  = 'all';
+  msgTargetSt  = null;
   document.getElementById('loginInput').value = '';
   document.getElementById('passInput').value  = '';
   document.getElementById('loginError').classList.remove('show');
@@ -981,12 +1483,41 @@ async function doLogout() {
   toast('Chiqish amalga oshirildi');
 }
 
-/* ── Setup main ──────────────────────────────────────────── */
+/* ── Setup main (all pages) ──────────────────────────────── */
 function setupMain(info) {
-  const name = info.full_name || 'Kurator';
-  document.getElementById('curName').textContent   = name;
-  document.getElementById('curAvatar').textContent = name.charAt(0).toUpperCase();
-  document.getElementById('attAvatar').textContent = name.charAt(0).toUpperCase();
+  const name   = info.full_name || 'Kurator';
+  const letter = name.charAt(0).toUpperCase();
+  document.getElementById('curName').textContent    = name;
+  document.getElementById('curAvatar').textContent  = letter;
+  document.getElementById('attAvatar').textContent  = letter;
+  document.getElementById('msgAvatar').textContent  = letter;
+  document.getElementById('statsAvatar').textContent = letter;
+}
+
+/* ── Skeleton loading ────────────────────────────────────── */
+function showSkeleton(containerId, count = 6) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = Array(count).fill(`
+    <div class="skeleton">
+      <div class="skel-avatar"></div>
+      <div class="skel-lines">
+        <div class="skel-line"></div>
+        <div class="skel-line short"></div>
+      </div>
+    </div>`).join('');
+}
+
+async function loadStudentsWithSkeleton() {
+  showSkeleton('studentsList');
+  try {
+    const data  = await api('/curator/all-students');
+    allStudents = data.students || [];
+    buildGroupTabs();
+    renderStudents();
+  } catch (e) {
+    document.getElementById('studentsList').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
+  }
 }
 
 /* ── Dashboard stats ─────────────────────────────────────── */
@@ -996,20 +1527,20 @@ async function loadDashboardStats() {
     const el = document.getElementById('dashboardStats');
     if (!el) return;
     el.innerHTML = `
-      <div class="dash-stat" style="border-left:3px solid #4caf7d">
-        <div class="dash-stat-val" style="color:#4caf7d">${stats.present}</div>
+      <div class="dash-stat" style="border-left:3px solid var(--success)">
+        <div class="dash-stat-val" style="color:var(--success)">${stats.present}</div>
         <div class="dash-stat-lbl">Keldi</div>
       </div>
-      <div class="dash-stat" style="border-left:3px solid #e05c5c">
-        <div class="dash-stat-val" style="color:#e05c5c">${stats.absent}</div>
+      <div class="dash-stat" style="border-left:3px solid var(--danger)">
+        <div class="dash-stat-val" style="color:var(--danger)">${stats.absent}</div>
         <div class="dash-stat-lbl">Kelmadi</div>
       </div>
-      <div class="dash-stat" style="border-left:3px solid #f0ad4e">
-        <div class="dash-stat-val" style="color:#f0ad4e">${stats.pending}</div>
+      <div class="dash-stat" style="border-left:3px solid var(--warn)">
+        <div class="dash-stat-val" style="color:var(--warn)">${stats.pending}</div>
         <div class="dash-stat-lbl">Kutilmoqda</div>
       </div>
-      <div class="dash-stat" style="border-left:3px solid #5288c1">
-        <div class="dash-stat-val" style="color:#5288c1">${stats.homework_done}</div>
+      <div class="dash-stat" style="border-left:3px solid var(--accent)">
+        <div class="dash-stat-val" style="color:var(--accent)">${stats.homework_done}</div>
         <div class="dash-stat-lbl">Uy ishi ✅</div>
       </div>`;
   } catch (e) {
@@ -1017,38 +1548,24 @@ async function loadDashboardStats() {
   }
 }
 
-/* ── Load students ───────────────────────────────────────── */
-async function loadStudents() {
-  document.getElementById('studentsList').innerHTML = '<div class="spinner"></div>';
-  try {
-    const data = await api('/curator/all-students');
-    allStudents = data.students || [];
-    buildGroupTabs();
-    renderStudents();
-  } catch (e) {
-    document.getElementById('studentsList').innerHTML =
-      '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">' + e.message + '</div></div>';
-  }
-}
-
 /* ── Group tabs ──────────────────────────────────────────── */
 function buildGroupTabs() {
-  const groups = [...new Set(allStudents.map(s => s.group_name))].sort();
+  const groups    = [...new Set(allStudents.map(s => s.group_name))].sort();
   const container = document.getElementById('groupTabs');
   container.innerHTML = '';
 
-  const allTab = document.createElement('div');
+  const allTab     = document.createElement('div');
   allTab.className = 'group-tab active';
   allTab.textContent = `Hammasi (${allStudents.length})`;
-  allTab.onclick = () => setGroup('all', allTab);
+  allTab.onclick   = () => setGroup('all', allTab);
   container.appendChild(allTab);
 
   groups.forEach(g => {
     const cnt = allStudents.filter(s => s.group_name === g).length;
     const tab = document.createElement('div');
-    tab.className = 'group-tab';
+    tab.className   = 'group-tab';
     tab.textContent = `${g} (${cnt})`;
-    tab.onclick = () => setGroup(g, tab);
+    tab.onclick     = () => setGroup(g, tab);
     container.appendChild(tab);
   });
 }
@@ -1068,11 +1585,10 @@ function renderStudents() {
     : allStudents.filter(s => s.group_name === activeGroup);
   if (q) list = list.filter(s => s.full_name.toLowerCase().includes(q));
 
-  const tgCount  = list.filter(s => s.username).length;
   const regCount = list.filter(s => s.registered).length;
   document.getElementById('statTotal').textContent = allStudents.length;
   document.getElementById('statShown').textContent = list.length;
-  document.getElementById('statTg').textContent    = regCount + ' / ' + list.length;
+  document.getElementById('statTg').textContent    = regCount + '/' + list.length;
 
   const container = document.getElementById('studentsList');
   if (!list.length) {
@@ -1080,13 +1596,13 @@ function renderStudents() {
     return;
   }
 
-  container.innerHTML = list.map((s, idx) => {
+  container.innerHTML = list.map(s => {
     const regBadge = s.registered
       ? '<span style="color:var(--success);font-size:11px">✓ Bot</span>'
       : '<span style="color:var(--sub);font-size:11px">Bot\'ga kirmagan</span>';
     const cardClass = s.registered ? 'has-tg' : 'no-tg';
-    const xpBadge  = s.xp  ? `<span style="color:#f0ad4e;font-size:10px">🏅${s.xp}XP</span>` : '';
-    const lvlBadge = (s.level||1)>1 ? `<span style="color:#5288c1;font-size:10px">⭐L${s.level}</span>` : '';
+    const xpBadge  = s.xp  ? `<span style="color:var(--warn);font-size:10px">🏅${s.xp}XP</span>` : '';
+    const lvlBadge = (s.level||1)>1 ? `<span style="color:var(--accent);font-size:10px">⭐L${s.level}</span>` : '';
     const strBadge = s.streak_days > 0 ? `<span style="color:#e67e22;font-size:10px">🔥${s.streak_days}</span>` : '';
     return `
     <div class="student-card ${cardClass}"
@@ -1101,8 +1617,8 @@ function renderStudents() {
   }).join('');
 }
 
-/* ── Sheet ───────────────────────────────────────────────── */
-function openSheet(marsId) {
+/* ── Sheet (student detail) ──────────────────────────────── */
+async function openSheet(marsId) {
   selectedSt = allStudents.find(s => s.mars_id === marsId);
   if (!selectedSt) return;
   const s = selectedSt;
@@ -1113,34 +1629,69 @@ function openSheet(marsId) {
   document.getElementById('sheetName').textContent   = s.full_name;
   document.getElementById('sheetGroup').textContent  = s.group_name;
   document.getElementById('siGroup').textContent     = s.group_name;
+  document.getElementById('siMarsId').textContent    = s.mars_id || '—';
   document.getElementById('siTg').textContent        = s.username || '—';
+  document.getElementById('siPhone').textContent     = s.phone || '—';
   document.getElementById('siActive').textContent    = s.registered
     ? (s.last_active || 'Hali kirmagan')
-    : '❌ Bot\'ga ro\'yxatdan o\'tmagan';
+    : 'Bot\'ga ro\'yxatdan o\'tmagan';
+
+  // Last 5 attendance dots (placeholder - based on today's data if available)
+  const attRow = document.getElementById('sheetAttRow');
+  if (attData && s.registered && s.user_id) {
+    const allRecs = [
+      ...attData.present.map(r => ({ ...r, _s: 'yes' })),
+      ...attData.absent.map(r  => ({ ...r, _s: 'no'  })),
+    ];
+    const myRec = allRecs.find(r => r.user_id === s.user_id);
+    const todayDot = myRec
+      ? `<div class="att-dot ${myRec._s === 'yes' ? 'yes' : 'no'}">${myRec._s === 'yes' ? '✅' : '❌'}</div>`
+      : `<div class="att-dot">⏳</div>`;
+    attRow.innerHTML = `
+      <span style="font-size:12px;color:var(--sub);flex-shrink:0">Bugun:</span>
+      ${todayDot}`;
+  } else {
+    attRow.innerHTML = '';
+  }
 
   // Action buttons
   const acts = document.getElementById('sheetActions');
   acts.innerHTML = '';
 
   if (!s.registered) {
-    acts.innerHTML += `
+    acts.innerHTML = `
       <div style="text-align:center;padding:8px 0;color:var(--sub);font-size:13px">
-        ⚠️ Bu o'quvchi botga ro'yxatdan o'tmagan
+        ⚠️ Bu o'quvchi botga ro'yxatdan o'tmagan.<br>Bot orqali aloqa imkoni yo'q.
       </div>`;
-  } else if (s.username) {
-    const tgUrl = s.username.startsWith('@')
-      ? `https://t.me/${s.username.slice(1)}`
-      : `https://t.me/${s.username}`;
-    acts.innerHTML += `
-      <a class="action-btn btn-tg" href="${tgUrl}" target="_blank">
-        ✈️ Telegramda yozish (${esc(s.username)})
-      </a>`;
   } else {
-    acts.innerHTML += `
-      <button class="action-btn btn-bot" onclick="startBotChat()">
-        💬 Bot orqali aloqa
-      </button>`;
+    // Telegram direct link
+    if (s.username) {
+      const tgUrl = s.username.startsWith('@')
+        ? `https://t.me/${s.username.slice(1)}`
+        : `https://t.me/${s.username}`;
+      acts.innerHTML += `
+        <a class="action-btn btn-tg" href="${tgUrl}" target="_blank">
+          ✈️ Telegramda yozish
+        </a>`;
+    }
+    // Message via bot
+    if (s.user_id) {
+      acts.innerHTML += `
+        <button class="action-btn btn-msg" onclick="openMsgForStudent('${esc(s.mars_id)}')">
+          💬 Bot orqali xabar yuborish
+        </button>`;
+    }
   }
+
+  // Phone call
+  if (s.phone && s.phone !== '—') {
+    const cleanPhone = s.phone.replace(/\s/g, '');
+    acts.innerHTML += `
+      <a class="action-btn btn-phone" href="tel:${cleanPhone}">
+        📞 Telefon qo'ng'iroq
+      </a>`;
+  }
+
   acts.innerHTML += `
     <button class="action-btn btn-close" onclick="closeSheet()">
       Yopish
@@ -1155,30 +1706,36 @@ function closeSheet(e) {
   }
 }
 
-function startBotChat() {
+/* Open messages tab pre-filled with a student */
+function openMsgForStudent(marsId) {
   closeSheet();
-  tg?.close();
-  toast('Botda "Bot orqali aloqa" tugmasini bosing');
+  const s = allStudents.find(x => x.mars_id === marsId);
+  if (!s) return;
+  selectMsgStudent(s);
+  switchCurTab('messages');
 }
 
 /* ── Helpers ─────────────────────────────────────────────── */
 function esc(str) {
-  return String(str)
+  return String(str || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-/* ── Curator tab switch ──────────────────────────────────── */
+/* ── Tab switch ──────────────────────────────────────────── */
 let curActiveTab = 'students';
+const TAB_NAMES  = ['students', 'attendance', 'messages', 'stats', 'yoqlama'];
+const TAB_PREFIXES = ['curtab', 'curtab2', 'curtab3', 'curtab4', 'curtab5'];
 
 function switchCurTab(tab) {
   curActiveTab = tab;
 
-  ['students', 'attendance', 'yoqlama'].forEach(t => {
-    document.getElementById('curtab-'  + t)?.classList.toggle('active', t === tab);
-    document.getElementById('curtab2-' + t)?.classList.toggle('active', t === tab);
-    document.getElementById('curtab3-' + t)?.classList.toggle('active', t === tab);
+  TAB_NAMES.forEach(t => {
+    TAB_PREFIXES.forEach(p => {
+      document.getElementById(`${p}-${t}`)?.classList.toggle('active', t === tab);
+    });
   });
 
   if (tab === 'students') {
@@ -1186,23 +1743,29 @@ function switchCurTab(tab) {
   } else if (tab === 'attendance') {
     showPage('attendance');
     loadAttendance();
+  } else if (tab === 'messages') {
+    showPage('messages');
+  } else if (tab === 'stats') {
+    showPage('stats');
+    loadStatistics();
   } else {
     showPage('yoqlama');
     if (!yoqView || yoqView === 'groups') renderYoqGroups();
   }
 }
 
-function showAttendancePage() {
-  // Copy curator name/avatar to attendance header
-  const name = document.getElementById('curName').textContent;
-  const av   = document.getElementById('curAvatar').textContent;
-  document.getElementById('attAvatar').textContent = av;
-}
-
-/* ── Attendance data ─────────────────────────────────────── */
-let attData      = null;
-let attTab       = 'all';
+/* ── Attendance ───────────────────────────────────────────── */
+let attData        = null;
+let attTab         = 'all';
 let attGroupFilter = 'all';
+let attDateOffset  = 0;   // 0 = today, 1 = yesterday, 2 = day before
+
+function setAttDate(offset, el) {
+  attDateOffset = offset;
+  document.querySelectorAll('.att-date-chip').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadAttendance();
+}
 
 function setAttTab(tab) {
   attTab = tab;
@@ -1222,12 +1785,8 @@ function setAttGroupFilter(g) {
 
 function renderAttGroupFilter() {
   if (!attData) return;
-  const allStudents = [
-    ...attData.present,
-    ...attData.absent,
-    ...attData.pending,
-  ];
-  const groups = [...new Set(allStudents.map(s => s.group_name))].sort();
+  const allS = [...attData.present, ...attData.absent, ...attData.pending];
+  const groups = [...new Set(allS.map(s => s.group_name))].sort();
   const container = document.getElementById('attGroupFilter');
   if (groups.length <= 1) { container.innerHTML = ''; return; }
 
@@ -1241,9 +1800,14 @@ function renderAttGroupFilter() {
 async function loadAttendance() {
   const el = document.getElementById('attList');
   el.innerHTML = '<div class="spinner"></div>';
+
+  // Show pull-to-refresh indicator
+  const ptr = document.getElementById('ptrIndicator');
+  ptr.classList.add('show');
+
   try {
-    attData = await api('/curator/attendance');
-    // Set date
+    const dateParam = attDateOffset > 0 ? `?offset=${attDateOffset}` : '';
+    attData = await api('/curator/attendance' + dateParam);
     const d = attData.date || '';
     if (d) {
       const [y, m, day] = d.split('-');
@@ -1253,6 +1817,8 @@ async function loadAttendance() {
     renderAttendance();
   } catch (e) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
+  } finally {
+    ptr.classList.remove('show');
   }
 }
 
@@ -1271,19 +1837,14 @@ function renderAttendance() {
     list = (attData[attTab] || []).map(s => ({ ...s, _status: attTab }));
   }
 
-  // Group filter
   if (attGroupFilter !== 'all') {
     list = list.filter(s => s.group_name === attGroupFilter);
   }
 
-  const allFiltered = (attGroupFilter === 'all')
-    ? [...attData.present, ...attData.absent, ...attData.pending]
-    : [...attData.present, ...attData.absent, ...attData.pending].filter(s => s.group_name === attGroupFilter);
   const pCnt = attData.present.filter(s => attGroupFilter === 'all' || s.group_name === attGroupFilter).length;
-  const aCnt = attData.absent.filter(s => attGroupFilter === 'all' || s.group_name === attGroupFilter).length;
+  const aCnt = attData.absent.filter(s  => attGroupFilter === 'all' || s.group_name === attGroupFilter).length;
   const wCnt = attData.pending.filter(s => attGroupFilter === 'all' || s.group_name === attGroupFilter).length;
 
-  // Update tab labels with counts
   document.getElementById('atab-all').textContent     = `Hammasi (${pCnt+aCnt+wCnt})`;
   document.getElementById('atab-present').textContent = `✅ Bor (${pCnt})`;
   document.getElementById('atab-absent').textContent  = `❌ Yo'q (${aCnt})`;
@@ -1309,10 +1870,12 @@ function renderAttendance() {
           ? `https://t.me/${s.username.slice(1)}`
           : `https://t.me/${s.username}`;
         tgBtn = `<a class="att-tg-btn" href="${tgUrl}" target="_blank">📞 TG</a>`;
-      } else {
-        tgBtn = `<button class="att-tg-btn" onclick="contactViaBot(${s.user_id})" style="background:rgba(82,136,193,.3);color:var(--accent)">💬</button>`;
+      } else if (s.user_id) {
+        tgBtn = `<button class="att-tg-btn" onclick="openMsgForStudent('${esc(s.mars_id || '')}')" style="background:rgba(82,136,193,.3);color:var(--accent)">💬</button>`;
       }
-      const updateBtn = `<button class="att-update-btn" onclick="updateAttendance(${s.user_id},'${today}','yes')">✏️ Keldi</button>`;
+      const updateBtn = s.user_id
+        ? `<button class="att-update-btn" onclick="updateAttendance(${s.user_id},'${today}','yes')">✏️ Keldi</button>`
+        : '';
       contactHtml = tgBtn + updateBtn;
     }
 
@@ -1329,7 +1892,6 @@ function renderAttendance() {
   }).join('');
 }
 
-/* Update a student's attendance (e.g. late arrival) */
 async function updateAttendance(userId, dateStr, newStatus) {
   tg?.HapticFeedback?.impactOccurred('medium');
   try {
@@ -1339,28 +1901,236 @@ async function updateAttendance(userId, dateStr, newStatus) {
     });
     tg?.HapticFeedback?.notificationOccurred('success');
     toast('✅ Davomat yangilandi!');
-    await loadAttendance();  // Reload to reflect change
+    await loadAttendance();
   } catch (e) {
     tg?.HapticFeedback?.notificationOccurred('error');
     toast('❌ ' + e.message);
   }
 }
 
-function contactViaBot(userId) {
-  closeSheet();
-  tg?.close();
-  toast('Botda "Bot orqali aloqa" tugmasini bosing');
+/* ── Messages tab ────────────────────────────────────────── */
+function renderMsgStudents() {
+  const q = (document.getElementById('msgSearchInput').value || '').toLowerCase();
+  const container = document.getElementById('msgStudentResults');
+
+  if (!q) {
+    container.innerHTML = '<div class="empty" style="padding-top:32px"><div class="empty-icon">🔍</div><div class="empty-text">O\'quvchi ismini kiriting</div></div>';
+    return;
+  }
+
+  const list = allStudents.filter(s =>
+    s.full_name.toLowerCase().includes(q) && s.registered && s.user_id
+  );
+
+  if (!list.length) {
+    container.innerHTML = '<div class="empty" style="padding-top:20px"><div class="empty-icon">📭</div><div class="empty-text">Botga ulangan o\'quvchi topilmadi</div></div>';
+    return;
+  }
+
+  container.innerHTML = list.slice(0, 20).map(s => `
+    <div class="msg-student-item" onclick="selectMsgStudentById('${esc(s.mars_id)}')">
+      <div class="msg-si-av">${s.full_name.charAt(0).toUpperCase()}</div>
+      <div class="msg-si-info">
+        <div class="msg-si-name">${esc(s.full_name)}</div>
+        <div class="msg-si-meta">📚 ${esc(s.group_name)}</div>
+        ${s.username ? `<div class="msg-si-tg">${esc(s.username)}</div>` : ''}
+      </div>
+      <div style="color:var(--sub);font-size:16px">›</div>
+    </div>`).join('');
 }
 
-/* ══════════════════════════════════════════════════════════
-   YOQLAMA
-   ══════════════════════════════════════════════════════════ */
-let yoqView         = 'groups';   // 'groups' | 'students' | 'parents'
+function selectMsgStudentById(marsId) {
+  const s = allStudents.find(x => x.mars_id === marsId);
+  if (s) selectMsgStudent(s);
+}
+
+function selectMsgStudent(s) {
+  msgTargetSt = s;
+  // Show selected chip in step 1
+  document.getElementById('msgSelectedName').textContent = `${s.full_name} — ${s.group_name}`;
+  document.getElementById('msgSelectedWrap').classList.add('show');
+  document.getElementById('msgSearchInput').value = '';
+  document.getElementById('msgStudentResults').innerHTML = '';
+
+  // Switch to compose view
+  document.getElementById('msgComposeName').textContent  = s.full_name;
+  document.getElementById('msgComposeGroup').textContent = s.group_name;
+  document.getElementById('msgTextarea').value = '';
+  updateMsgCharCount();
+
+  document.getElementById('msgStep1').style.display   = 'none';
+  document.getElementById('msgCompose').classList.add('show');
+}
+
+function clearMsgStudent() {
+  msgTargetSt = null;
+  document.getElementById('msgSelectedWrap').classList.remove('show');
+  document.getElementById('msgSelectedName').textContent = '';
+  document.getElementById('msgCompose').classList.remove('show');
+  document.getElementById('msgStep1').style.display = '';
+  document.getElementById('msgSearchInput').value = '';
+  renderMsgStudents();
+}
+
+function msgBackToSearch() {
+  document.getElementById('msgCompose').classList.remove('show');
+  document.getElementById('msgStep1').style.display = '';
+}
+
+function updateMsgCharCount() {
+  const len = document.getElementById('msgTextarea').value.length;
+  document.getElementById('msgCharCount').textContent = len;
+}
+
+async function sendMessage() {
+  if (!msgTargetSt) { toast('O\'quvchini tanlang'); return; }
+  const text = (document.getElementById('msgTextarea').value || '').trim();
+  if (!text) { toast('Xabar matnini kiriting'); return; }
+  if (!msgTargetSt.user_id) { toast('Bu o\'quvchiga xabar yuborib bo\'lmaydi'); return; }
+
+  const btn = document.getElementById('msgSendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Yuborilmoqda...';
+  tg?.HapticFeedback?.impactOccurred('medium');
+
+  try {
+    await api('/curator/send-message', {
+      method: 'POST',
+      body: JSON.stringify({
+        student_telegram_id: msgTargetSt.user_id,
+        text,
+      }),
+    });
+    tg?.HapticFeedback?.notificationOccurred('success');
+    toast(`✅ ${msgTargetSt.full_name} ga xabar yuborildi!`);
+    document.getElementById('msgTextarea').value = '';
+    updateMsgCharCount();
+    // Reset to search
+    setTimeout(clearMsgStudent, 1200);
+  } catch (e) {
+    tg?.HapticFeedback?.notificationOccurred('error');
+    toast('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📩 Yuborish';
+  }
+}
+
+/* ── Statistics tab ──────────────────────────────────────── */
+let statsLoaded = false;
+
+async function loadStatistics() {
+  if (statsLoaded) return;
+  const container = document.getElementById('statsScroll');
+  container.innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await api('/curator/statistics');
+    statsLoaded = true;
+    renderStatistics(data);
+  } catch (e) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${esc(e.message)}</div></div>`;
+  }
+}
+
+function renderStatistics(data) {
+  const container = document.getElementById('statsScroll');
+
+  // -- 7-day chart --
+  const maxPct  = Math.max(...data.chart.map(d => d.pct), 1);
+  const chartHtml = `
+    <div class="stats-section">
+      <div class="stats-section-title">Oxirgi 7 kun davomati</div>
+      <div class="chart-wrap">
+        <div class="chart-bars">
+          ${data.chart.map((d, i) => {
+            const isToday = i === data.chart.length - 1;
+            const h = Math.round((d.pct / maxPct) * 70) + 4;
+            return `
+              <div class="chart-col">
+                <div class="chart-pct">${d.pct}%</div>
+                <div class="chart-bar${isToday ? ' today' : ''}" style="height:${h}px"></div>
+                <div class="chart-label">${d.label}</div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  // -- Group attendance --
+  const groupHtml = `
+    <div class="stats-section">
+      <div class="stats-section-title">Bugungi davomat (guruh bo'yicha)</div>
+      ${data.groups.length ? data.groups.map(g => {
+        const pctColor = g.pct >= 80 ? 'var(--success)' : g.pct >= 50 ? 'var(--warn)' : 'var(--danger)';
+        return `
+          <div class="group-att-card">
+            <div class="group-att-name">${esc(g.group)}</div>
+            <div class="group-att-bar-wrap">
+              <div class="group-att-bar" style="width:${g.pct}%;background:${pctColor}"></div>
+            </div>
+            <div class="group-att-pct" style="color:${pctColor}">${g.pct}%</div>
+          </div>`;
+      }).join('') : '<div class="empty-text" style="padding:12px 0;color:var(--sub)">Ma\'lumot yo\'q</div>'}
+    </div>`;
+
+  // -- Top present --
+  const rankClass = i => i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : 'rn';
+  const topPresentHtml = `
+    <div class="stats-section">
+      <div class="stats-section-title">TOP-5 eng ko'p kelgan (30 kun)</div>
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:0 14px">
+        ${data.top_present.length ? data.top_present.map((s, i) => `
+          <div class="top-item">
+            <div class="top-rank ${rankClass(i)}">${i+1}</div>
+            <div class="top-info">
+              <div class="top-name">${esc(s.full_name)}</div>
+              <div class="top-group">${esc(s.group_name)}</div>
+            </div>
+            <div class="top-count green">+${s.count}</div>
+          </div>`).join('') : '<div class="empty-text" style="padding:12px 0;color:var(--sub)">Ma\'lumot yo\'q</div>'}
+      </div>
+    </div>`;
+
+  // -- Top absent --
+  const topAbsentHtml = `
+    <div class="stats-section">
+      <div class="stats-section-title">TOP-5 ko'p qolgan (30 kun)</div>
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:0 14px">
+        ${data.top_absent.length ? data.top_absent.map((s, i) => `
+          <div class="top-item">
+            <div class="top-rank ${rankClass(i)}">${i+1}</div>
+            <div class="top-info">
+              <div class="top-name">${esc(s.full_name)}</div>
+              <div class="top-group">${esc(s.group_name)}</div>
+            </div>
+            <div class="top-count red">${s.count} kun</div>
+          </div>`).join('') : '<div class="empty-text" style="padding:12px 0;color:var(--sub)">Ma\'lumot yo\'q</div>'}
+      </div>
+    </div>`;
+
+  container.innerHTML = chartHtml + groupHtml + topPresentHtml + topAbsentHtml;
+
+  // Refresh button
+  container.innerHTML += `
+    <div style="padding:4px 0 16px;text-align:center">
+      <button onclick="refreshStats()" style="background:rgba(255,255,255,.06);border:none;border-radius:8px;
+        color:var(--sub);padding:10px 20px;font-size:13px;cursor:pointer;">
+        🔄 Yangilash
+      </button>
+    </div>`;
+}
+
+function refreshStats() {
+  statsLoaded = false;
+  loadStatistics();
+}
+
+/* ── Yoqlama ─────────────────────────────────────────────── */
+let yoqView         = 'groups';
 let yoqGroup        = null;
-let yoqMarks        = [];         // [{user_id, full_name, present}]
+let yoqMarks        = [];
 let yoqParentGroups = [];
 
-/* Show yoqlama sub-view */
 function showYoqView(view) {
   ['groups', 'students', 'parents'].forEach(v => {
     document.getElementById('yoq-view-' + v).classList.toggle('hidden', v !== view);
@@ -1368,21 +2138,18 @@ function showYoqView(view) {
   yoqView = view;
 }
 
-/* Render group list */
 function renderYoqGroups() {
   document.getElementById('yoqTitle').textContent = '📋 Guruh tanlang';
   document.getElementById('yoqBackBtn').hidden = true;
   showYoqView('groups');
 
-  // Make sure students are loaded
   if (!allStudents.length) {
     document.getElementById('yoqGroupsList').innerHTML =
       '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">O\'quvchilar yuklanmoqda...</div></div>';
-    loadStudents().then(renderYoqGroups);
+    loadStudentsWithSkeleton().then(renderYoqGroups);
     return;
   }
 
-  // Build group counts
   const groups = {};
   allStudents.forEach(s => {
     groups[s.group_name] = (groups[s.group_name] || 0) + 1;
@@ -1390,8 +2157,7 @@ function renderYoqGroups() {
 
   const container = document.getElementById('yoqGroupsList');
   if (!Object.keys(groups).length) {
-    container.innerHTML =
-      '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Guruhlar topilmadi</div></div>';
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Guruhlar topilmadi</div></div>';
     return;
   }
 
@@ -1404,22 +2170,20 @@ function renderYoqGroups() {
           <div class="yoq-group-name">${esc(g)}</div>
           <div class="yoq-group-cnt">${cnt} o'quvchi</div>
         </div>
-        <div class="yoq-group-arrow" style="color:var(--sub);font-size:18px">›</div>
+        <div style="color:var(--sub);font-size:18px">›</div>
       </div>
     `).join('');
 }
 
-/* Select a class group → show student marking view */
 async function selectYoqGroup(groupName) {
   yoqGroup = groupName;
   tg?.HapticFeedback?.impactOccurred('light');
 
-  // allStudents now has all credentials.py students (registered + not)
   const students = allStudents.filter(s => s.group_name === groupName);
   yoqMarks = students.map(s => {
     let present = true;
     if (attData && s.user_id) {
-      if (attData.absent.some(a => a.user_id === s.user_id))  present = false;
+      if (attData.absent.some(a => a.user_id === s.user_id)) present = false;
     }
     return { user_id: s.user_id || null, full_name: s.full_name, present };
   });
@@ -1427,7 +2191,6 @@ async function selectYoqGroup(groupName) {
   renderYoqStudents();
 }
 
-/* Render student marking view */
 function renderYoqStudents() {
   document.getElementById('yoqTitle').textContent = `📚 ${yoqGroup}`;
   document.getElementById('yoqBackBtn').hidden = false;
@@ -1444,7 +2207,6 @@ function renderYoqStudents() {
   `).join('');
 }
 
-/* Toggle a student's mark */
 function toggleYoqMark(i) {
   yoqMarks[i].present = !yoqMarks[i].present;
   const el = document.getElementById('yoqTog' + i);
@@ -1457,7 +2219,6 @@ function toggleYoqMark(i) {
   updateYoqSummary();
 }
 
-/* Update summary bar */
 function updateYoqSummary() {
   const present = yoqMarks.filter(s => s.present).length;
   const absent  = yoqMarks.length - present;
@@ -1466,13 +2227,12 @@ function updateYoqSummary() {
      <span class="s-absent">❌ Kelmadi: ${absent}</span>`;
 }
 
-/* Proceed to parent group selection */
 async function yoqProceedToParent() {
   const btn = document.getElementById('yoqSendBtn');
   btn.disabled = true;
   btn.textContent = 'Yuklanmoqda...';
   try {
-    const data    = await api('/curator/parent-groups');
+    const data = await api('/curator/parent-groups');
     yoqParentGroups = data.groups || [];
   } catch (e) {
     toast('❌ ' + e.message);
@@ -1489,8 +2249,7 @@ async function yoqProceedToParent() {
 
   const container = document.getElementById('yoqParentsList');
   if (!yoqParentGroups.length) {
-    container.innerHTML =
-      '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ota-ona guruhlari topilmadi</div></div>';
+    container.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ota-ona guruhlari topilmadi</div></div>';
     return;
   }
   container.innerHTML = yoqParentGroups.map(g => `
@@ -1502,7 +2261,6 @@ async function yoqProceedToParent() {
   `).join('');
 }
 
-/* Send attendance report to selected parent group */
 async function sendYoqlama(parentChatId) {
   tg?.HapticFeedback?.impactOccurred('medium');
   const today = new Date().toISOString().split('T')[0];
@@ -1518,7 +2276,6 @@ async function sendYoqlama(parentChatId) {
     });
     tg?.HapticFeedback?.notificationOccurred('success');
     toast('✅ Yoqlama yuborildi!');
-    // Reset → back to groups
     yoqGroup = null;
     yoqMarks = [];
     setTimeout(() => renderYoqGroups(), 1600);
@@ -1528,13 +2285,34 @@ async function sendYoqlama(parentChatId) {
   }
 }
 
-/* Back button handler */
 function yoqBack() {
   if (yoqView === 'students') renderYoqGroups();
   else if (yoqView === 'parents') renderYoqStudents();
 }
 
-/* ── Enter key login ─────────────────────────────────────── */
+/* ── Pull-to-refresh for attendance ─────────────────────── */
+(function setupPullRefresh() {
+  const listEl = document.getElementById('attList');
+  let startY = 0, pulling = false;
+
+  document.getElementById('page-attendance').addEventListener('touchstart', e => {
+    if (listEl.scrollTop === 0) {
+      startY   = e.touches[0].clientY;
+      pulling  = true;
+    }
+  }, { passive: true });
+
+  document.getElementById('page-attendance').addEventListener('touchend', e => {
+    if (!pulling) return;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > 60 && listEl.scrollTop === 0) {
+      loadAttendance();
+    }
+    pulling = false;
+  }, { passive: true });
+})();
+
+/* ── Enter key for login ─────────────────────────────────── */
 document.getElementById('passInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });

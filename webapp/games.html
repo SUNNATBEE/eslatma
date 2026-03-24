@@ -196,14 +196,44 @@
     <div class="page active" id="page-home">
       <p class="section-title">O'yinni tanlang</p>
       <div class="game-grid">
-        <div class="game-card featured" onclick="goPage('quiz')">
+        <div class="game-card featured" onclick="startQuizAndGo('all')">
           <div class="game-card-icon">🧠</div>
           <div>
             <div class="game-card-name">Dasturlash Testi</div>
-            <div class="game-card-desc">JS, Python, SQL, Git, CSS savollari</div>
+            <div class="game-card-desc">JS, HTML, CSS, Tailwind, React — aralash</div>
             <div class="game-card-xp">+2 XP / to'g'ri javob (max 20)</div>
             <div id="badge_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
           </div>
+        </div>
+        <div class="game-card" onclick="startQuizAndGo('html')">
+          <div class="game-card-icon">📄</div>
+          <div class="game-card-name">HTML Test</div>
+          <div class="game-card-desc">HTML teglar va atributlar</div>
+          <div class="game-card-xp">+2 XP / to'g'ri (max 20)</div>
+        </div>
+        <div class="game-card" onclick="startQuizAndGo('css')">
+          <div class="game-card-icon">🎨</div>
+          <div class="game-card-name">CSS Test</div>
+          <div class="game-card-desc">CSS xususiyatlari va selectorlar</div>
+          <div class="game-card-xp">+2 XP / to'g'ri (max 20)</div>
+        </div>
+        <div class="game-card" onclick="startQuizAndGo('js')">
+          <div class="game-card-icon">⚡</div>
+          <div class="game-card-name">JavaScript Test</div>
+          <div class="game-card-desc">JS asoslar va ilg'or mavzular</div>
+          <div class="game-card-xp">+2 XP / to'g'ri (max 20)</div>
+        </div>
+        <div class="game-card" onclick="startQuizAndGo('tailwind')">
+          <div class="game-card-icon">🌊</div>
+          <div class="game-card-name">Tailwind Test</div>
+          <div class="game-card-desc">Tailwind CSS klasslar</div>
+          <div class="game-card-xp">+2 XP / to'g'ri (max 20)</div>
+        </div>
+        <div class="game-card" onclick="startQuizAndGo('react')">
+          <div class="game-card-icon">⚛️</div>
+          <div class="game-card-name">React Test</div>
+          <div class="game-card-desc">React hooks va komponentlar</div>
+          <div class="game-card-xp">+2 XP / to'g'ri (max 20)</div>
         </div>
         <div class="game-card" onclick="goPage('css_duel')">
           <div class="game-card-icon">🎨</div>
@@ -305,7 +335,7 @@
           </div>
           <div class="result-xp" id="quizFinalXp"></div>
           <div id="quizResultRows" style="text-align:left;margin-bottom:14px;"></div>
-          <button class="btn btn-primary" onclick="startQuiz()">Qayta o'ynash</button>
+          <button class="btn btn-primary" onclick="startQuiz(_quizCurrentTopic||'all')">Qayta o'ynash</button>
           <button class="btn btn-ghost" onclick="goPage('home')" style="margin-top:8px">Orqaga</button>
         </div>
       </div>
@@ -722,12 +752,18 @@ function goPage(name) {
   currentPage = name;
   document.getElementById('content').scrollTop = 0;
   if (name === 'home')         { loadPlaysToday(); loadGameLeaderboard(_currentGameLb || 'quiz'); }
-  if (name === 'quiz')         { if (checkDailyLimit('quiz'))         { showLimitModal('quiz');         goPage('home'); } else startQuiz(); }
+  if (name === 'quiz')         { if (checkDailyLimit('quiz'))         { showLimitModal('quiz');         goPage('home'); } else startQuiz(_quizCurrentTopic || 'all'); }
   if (name === 'css_duel')     { if (checkDailyLimit('css_duel'))     { showLimitModal('css_duel');     goPage('home'); } else startCssDuel(); }
   if (name === 'bug_hunter')   { if (checkDailyLimit('bug_hunter'))   { showLimitModal('bug_hunter');   goPage('home'); } else startBugHunter(); }
   if (name === 'code_order')   { if (checkDailyLimit('code_order'))   { showLimitModal('code_order');   goPage('home'); } else startCodeOrder(); }
   if (name === 'tag_match')    { if (checkDailyLimit('tag_match'))    { showLimitModal('tag_match');    goPage('home'); } else startTagMatch(); }
   if (name === 'selector_quiz'){ if (checkDailyLimit('selector_quiz')){ showLimitModal('selector_quiz');goPage('home'); } else startSelectorQuiz(); }
+}
+
+/* ── Quiz mavzusi bo'yicha o'ynash ── */
+function startQuizAndGo(topic) {
+  _quizCurrentTopic = topic;
+  goPage('quiz');
 }
 
 /* ── saveScore helper ── */
@@ -1235,7 +1271,123 @@ const QUIZ_QUESTIONS_RU = [
   {q:"Для чего Debounce?", opts:["Красота кода","Ограничение частоты вызова при частых событиях (ввод текста)","Подключение к БД","Сжатие изображений"], ans:1},
   {q:"Когда возникает ReferenceError?", opts:["Неверный тип данных","Обращение к несуществующей переменной","Пропущена запятая","Сервер не отвечает"], ans:1},
   {q:"Диапазон Math.random()?", opts:["От 1 до 100","От 0 до 1 (не включая 1)","Только 0 или 1","От -1 до 1"], ans:1},
+  /* ── Tailwind CSS savollar (RU) ── */
+  {q:"В чем основная философия Tailwind CSS?", opts:["Компонентно-ориентированный подход","Utility-first (Сначала утилитарные классы)","Стилизация только через JavaScript","Принудительное использование inline-стилей"], ans:1},
+  {q:"Какой класс используется в Tailwind для центрирования блочного элемента?", opts:["center-item","mx-auto (для блочных элементов)","align-center","margin-center"], ans:1},
+  {q:"Что делает класс p-4?", opts:["Padding: 4px;","Padding: 1rem (16px);","Padding-top: 4px;","Position: relative;"], ans:1},
+  {q:"В каком диапазоне находятся оттенки (shades) цветов в Tailwind?", opts:["от 1 до 10","от 100 до 1000","от 50 до 950 (например, blue-500)","от 0 до 255"], ans:2},
+  {q:"Что произойдет при использовании flex и items-center вместе?", opts:["Элементы выровняются горизонтально","Элементы выровняются по центру вертикально","Элементы раздвинутся по краям","Текст станет по центру"], ans:1},
+  {q:"Какие префиксы для адаптивного дизайна в Tailwind?", opts:["mobile:, desktop:","sm:, md:, lg:, xl:","s:, m:, l:","v-sm:, v-lg:"], ans:1},
+  {q:"Чему эквивалентен класс w-full?", opts:["width: 100px;","width: 100%;","width: 100vw;","width: auto;"], ans:1},
+  {q:"Для чего префикс hover:?", opts:["При загрузке элемента","При наведении курсора (псевдокласс)","При удалении элемента","Только для ссылок"], ans:1},
+  {q:"Где добавить собственные цвета в Tailwind?", opts:["Внутри index.html","В tailwind.config.js в секции theme.extend","Только в CSS файле","В package.json"], ans:1},
+  {q:"Какому CSS свойству соответствует класс hidden?", opts:["visibility: hidden;","display: none;","opacity: 0;","z-index: -1;"], ans:1},
+  {q:"За что отвечает класс leading-tight?", opts:["Расстояние между буквами","Высота строки (line-height)","Жирность текста","Цвет текста"], ans:1},
+  {q:"Как выглядит элемент с классом rounded-full?", opts:["Прямоугольник","Круг или овал (border-radius: 9999px)","Углы 4px","Треугольник"], ans:1},
+  {q:"Что делает grid-cols-3?", opts:["Создает 3 строки","Создает 3 колонки (Grid)","Дублирует 3 раза","Gap в 3px"], ans:1},
+  {q:"Что означает z-50?", opts:["Zoom: 50%;","z-index: 50;","50px расстояние","Прозрачность 50%"], ans:1},
+  {q:"Как записываются произвольные значения (arbitrary values)?", opts:["w-(123px)","w-[123px]","w-{123px}","w-custom-123"], ans:1},
+  {q:"Что означает /50 в классе bg-red-500/50?", opts:["50-й оттенок","50% прозрачности (opacity)","Толщина рамки","Высота цвета"], ans:1},
+  {q:"Зачем нужен префикс group-hover:?", opts:["Ховер на все элементы","Стилизация дочернего при наведении на родителя","Групповое перемещение","Только для кнопок"], ans:1},
+  {q:"Когда срабатывает dark:?", opts:["После 20:00","Когда включена темная тема","Только на темных сайтах","Для затемнения изображений"], ans:1},
+  {q:"Какое соотношение сторон дает aspect-video?", opts:["1:1","4:3","16:9","21:9"], ans:2},
+  {q:"Что такое JIT движок в Tailwind?", opts:["Замедление кода","Генерация стилей на лету только для используемых классов","Удаление CSS","Набор анимаций"], ans:1},
+  {q:"Что делает shadow-lg?", opts:["Добавляет большую тень","Переносит на задний план","Делает текст жирным","Меняет цвет"], ans:0},
+  {q:"Для чего tracking-widest?", opts:["Межстрочный интервал","Межбуквенный интервал (letter-spacing)","Скорость прокрутки","Увеличение изображения"], ans:1},
+  {q:"В каких режимах работает gap-4?", opts:["Только block","Flex и Grid","Только inline","Только absolute"], ans:1},
+  {q:"Что делает container?", opts:["Скрывает элемент","Устанавливает max-width по брейкпоинту","Автоматически центрирует","Синий цвет"], ans:1},
+  {q:"Что такое ring-2?", opts:["Внешняя обводка (через box-shadow)","Круглая форма","Тип анимации","Два изображения"], ans:0},
+  {q:"Что делает truncate?", opts:["Скрывает текст","Обрезает длинный текст, добавляя '...'","Заглавные буквы","Переносит вниз"], ans:1},
+  {q:"Эффект animate-pulse?", opts:["Вращает элемент","Мягкое мерцание (скелетон-эффект)","Прыгает","Увеличивает"], ans:1},
+  {q:"flex-direction: column в Tailwind?", opts:["flex-col","flex-vertical","dir-col","flex-y"], ans:0},
+  {q:"Что делает border-x-2?", opts:["Рамка 2px со всех сторон","Только сверху и снизу","Рамка 2px слева и справа","Удаляет рамки"], ans:2},
+  {q:"Когда cursor-pointer?", opts:["При клике","При наведении — курсор в виде руки","При вводе текста","При скролле"], ans:1},
+  {q:"font-bold в CSS?", opts:["font-weight: 400;","font-weight: 700;","font-weight: 900;","font-style: italic;"], ans:1},
+  {q:"Для чего antialiased?", opts:["Четкость изображений","Сглаживание шрифтов","Поиск ошибок","Яркость цветов"], ans:1},
+  {q:"Где ставить ! в Tailwind?", opts:["В конец: p-4!","В начало: !p-4","Внутри: p-[4!]","Такой возможности нет"], ans:1},
+  {q:"Что делает object-contain?", opts:["Растягивает","Вписывает с сохранением пропорций","Удаляет","Ставит на фон"], ans:1},
+  {q:"Для чего space-x-4?", opts:["Внутренний padding","Отступы между дочерними элементами","Ширина экрана","Межбуквенный интервал"], ans:1},
+  {q:"Что нужно для top-0, left-0?", opts:["display: flex","position: relative/absolute/fixed","width: 100%","margin: 0"], ans:1},
+  {q:"Что делает transition-colors?", opts:["Анимация только при изменении цвета","Выбирает цвет автоматически","Удаляет цвета","Градиент"], ans:0},
+  {q:"r в bg-gradient-to-r?", opts:["Red (красный)","Right (вправо)","Reverse (обратно)","Radial (радиальный)"], ans:1},
+  {q:"uppercase?", opts:["Первая буква заглавная","Все буквы заглавные","Все строчные","Скрывает"], ans:1},
+  {q:"Что такое sticky позиционирование?", opts:["Всегда на одном месте","Прилипает при скролле","Остается под блоками","Только вверху"], ans:1},
+  {q:"blur-sm?", opts:["Четче","Слегка размывает","Синий цвет","Уменьшает"], ans:1},
+  {q:"h-screen?", opts:["100%","100vh (высота экрана)","1000px","auto"], ans:1},
+  {q:"invert?", opts:["Переворачивает","Инвертирует цвета (негатив)","Скрывает","Инвертирует скролл"], ans:1},
+  {q:"Зачем peer?", opts:["Стилизация следующего соседа по состоянию","Изменение родителя","Только для инпутов","Объединение цветов"], ans:0},
+  {q:"whitespace-nowrap?", opts:["Запрещает перенос текста","Удаляет пробелы","Центрирует","Меняет шрифт"], ans:0},
+  {q:"Разница opacity-0 и invisible?", opts:["Нет разницы","opacity-0 оставляет кликабельным, invisible — нет","invisible удаляет из DOM","opacity-0 не сохраняет место"], ans:1},
+  {q:"fill-current?", opts:["Заполнение изображения","Цвет SVG = текущий цвет текста","Покраска фона","Автозаполнение"], ans:1},
+  {q:"flex-shrink-0?", opts:["Всегда расти","Запрещает сжиматься","Скрывает","Сдвигает вправо"], ans:1},
+  {q:"select-none?", opts:["Запрещает выделять текст","Отключает список","Снимает галочку","Удаляет изображение"], ans:0},
+  {q:"backdrop-blur-md?", opts:["Размывает сам элемент","Размывает фон позади (матовое стекло)","Размывает текст","Только для белого"], ans:1},
+  /* ── React savollar (RU) ── */
+  {q:"Главное преимущество React?", opts:["Прямая работа с БД","Обновление только измененных частей через Virtual DOM","Только для мобильных","Автоматический CSS"], ans:1},
+  {q:"Что такое JSX?", opts:["Новый тип БД","HTML-подобный синтаксис внутри JavaScript","CSS только для React","Стандартный язык браузеров"], ans:1},
+  {q:"Хук для хранения состояния?", opts:["useEffect","useState","useContext","useMemo"], ans:1},
+  {q:"Пустой массив [] в useEffect?", opts:["Хук при каждом рендере","Хук только при монтировании (один раз)","Хук никогда не выполнится","Только при ошибке"], ans:1},
+  {q:"Что такое Props в React?", opts:["Внутреннее состояние","Данные от родителя к дочернему компоненту","Глобальные переменные","Набор функций"], ans:1},
+  {q:"Задача Virtual DOM?", opts:["Заменяет реальный DOM","Хранит копию DOM, вычисляет разницу (Diffing)","Ускоряет загрузку","Рендерит только картинки"], ans:1},
+  {q:"Хук/метод для мемоизации (предотвращение лишних рендеров)?", opts:["useState","useMemo / React.memo","useReducer","useRef"], ans:1},
+  {q:"Основная задача useRef?", opts:["Хранение state","Доступ к DOM или хранение значения без обновления UI","Запросы к API","Удаление компонента"], ans:1},
+  {q:"Зачем Keys при рендеринге списков?", opts:["Для стилизации","Чтобы React понимал, что изменилось/удалилось","Для сортировки","Для шифрования"], ans:1},
+  {q:"Lifting State Up?", opts:["Перенос в нижний компонент","Перенос в общего родителя для нескольких компонентов","Удаление состояния","Загрузка на сервер"], ans:1},
+  {q:"useContext?", opts:["Локальное состояние","Глобальное состояние, решение Prop-drilling","Только для тем","URL tracking"], ans:1},
+  {q:"Fragment <> </>?", opts:["Скрытие кода","Группировка без лишних div","Анимации","Обработка ошибок"], ans:1},
+  {q:"Когда useReducer?", opts:["Простые случаи","Сложная логика с несколькими взаимосвязанными действиями","Только API","При загрузке"], ans:1},
+  {q:"React Strict Mode?", opts:["Запрет ошибок","Двойной рендер в dev для поиска проблем","Замедляет продакшн","Только CSS"], ans:1},
+  {q:"HOC (Higher-Order Component)?", opts:["Функция внутри компонента","Функция, принимающая компонент и возвращающая новый","Верхний компонент иерархии","Только классовые"], ans:1},
+  {q:"Разница useCallback и useMemo?", opts:["useCallback кэширует значение, useMemo — функцию","useCallback кэширует функцию, useMemo — результат","Разницы нет","useCallback только для чисел"], ans:1},
+  {q:"Link vs <a> в React Router?", opts:["Нет разницы","Link переключает без перезагрузки (SPA)","<a> быстрее","Link только для внешних сайтов"], ans:1},
+  {q:"Controlled Input?", opts:["Состояние управляется React state","Нельзя печатать","Только числа","Зашифрованный"], ans:0},
+  {q:"Portals в React?", opts:["Отправка данных","Рендер вне DOM-иерархии (модальные окна)","Переход на сайт","Оптимизация картинок"], ans:1},
+  {q:"Cleanup return () => ... в useEffect?", opts:["При монтировании","При размонтировании или перед следующим эффектом","При ошибке","После API ответа"], ans:1},
+  {q:"Uncontrolled Component?", opts:["Состояние через DOM (useRef)","Компонент с ошибкой","Никогда не обновляется","Только статичный текст"], ans:0},
+  {q:"useLayoutEffect vs useEffect?", opts:["useLayoutEffect после рендера, useEffect — до","useLayoutEffect синхронно до отрисовки браузером","useEffect быстрее","Нет разницы"], ans:1},
+  {q:"Prop Drilling?", opts:["Сверление данных","Передача данных через ненужные промежуточные компоненты","Сохранение в localStorage","Разделение компонента"], ans:1},
+  {q:"Error Boundary?", opts:["Отлавливает ошибки, показывает fallback UI","Отправляет ошибки на сервер","Автоисправление ошибок","Только без интернета"], ans:0},
+  {q:"SPA (Single Page Application)?", opts:["Одностраничная книга","Контент меняется без перезагрузки страницы","Сайт с одной картинкой","Мобильное приложение"], ans:1},
+  {q:"State в React асинхронный?", opts:["Да, setState не меняет значение мгновенно","Нет, всегда синхронно","Только в массивах","Только в классах"], ans:0},
+  {q:"npm start?", opts:["Удаляет проект","Запускает dev сервер","Загружает на хостинг","Только тесты"], ans:1},
+  {q:"Composition в React?", opts:["Вкладывание компонентов (props.children)","Удаление компонентов","Сжатие кода","Цвета UI"], ans:0},
+  {q:"useId?", opts:["ID пользователя","Генерация уникальных ID для Accessibility","ID в БД","Только для картинок"], ans:1},
+  {q:"Custom Hook?", opts:["Официальный хук React","Переиспользуемая функция, начинается с use","Хук с ошибкой","Только для CSS"], ans:1},
+  {q:"hydrateRoot (React 18)?", opts:["Делает серверный HTML интерактивным","Очистка БД","Удаление сайта","Только анимации"], ans:0},
+  {q:"Pure Component?", opts:["Только HTML","Не перерисовывается при неизмененных Props и State","Нельзя сломать","Цветной без логики"], ans:1},
+  {q:"forwardRef?", opts:["Передача ref от родителя к DOM дочернего","Отправка на сервер","Удаление ref","Только ссылки"], ans:0},
+  {q:"Hydration (Гидратация)?", opts:["Погружение кода","Оживление серверного HTML через JS-обработчики событий","Удаление кэша","Сжатие"], ans:1},
+  {q:"Synthetic Events?", opts:["События ИИ","Система событий React для кроссбраузерности","Только ошибки","События API"], ans:1},
+  {q:"Suspense?", opts:["Приостанавливает код","Показывает fallback при загрузке","Удаляет сайт","Только ошибки"], ans:1},
+  {q:"React.lazy?", opts:["Динамическая загрузка компонентов (Code splitting)","Замедление","Удаление из кэша","Только картинки"], ans:0},
+  {q:"Data Flow в React?", opts:["Двусторонний","Односторонний (от родителя к ребенку)","Только снизу вверх","Случайный"], ans:1},
+  {q:"useTransition (React 18)?", opts:["Анимации переходов","Помечает обновления как несрочные, не блокируя UI","Останавливает сайт","Только цвета"], ans:1},
+  {q:"Reconciliation?", opts:["Соглашение разработчиков","Алгоритм обновления реального DOM через Virtual DOM","Загрузка на сервер","Обновление БД"], ans:1},
+  {q:"useDeferredValue?", opts:["Удаляет значение","Откладывает обновление менее важной части","Отправляет на сервер","Только инпуты"], ans:1},
+  {q:"Side Effect в React?", opts:["Боковая панель","API-запросы, работа с DOM и другие внешние действия","Только ошибки","Дизайн"], ans:1},
+  {q:"Почему index как key — плохо?", opts:["Некрасивый код","Ошибки рендеринга и падение производительности при изменении списка","Только числа","Сайт не откроется"], ans:1},
+  {q:"Shadow DOM и Virtual DOM — одно и то же?", opts:["Да","Нет (Shadow DOM — браузер, Virtual DOM — React)","Только в Chrome","Только в React"], ans:1},
+  {q:"Что такое Children prop?", opts:["Любой контент внутри тегов компонента","Только маленькие компоненты","Фото детей","Список ошибок"], ans:0},
+  {q:"useImperativeHandle?", opts:["Изменение состояния","Передача функций дочернего родителю через ref","Удаление сайта","Только инпуты"], ans:1},
+  {q:"dangerouslySetInnerHTML?", opts:["Код, ломающий сайт","Рендер HTML (с риском XSS)","Самый безопасный способ","Только картинки"], ans:1},
+  {q:"Redux / Zustand?", opts:["UI библиотеки","Библиотеки управления глобальным состоянием","Только БД","CSS фреймворки"], ans:1},
+  {q:"StrictMode в production?", opts:["Да","Нет (только в разработке выдает предупреждения)","Только мобильные","Только платная версия"], ans:1},
+  {q:"State vs Props — главная разница?", opts:["Нет разницы","State изменяется внутри, Props приходят от родителя","Props можно менять, State — нет","Props только в функциях"], ans:1},
 ];
+
+/* ── Mavzu bo'yicha savollar (slice) ── */
+// O'zbek tili: QUIZ_QUESTIONS = 30 umumiy + 50 HTML + 50 CSS + 50 JS + 50 Tailwind + 50 React
+const QUIZ_HTML_UZ      = QUIZ_QUESTIONS.slice(30, 80);
+const QUIZ_CSS_UZ       = QUIZ_QUESTIONS.slice(80, 130);
+const QUIZ_JS_UZ        = QUIZ_QUESTIONS.slice(130, 180);
+const QUIZ_TAILWIND_UZ  = QUIZ_QUESTIONS.slice(180, 230);
+const QUIZ_REACT_UZ     = QUIZ_QUESTIONS.slice(230, 280);
+// Rus tili: QUIZ_QUESTIONS_RU = 50 HTML + 50 CSS + 50 JS + 50 Tailwind + 50 React
+const QUIZ_HTML_RU      = QUIZ_QUESTIONS_RU.slice(0, 50);
+const QUIZ_CSS_RU       = QUIZ_QUESTIONS_RU.slice(50, 100);
+const QUIZ_JS_RU        = QUIZ_QUESTIONS_RU.slice(100, 150);
+const QUIZ_TAILWIND_RU  = QUIZ_QUESTIONS_RU.slice(150, 200);
+const QUIZ_REACT_RU     = QUIZ_QUESTIONS_RU.slice(200, 250);
 
 /* ── Quiz til tanlash ── */
 let quizLang = localStorage.getItem('quizLang') || 'uz';
@@ -1254,12 +1406,21 @@ function setQuizLang(lang) {
 }
 
 let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false, quizXp=0;
+let _quizCurrentTopic = 'all';
 
-function startQuiz() {
+function startQuiz(topic = 'all') {
   if (checkDailyLimit('quiz')) { showLimitModal('quiz'); return; }
   recordPlay('quiz').catch(()=>{});
+  _quizCurrentTopic = topic;
   quizScore = 0; quizIdx = 0; quizXp = 0;
-  const pool = quizLang === 'ru' ? QUIZ_QUESTIONS_RU : QUIZ_QUESTIONS;
+  const isRu = quizLang === 'ru';
+  let pool;
+  if      (topic === 'html')     pool = isRu ? QUIZ_HTML_RU     : QUIZ_HTML_UZ;
+  else if (topic === 'css')      pool = isRu ? QUIZ_CSS_RU      : QUIZ_CSS_UZ;
+  else if (topic === 'js')       pool = isRu ? QUIZ_JS_RU       : QUIZ_JS_UZ;
+  else if (topic === 'tailwind') pool = isRu ? QUIZ_TAILWIND_RU : QUIZ_TAILWIND_UZ;
+  else if (topic === 'react')    pool = isRu ? QUIZ_REACT_RU    : QUIZ_REACT_UZ;
+  else                           pool = isRu ? QUIZ_QUESTIONS_RU : QUIZ_QUESTIONS;
   quizQ = [...pool].sort(() => Math.random() - .5).slice(0, 10);
   document.getElementById('quizGame').style.display   = 'block';
   document.getElementById('quizResult').style.display = 'none';

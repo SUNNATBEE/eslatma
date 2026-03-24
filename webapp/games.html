@@ -312,7 +312,7 @@
       </div>
       <div id="quizResult" style="display:none">
         <div class="game-result-card">
-          <div style="font-size:18px;font-weight:800;margin-bottom:8px">Dasturlash Testi yakunlandi!</div>
+          <div id="quizResultTitle" style="font-size:18px;font-weight:800;margin-bottom:8px">Dasturlash Testi yakunlandi!</div>
           <div class="result-score" id="quizFinalScore">0</div>
           <div class="result-sub">ball</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;text-align:center;">
@@ -752,7 +752,7 @@ function goPage(name) {
   currentPage = name;
   document.getElementById('content').scrollTop = 0;
   if (name === 'home')         { loadPlaysToday(); loadGameLeaderboard(_currentGameLb || 'quiz'); }
-  if (name === 'quiz')         { if (checkDailyLimit('quiz'))         { showLimitModal('quiz');         goPage('home'); } else startQuiz(_quizCurrentTopic || 'all'); }
+  if (name === 'quiz')         { const _qt = (_quizCurrentTopic && _quizCurrentTopic !== 'all') ? 'quiz_'+_quizCurrentTopic : 'quiz'; if (checkDailyLimit(_qt)) { showLimitModal(_qt); goPage('home'); } else startQuiz(_quizCurrentTopic || 'all'); }
   if (name === 'css_duel')     { if (checkDailyLimit('css_duel'))     { showLimitModal('css_duel');     goPage('home'); } else startCssDuel(); }
   if (name === 'bug_hunter')   { if (checkDailyLimit('bug_hunter'))   { showLimitModal('bug_hunter');   goPage('home'); } else startBugHunter(); }
   if (name === 'code_order')   { if (checkDailyLimit('code_order'))   { showLimitModal('code_order');   goPage('home'); } else startCodeOrder(); }
@@ -1403,14 +1403,19 @@ function setQuizLang(lang) {
     ruBtn.style.background = lang === 'ru' ? 'var(--accent)' : 'rgba(255,255,255,.1)';
     ruBtn.style.color      = lang === 'ru' ? '#fff' : 'var(--text)';
   }
+  // Til o'zgarsa quizni qayta boshlash (agar quiz sahifasida bo'lsa)
+  if (currentPage === 'quiz') {
+    startQuiz(_quizCurrentTopic || 'all');
+  }
 }
 
 let quizQ=[], quizIdx=0, quizScore=0, quizTimer=null, quizTimeLeft=30, quizAnswered=false, quizXp=0;
 let _quizCurrentTopic = 'all';
 
 function startQuiz(topic = 'all') {
-  if (checkDailyLimit('quiz')) { showLimitModal('quiz'); return; }
-  recordPlay('quiz').catch(()=>{});
+  const gameType = topic === 'all' ? 'quiz' : 'quiz_' + topic;
+  if (checkDailyLimit(gameType)) { showLimitModal(gameType); return; }
+  recordPlay(gameType).catch(()=>{});
   _quizCurrentTopic = topic;
   quizScore = 0; quizIdx = 0; quizXp = 0;
   const isRu = quizLang === 'ru';
@@ -1492,11 +1497,19 @@ async function finishQuiz() {
   document.getElementById('quizWrongCount').textContent   = wrongCount;
   document.getElementById('quizAccuracy').textContent     = accuracy + '%';
   tg?.HapticFeedback?.notificationOccurred('success');
-  const res = await saveScore('quiz', finalScore, quizXp);
+  // Mavzu va tilga mos sarlavha
+  const _topicNm = { uz:{all:'Dasturlash Testi',html:'HTML Test',css:'CSS Test',js:'JavaScript Test',tailwind:'Tailwind Test',react:'React Test'}, ru:{all:'Тест по программированию',html:'HTML Тест',css:'CSS Тест',js:'JavaScript Тест',tailwind:'Tailwind Тест',react:'React Тест'} };
+  const _t = _quizCurrentTopic || 'all';
+  const _l = quizLang || 'uz';
+  const _tn = (_topicNm[_l]||_topicNm.uz)[_t] || 'Quiz';
+  const titleEl = document.getElementById('quizResultTitle');
+  if (titleEl) titleEl.textContent = _tn + (_l==='ru' ? ' завершён!' : ' yakunlandi!');
+  const _gameType = _t === 'all' ? 'quiz' : 'quiz_' + _t;
+  const res = await saveScore(_gameType, finalScore, quizXp);
   if (res) {
     const pbEl = document.getElementById('quizPersonalBest');
     if (pbEl) pbEl.textContent = (res.best_score || finalScore) + ' ball';
-    showXpModal('🧠', 'Dasturlash Testi!', quizXp, res.new_xp || 0,
+    showXpModal('🧠', _tn + '!', quizXp, res.new_xp || 0,
       res.level_name || 'Lv.' + (res.new_level || 1), 0, res.next_level_xp || 0);
   }
 }

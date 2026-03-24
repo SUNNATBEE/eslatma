@@ -1519,22 +1519,7 @@
 
         <div class="guide-section">
           <div class="guide-section-title">🏅 Darajalar va sovg'alar</div>
-          <div style="font-size:13px; line-height:1.9; padding: 4px 0;">
-            <b>🎯 Lv.1</b> — Yangi boshlovchi <span style="color:var(--sub)">(0 XP)</span><br>
-            <span style="color:var(--sub); font-size:12px">• Davomat, uy vazifasi, chat, avatar</span><br>
-            <b>⭐ Lv.2</b> — O'quvchi <span style="color:var(--sub)">(100 XP)</span> <span style="color:var(--gold)">+50 XP bonus!</span><br>
-            <span style="color:var(--sub); font-size:12px">• Streak bonuslari oshdi, guruh reytingi</span><br>
-            <b>🌟 Lv.3</b> — Faol o'quvchi <span style="color:var(--sub)">(300 XP)</span> <span style="color:var(--gold)">+100 XP bonus!</span><br>
-            <span style="color:var(--sub); font-size:12px">• Global reyting, 7-kun streak 2x bonus</span><br>
-            <b>💎 Lv.4</b> — Bilimdon <span style="color:var(--sub)">(600 XP)</span> <span style="color:var(--gold)">+150 XP bonus!</span><br>
-            <span style="color:var(--sub); font-size:12px">• Chat VIP belgisi, batafsil statistika</span><br>
-            <b>🏆 Lv.5</b> — A'lochi <span style="color:var(--sub)">(1000 XP)</span> <span style="color:var(--gold)">+200 XP bonus!</span><br>
-            <span style="color:var(--sub); font-size:12px">• Reytingda sariq ism, 30-kun streak max bonus</span><br>
-            <b>⚡ Lv.6</b> — Yulduz o'quvchi <span style="color:var(--sub)">(1500 XP)</span> <span style="color:var(--gold)">+300 XP bonus!</span><br>
-            <span style="color:var(--success); font-size:12px">⚡ Barcha XP 2 barobarga oshadi!</span><br>
-            <b>👑 Lv.7</b> — Super qahramon <span style="color:var(--sub)">(2500 XP)</span><br>
-            <span style="color:var(--gold); font-size:12px">🎁 1 oylik Telegram Premium sovg'a!</span>
-          </div>
+          <div id="guide-levels-list" style="font-size:13px; line-height:1.7; padding: 4px 0;"></div>
           <div class="guide-tip">🔥 Har bir daraja oshganda <b>XP bonusi</b> ham beriladi! Tez-tez kiring, vazifalarni bajaring, davomat qo'ying!</div>
         </div>
 
@@ -2291,6 +2276,47 @@ const LEVEL_PERKS_RU = {
 };
 function getLevelPerks() { return _lang === 'ru' ? LEVEL_PERKS_RU : LEVEL_PERKS_UZ; }
 const LEVEL_PERKS = new Proxy({}, { get: (_, k) => getLevelPerks()[k] });
+
+/* ── Guide level jadvali — database.py bilan mos XP qiymatlari ─────────── */
+const GUIDE_LEVELS = [
+  { num:1,  name:"Yangi boshlovchi", xp:0,     color:"#27ae60", bg:"rgba(39,174,96,.18)"  },
+  { num:2,  name:"O'quvchi",         xp:100,   color:"#2ecc71", bg:"rgba(46,204,113,.18)" },
+  { num:3,  name:"Faol o'quvchi",    xp:250,   color:"#1abc9c", bg:"rgba(26,188,156,.18)" },
+  { num:4,  name:"Bilimdon",         xp:500,   color:"#16a085", bg:"rgba(22,160,133,.18)" },
+  { num:5,  name:"A'lochi",          xp:800,   color:"#2980b9", bg:"rgba(41,128,185,.18)" },
+  { num:6,  name:"Yulduz o'quvchi",  xp:1200,  color:"#f39c12", bg:"rgba(243,156,18,.18)" },
+  { num:7,  name:"Ustoz",            xp:1800,  color:"#e67e22", bg:"rgba(230,126,34,.18)" },
+  { num:8,  name:"Mohir",            xp:2500,  color:"#d4ac0d", bg:"rgba(212,172,13,.18)" },
+  { num:9,  name:"Tajribali",        xp:3500,  color:"#f1c40f", bg:"rgba(241,196,15,.18)" },
+  { num:10, name:"Expert",           xp:5000,  color:"#ffd700", bg:"rgba(255,215,0,.18)"  },
+  { num:11, name:"Master",           xp:6500,  color:"#e74c3c", bg:"rgba(231,76,60,.18)"  },
+  { num:12, name:"Grand Master",     xp:8500,  color:"#c0392b", bg:"rgba(192,57,43,.18)"  },
+  { num:13, name:"Chempion",         xp:11000, color:"#9b59b6", bg:"rgba(155,89,182,.18)" },
+  { num:14, name:"Super Chempion",   xp:14000, color:"#8e44ad", bg:"rgba(142,68,173,.18)" },
+  { num:15, name:"Professor",        xp:18000, color:"#6c3483", bg:"rgba(108,52,131,.18)" },
+  { num:16, name:"Elita",            xp:22000, color:"#ff8c00", bg:"rgba(255,140,0,.2)"   },
+  { num:17, name:"Legenda",          xp:28000, color:"#ff6b00", bg:"rgba(255,107,0,.2)"   },
+  { num:18, name:"Super Legenda",    xp:35000, color:"#ff4500", bg:"rgba(255,69,0,.2)"    },
+  { num:19, name:"Milliy Qahramon",  xp:43000, color:"#e8b800", bg:"rgba(232,184,0,.22)"  },
+  { num:20, name:"Kosmik Daho",      xp:52000, color:"#ffd700", bg:"rgba(255,215,0,.25)"  },
+];
+
+function renderGuideLevels() {
+  const el = document.getElementById('guide-levels-list');
+  if (!el) return;
+  const perks = LEVEL_PERKS_UZ;
+  el.innerHTML = GUIDE_LEVELS.map(lv => {
+    const xpLabel = lv.xp === 0 ? 'Boshlang\'ich' : lv.xp.toLocaleString() + ' XP';
+    const bonus = perks[lv.num]?.bonus ? `<span style="color:#f1c40f;font-size:11px;margin-left:4px;">${perks[lv.num].bonus}</span>` : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+      <div style="width:26px;height:26px;border-radius:50%;background:${lv.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;">${lv.num}</div>
+      <div style="flex:1;font-size:13px;font-weight:700;color:var(--text);">${lv.name}</div>
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+        <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${lv.bg};color:${lv.color};border:1px solid ${lv.color}40;">${xpLabel}</span>${bonus}
+      </div>
+    </div>`;
+  }).join('') + `<div style="padding-top:4px;font-size:11px;color:var(--sub);text-align:center;">Jami 20 ta daraja</div>`;
+}
 
 const LEVEL_UP_BONUS = {
   2:50, 3:100, 4:150, 5:200, 6:300, 7:500,
@@ -4165,6 +4191,9 @@ async function init() {
 
     // XP reset notice — muhim xabar bo'lsa modal ko'rsatamiz
     checkXpResetNotice();
+
+    // Guide modali uchun 20 ta daraja jadvalini render qilamiz
+    renderGuideLevels();
 
     // Daily checkin (streak + XP) — silent
     api('/student/checkin', { method: 'POST' }).then(async (res) => {

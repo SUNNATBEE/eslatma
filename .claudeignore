@@ -1,0 +1,35 @@
+# ── Binary / runtime files ─────────────────────────────────────────
+bot.db
+*.sqlite
+*.log
+bot_start.log
+
+# ── Python cache ───────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ── Environment / secrets ──────────────────────────────────────────
+.env
+.env.*
+.env.local
+.env.production
+
+# ── Sensitive credential files (read explicitly when needed) ───────
+credentials.py
+curator_credentials.py
+
+# ── Large Mini App HTML files (read with Grep+offset, not auto-load)
+# Agents must use Grep to find sections, then Read with offset+limit
+webapp/student.html
+webapp/games.html
+webapp/admin-mini.html
+webapp/admin.html
+webapp/curator.html
+
+# ── Docker / deploy artifacts ──────────────────────────────────────
+*.tar
+*.zip
+dist/
+build/

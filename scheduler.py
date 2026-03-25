@@ -485,9 +485,75 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
         logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
 
 
-# ─── Kunlik global reyting broadcast ─────────────────────────────────────────
+# ─── Kunlik reyting (Leaderboard) — har kuni 14:00 ──────────────────────────
 
 _RANK_ICONS = {1: "🥇", 2: "🥈", 3: "🥉", 4: "4️⃣", 5: "5️⃣"}
+
+
+async def send_daily_leaderboard(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+) -> None:
+    """
+    Har kuni 14:00 da Top 10 o'quvchilarga reyting xabari yuboradi.
+    Barcha aktiv STUDENT guruhlarga yuboriladi (ota-ona guruhlari o'tkazib yuboriladi).
+    """
+    tz       = pytz.timezone(timezone_str)
+    date_str = datetime.now(tz).strftime("%d.%m.%Y")
+
+    try:
+        leaders = await db.get_global_leaderboard(limit=10)
+    except Exception as e:
+        logger.error(f"DAILY LEADERBOARD: leaderboard xatosi: {e}")
+        return
+
+    if not leaders:
+        logger.info("DAILY LEADERBOARD: o'quvchilar yo'q — o'tkazib yuborildi")
+        return
+
+    # Top-10 satrlarini qurish
+    rows = []
+    for i, s in enumerate(leaders[:10], start=1):
+        icon  = _RANK_ICONS.get(i, f"{i}.")
+        group = f" ({s.group_name})" if s.group_name else ""
+        xp    = s.xp or 0
+        rows.append(f"{icon} <b>{s.full_name}</b>{group} — <b>{xp} XP</b>")
+
+    top_line = "\n".join(rows)
+
+    text = (
+        f"🏆 <b>Kunlik Reyting</b> — {date_str}\n\n"
+        f"{top_line}\n\n"
+        f"💪 Siz ham yetib oling! Har kuni XP to'plang va birinchi o'ringa chiqing! 🚀"
+    )
+
+    # Faqat aktiv O'QUVCHI guruhlariga yuboramiz (ota-ona guruhlar emas)
+    groups = await db.get_all_groups()
+    ok, fail = 0, 0
+    for group in groups:
+        if not group.is_active:
+            continue
+        if group.audience != AudienceType.STUDENT:
+            logger.debug(
+                f"DAILY LEADERBOARD: '{group.name}' — PARENT guruh, o'tkazib yuborildi"
+            )
+            continue
+        try:
+            await bot.send_message(
+                chat_id=group.chat_id,
+                text=text,
+                parse_mode="HTML",
+            )
+            ok += 1
+        except Exception as e:
+            fail += 1
+            logger.warning(f"DAILY LEADERBOARD: '{group.name}' ({group.chat_id}): {e}")
+
+    logger.info(f"DAILY LEADERBOARD: {ok} guruhga yuborildi, {fail} xato | {date_str}")
+
+
+# ─── Kunlik global reyting broadcast ─────────────────────────────────────────
 
 
 async def send_leaderboard_broadcast(
@@ -763,6 +829,17 @@ def setup_scheduler(
         misfire_grace_time=300,
     )
 
+    # Kunlik reyting (har kuni 14:00)
+    scheduler.add_job(
+        func=send_daily_leaderboard,
+        trigger=CronTrigger(hour=14, minute=0, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="daily_leaderboard",
+        name="Kunlik Top-10 reyting",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
     # Streak eslatmasi (har kuni 19:00)
     scheduler.add_job(
         func=send_streak_reminders,
@@ -787,7 +864,10 @@ def setup_scheduler(
 
     _scheduler_ref = scheduler
     logger.info(
-        f"Scheduler sozlandi: har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} + "
-        f"har 10 daqiqada dars/davomat eslatmasi + har 3 kunda reyting broadcast ({timezone_str})"
+        f"Scheduler sozlandi: "
+        f"har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} (dars eslatmasi) + "
+        f"14:00 (kunlik reyting) + "
+        f"har 10 daqiqada dars/davomat eslatmasi + "
+        f"har 3 kunda global reyting broadcast ({timezone_str})"
     )
     return scheduler

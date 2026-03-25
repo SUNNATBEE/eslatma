@@ -797,7 +797,7 @@ O'quv markaz boti uchun maxsus mobil ilova. Dars jadvali, uy vazifalari, reyting
 🏠 <b>Bosh sahifa</b>
 • 📅 Bugungi dars kartochkasi — dars vaqtini ko'rsatadi
 • <b>✅ Ha, boraman</b> — kelishingizni belgilash <b>(+10 XP)</b>
-• <b>❌ Kela olmayman</b> — sabab yozasiz; ota-onangizga, ustozingizga va kuratorgizga yuboriladi
+• <b>❌ Kela olmayman</b> — sabab yozasiz; ustozingizga va kuratorgizga yuboriladi
 • 😊 Kayfiyat satrı — har kuni bir marta tanlang
 • ⭐ XP · 🔥 Streak · 🏅 O'rin · ✅ Davomad — statistikangiz
 

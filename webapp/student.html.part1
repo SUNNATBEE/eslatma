@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0f1a" />
+  <link rel="manifest" href="/webapp/manifest.json" />
+  <title>Mars IT — Shaxsiy Kabinet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Space dark palette */
+      --space-base:   #0a0a0f;
+      --space-1:      #0d0d18;
+      --space-2:      #12121f;
+      --space-3:      #1a1a2e;
+      --space-4:      #16213e;
+      --electric:     #00d4ff;
+      --electric-dim: rgba(0,212,255,.15);
+      --neon:         #8b5cf6;
+      --neon-dim:     rgba(139,92,246,.15);
+      --gold-acc:     #f59e0b;
+      --gold-bright:  #ffd700;
+      --success-glow: #10b981;
+      --danger-glow:  #ef4444;
+
+      /* Telegram overrides with space fallbacks */
+      --bg:       var(--tg-theme-bg-color,           #0d0d18);
+      --bg2:      var(--tg-theme-secondary-bg-color,  #12121f);
+      --accent:   var(--tg-theme-button-color,        #00d4ff);
+      --accent2:  #8b5cf6;
+      --text:     var(--tg-theme-text-color,          #e8eaf6);
+      --text2:    #94a3b8;
+      --sub:      var(--tg-theme-hint-color,          #64748b);
+      --link:     var(--tg-theme-link-color,          #00d4ff);
+      --btn-text: var(--tg-theme-button-text-color,   #ffffff);
+      --danger:   #ef4444;
+      --success:  #10b981;
+      --warn:     #f59e0b;
+      --gold:     #ffd700;
+      --radius:   16px;
+      --radius-sm:12px;
+      --shadow:   0 8px 32px rgba(0,0,0,.6);
+      --card-border: rgba(0,212,255,.1);
+      --glass-bg:    rgba(13,13,24,.75);
+      --glass-bg2:   rgba(18,18,31,.8);
+      --glow-blue:   0 0 20px rgba(0,212,255,.3);
+      --glow-purple: 0 0 20px rgba(139,92,246,.3);
+      --glow-gold:   0 0 20px rgba(245,158,11,.3);
+    }
+
+    /* Light theme overrides */
+    :root.theme-light {
+      --space-base:   #f0f4fc;
+      --bg:           #f0f4fc;
+      --bg2:          #ffffff;
+      --space-3:      #e8edf8;
+      --space-4:      #dde4f0;
+      --text:         #0f172a;
+      --text2:        #334155;
+      --sub:          #64748b;
+      --shadow:       0 4px 24px rgba(0,0,0,.12);
+      --card-border:  rgba(0,0,0,.08);
+      --glass-bg:     rgba(255,255,255,.85);
+      --glass-bg2:    rgba(248,250,255,.9);
+      --electric-dim: rgba(0,168,202,.08);
+      --neon-dim:     rgba(109,40,217,.07);
+    }
+    :root.theme-light .header { border-bottom-color: rgba(0,0,0,.07); }
+    :root.theme-light .tabbar { border-top-color: rgba(0,0,0,.07); }
+
+    /* ── Base ── */
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+      overflow: hidden; }
+
+    /* ── Animated background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -2;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,212,255,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,92,246,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(245,158,11,.05) 0%, transparent 70%),
+        var(--space-base);
+      pointer-events: none;
+    }
+    :root.theme-light body::before {
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,168,202,.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(109,40,217,.06) 0%, transparent 60%),
+        #f0f4fc;
+    }
+
+    /* Floating orbs */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background-image:
+        radial-gradient(circle 3px at 15% 25%, rgba(0,212,255,.4) 0%, transparent 100%),
+        radial-gradient(circle 2px at 75% 15%, rgba(139,92,246,.5) 0%, transparent 100%),
+        radial-gradient(circle 4px at 85% 70%, rgba(0,212,255,.3) 0%, transparent 100%),
+        radial-gradient(circle 2px at 25% 80%, rgba(245,158,11,.4) 0%, transparent 100%),
+        radial-gradient(circle 3px at 60% 40%, rgba(139,92,246,.35) 0%, transparent 100%);
+      animation: floatOrbs 15s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    :root.theme-light body::after { opacity: .4; }
+    @keyframes floatOrbs {
+      0%   { transform: translateY(0) translateX(0); }
+      33%  { transform: translateY(-8px) translateX(4px); }
+      66%  { transform: translateY(5px) translateX(-6px); }
+      100% { transform: translateY(-4px) translateX(8px); }
+    }
+
+    #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ══ HEADER ════════════════════════════════════════════════════ */
+    .header {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      padding: 10px 12px 8px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--card-border);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .header::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--electric), var(--neon), transparent);
+      opacity: .4;
+    }
+    .header-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--electric), var(--neon));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(0,212,255,.35), inset 0 0 8px rgba(255,255,255,.1);
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .header-avatar:active { transform: scale(.9); }
+    .header-info { flex: 1; min-width: 0; }
+    .header-name {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700; font-size: 13px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      background: linear-gradient(135deg, var(--electric), var(--neon));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-group { font-size: 11px; color: var(--sub); }
+    .header-right { display: flex; align-items: center; gap: 5px; }
+    .level-badge {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px; font-weight: 700;
+      background: linear-gradient(135deg, var(--gold-acc), #d97706);
+      color: #fff; padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+      box-shadow: 0 0 10px rgba(245,158,11,.4);
+    }
+    .help-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--electric-dim); border: 1px solid var(--card-border);
+      color: var(--electric); font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: box-shadow .2s;
+    }
+    .help-btn:active { box-shadow: var(--glow-blue); }
+    .lang-btn {
+      height: 24px; padding: 0 7px; border-radius: 12px;
+      background: var(--electric-dim); border: 1px solid var(--card-border);
+      color: var(--electric); font-size: 11px; font-weight: 800; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; white-space: nowrap;
+    }
+
+    /* ══ GAMES (student.html mini-games hub) ════════════════════════ */
+    .g-back {
+      background: var(--electric-dim); border: 1px solid var(--card-border);
+      color: var(--electric); font-size: 13px; padding: 7px 14px; border-radius: 20px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      margin-bottom: 12px; display: inline-block;
+      font-family: 'Nunito', sans-serif; font-weight: 700;
+    }
+    .game-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+    .game-card{
+      background: var(--glass-bg2);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-radius: var(--radius); padding: 14px 10px;
+      text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+      border: 1px solid var(--card-border);
+      transition: transform .2s, box-shadow .2s, border-color .2s;
+      transform-style: preserve-3d; perspective: 600px;
+    }
+    .game-card:active { transform: scale(.96) translateY(2px); }
+    @media (hover: hover) {
+      .game-card:hover {
+        transform: translateY(-4px) rotateX(3deg);
+        box-shadow: 0 12px 40px rgba(0,212,255,.15), 0 0 0 1px rgba(0,212,255,.2);
+        border-color: rgba(0,212,255,.3);
+      }
+    }

@@ -170,15 +170,4 @@ async def handle_absence_reason(
     except Exception as e:
         logger.warning(f"Kuratorgа bildirishnoma yuborishda xato: {e}")
 
-    # Ota-onalar guruhlariga bildiramiz
-    try:
-        parent_groups = await db.get_parent_groups()
-        for group in parent_groups:
-            try:
-                await bot.send_message(group.chat_id, notify_text, parse_mode="HTML")
-            except Exception as ge:
-                logger.warning(f"Ota-onalar guruhiga ({group.name}) yuborishda xato: {ge}")
-    except Exception as e:
-        logger.warning(f"Ota-onalar guruhlarini olishda xato: {e}")
-
     logger.info(f"Davomat: {student.full_name} — Kelmaydi | {date_str} | Sabab: {reason}")

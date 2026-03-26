@@ -429,7 +429,10 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         minute = body.get("minute")
         if hour is None or minute is None:
             return web.json_response({"error": "Missing fields"}, status=400)
-        hour, minute = int(hour), int(minute)
+        try:
+            hour, minute = int(hour), int(minute)
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri vaqt formati"}, status=400)
         if not (0 <= hour <= 23 and 0 <= minute <= 59):
             return web.json_response({"error": "Invalid time"}, status=400)
         await db.set_setting("SEND_HOUR",   str(hour))
@@ -442,7 +445,10 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         user_id = _admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        days    = int(request.rel_url.query.get("days", "7"))
+        try:
+            days = int(request.rel_url.query.get("days", "7"))
+        except (ValueError, TypeError):
+            days = 7
         inactive = await db.get_inactive_students(days=days)
         return web.json_response({
             "days": days,
@@ -795,7 +801,10 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             body = await request.json()
         except Exception:
             return web.json_response({"error": "Bad JSON"}, status=400)
-        target_user_id = int(body.get("user_id", 0))
+        try:
+            target_user_id = int(body.get("user_id", 0))
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri user_id"}, status=400)
         date_str = body.get("date", "")
         status   = body.get("status", "")
         if not target_user_id or not date_str or status not in ("yes", "no"):
@@ -844,13 +853,18 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if not group:
             return web.json_response({"error": "Guruh topilmadi"}, status=404)
         try:
-            await bot.send_message(
+            sent = await bot.send_message(
                 chat_id=group.chat_id,
                 text=f"📝 <b>Uy vazifasi</b>\n\n{text}",
                 parse_mode="HTML",
             )
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
+        await db.set_homework(
+            group_name=group_name,
+            from_chat_id=sent.chat.id,
+            message_id=sent.message_id,
+        )
         return web.json_response({"ok": True})
 
     async def api_admin_weekly_stats(request: web.Request) -> web.Response:

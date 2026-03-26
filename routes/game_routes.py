@@ -30,8 +30,11 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
         except Exception:
             return web.json_response({"error": "Bad JSON"}, status=400)
         game_type = body.get("game_type", "")
-        score     = int(body.get("score", 0))
-        xp_earned = int(body.get("xp_earned", 0))
+        try:
+            score     = int(body.get("score", 0))
+            xp_earned = int(body.get("xp_earned", 0))
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri qiymat"}, status=400)
         if not game_type:
             return web.json_response({"error": "game_type kerak"}, status=400)
         xp_earned = min(xp_earned, 50)
@@ -93,7 +96,10 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
         user_id = _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        room_id = int(request.match_info["room_id"])
+        try:
+            room_id = int(request.match_info["room_id"])
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri room_id"}, status=400)
         room = await db.get_game_room(room_id)
         if not room:
             return web.json_response({"error": "Xona topilmadi"}, status=404)
@@ -115,7 +121,10 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
         student = await db.get_student(user_id)
         if not student:
             return web.json_response({"error": "Not registered"}, status=404)
-        room_id = int(request.match_info["room_id"])
+        try:
+            room_id = int(request.match_info["room_id"])
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri room_id"}, status=400)
         room = await db.join_game_room(room_id, user_id, student.full_name)
         if not room:
             return web.json_response({"error": "Xona band yoki topilmadi"}, status=400)
@@ -130,12 +139,18 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
         user_id = _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        room_id = int(request.match_info["room_id"])
+        try:
+            room_id = int(request.match_info["room_id"])
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri room_id"}, status=400)
         try:
             body = await request.json()
         except Exception:
             return web.json_response({"error": "Bad JSON"}, status=400)
-        progress = int(body.get("progress", 0))
+        try:
+            progress = int(body.get("progress", 0))
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri qiymat"}, status=400)
         finished = bool(body.get("finished", False))
         room = await db.update_game_progress(room_id, user_id, progress, finished)
         if not room:
@@ -169,7 +184,7 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
     # ── Play count / limit ─────────────────────────────────────────────────────
 
     async def api_game_plays_today(request: web.Request) -> web.Response:
-        """12-soatlik oyna uchun o'ynash ma'lumotlari."""
+        """3 soatlik cooldown uchun o'ynash ma'lumotlari."""
         user_id = _auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)

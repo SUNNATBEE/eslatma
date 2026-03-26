@@ -202,7 +202,7 @@
             <div class="game-card-name">Dasturlash Testi</div>
             <div class="game-card-desc">JS, HTML, CSS, Tailwind, React — aralash</div>
             <div class="game-card-xp">+2 XP / to'g'ri javob (max 20)</div>
-            <div id="badge_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+            <div id="badge_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">O'ynash mumkin</div>
           </div>
         </div>
         <div class="game-card" onclick="startQuizAndGo('html')">
@@ -240,35 +240,35 @@
           <div class="game-card-name">CSS Duel</div>
           <div class="game-card-desc">CSS chiqishini top</div>
           <div class="game-card-xp">+10–30 XP</div>
-          <div id="badge_css_duel" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+          <div id="badge_css_duel" style="color:#4CAF50;font-size:11px;margin-top:4px;">O'ynash mumkin</div>
         </div>
         <div class="game-card" onclick="goPage('bug_hunter')">
           <div class="game-card-icon">🐛</div>
           <div class="game-card-name">Bug Hunter</div>
           <div class="game-card-desc">Koddagi xatoni top</div>
           <div class="game-card-xp">+15–40 XP</div>
-          <div id="badge_bug_hunter" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+          <div id="badge_bug_hunter" style="color:#4CAF50;font-size:11px;margin-top:4px;">O'ynash mumkin</div>
         </div>
         <div class="game-card" onclick="goPage('code_order')">
           <div class="game-card-icon">🔀</div>
           <div class="game-card-name">Code Order</div>
           <div class="game-card-desc">Kod satrlarini tartiblash</div>
           <div class="game-card-xp">+10–35 XP</div>
-          <div id="badge_code_order" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+          <div id="badge_code_order" style="color:#4CAF50;font-size:11px;margin-top:4px;">O'ynash mumkin</div>
         </div>
         <div class="game-card" onclick="goPage('tag_match')">
           <div class="game-card-icon">🏷</div>
           <div class="game-card-name">Tag Match</div>
           <div class="game-card-desc">HTML tag vazifasini top</div>
           <div class="game-card-xp">+10–25 XP</div>
-          <div id="badge_tag_match" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+          <div id="badge_tag_match" style="color:#4CAF50;font-size:11px;margin-top:4px;">O'ynash mumkin</div>
         </div>
         <div class="game-card" onclick="goPage('selector_quiz')">
           <div class="game-card-icon">🎯</div>
           <div class="game-card-name">Selector Quiz</div>
           <div class="game-card-desc">CSS selector elementini top</div>
           <div class="game-card-xp">+10–25 XP</div>
-          <div id="badge_selector_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">3/3 qoldi</div>
+          <div id="badge_selector_quiz" style="color:#4CAF50;font-size:11px;margin-top:4px;">O'ynash mumkin</div>
         </div>
       </div>
 
@@ -572,9 +572,8 @@ function toggleSound() {
   if (btn) btn.textContent = _soundOn ? '🔊' : '🔇';
 }
 
-/* ── Daily Game Limits ── */
+/* ── 3 soatlik Cooldown tizimi ── */
 let _playsToday = {};
-const PLAY_LIMIT = 3;
 let _badgeTimers = {};
 
 function _fmtCountdown(secs) {
@@ -582,6 +581,22 @@ function _fmtCountdown(secs) {
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
   return [h,m,s].map(v => String(v).padStart(2,'0')).join(':');
+}
+
+function _cooldownLabel(secs) {
+  /* "2 soat 15 daqiqa" yoki "2 часа 15 минут" formatida matn */
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const isRu = (typeof quizLang !== 'undefined') && quizLang === 'ru';
+  if (isRu) {
+    if (h > 0 && m > 0) return h + ' ч ' + m + ' мин';
+    if (h > 0)          return h + ' ч';
+    return m + ' мин';
+  } else {
+    if (h > 0 && m > 0) return h + ' soat ' + m + ' daqiqa';
+    if (h > 0)          return h + ' soat';
+    return m + ' daqiqa';
+  }
 }
 
 async function loadPlaysToday() {
@@ -593,20 +608,23 @@ async function loadPlaysToday() {
 }
 
 async function recordPlay(gameType) {
-  const r = await fetch('/api/game/record-play', {
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-Init-Data':INIT_DATA},
-    body: JSON.stringify({game_type: gameType})
-  });
-  const data = await r.json();
-  _playsToday[gameType] = {
-    count:       data.play_count || 0,
-    blocked:     data.blocked || false,
-    seconds_left: data.seconds_left || 0,
-    plays_left:  data.plays_left || 0,
-  };
-  updateGameCardBadges();
-  return data;
+  try {
+    const r = await fetch('/api/game/record-play', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Init-Data':INIT_DATA},
+      body: JSON.stringify({game_type: gameType})
+    });
+    if (!r.ok) return {};
+    const data = await r.json();
+    _playsToday[gameType] = {
+      count:        data.play_count || 0,
+      blocked:      data.blocked || false,
+      seconds_left: data.seconds_left || 0,
+      plays_left:   data.plays_left || 0,
+    };
+    updateGameCardBadges();
+    return data;
+  } catch(e) { return {}; }
 }
 
 function checkDailyLimit(gameType) {
@@ -618,22 +636,36 @@ function showLimitModal(gameType) {
   const secs = _playsToday[gameType]?.seconds_left || 0;
   document.getElementById('gameLimitModal')?.remove();
   clearInterval(_glTimer);
+  const isRu = (typeof quizLang !== 'undefined') && quizLang === 'ru';
+  const title   = isRu ? 'Блок 3 часа' : '3 soat blok';
+  const subtext = isRu ? 'Игра временно заблокирована' : 'O\'yin vaqtincha bloklangan';
+  const openLbl = isRu ? 'Откроется через:' : 'Ochilishi:';
+  const okLbl   = isRu ? 'ОК' : 'OK';
   const el = document.createElement('div');
   el.id = 'gameLimitModal';
   el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a2035;border:1px solid #f44336;border-radius:16px;padding:24px 28px;z-index:99999;text-align:center;max-width:320px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.6)';
   el.innerHTML = `<div style="font-size:40px;margin-bottom:10px">⏳</div>
-    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px">Limit tugadi!</div>
-    <div style="font-size:13px;color:#aaa;margin-bottom:6px">3/3 o'yinni o'ynab bo'ldingiz</div>
-    <div style="font-size:12px;color:#888;margin-bottom:6px">Ochilishi:</div>
-    <div id="gLimitTxt" style="font-size:26px;font-weight:900;color:#FF9800;margin-bottom:16px;">${_fmtCountdown(secs)}</div>
-    <button onclick="document.getElementById('gameLimitModal')?.remove();clearInterval(_glTimer)" style="background:#f44336;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">OK</button>`;
+    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px">${title}</div>
+    <div style="font-size:13px;color:#aaa;margin-bottom:6px">${subtext}</div>
+    <div style="font-size:12px;color:#888;margin-bottom:6px">${openLbl}</div>
+    <div id="gLimitTxt" style="font-size:26px;font-weight:900;color:#FF9800;margin-bottom:4px;">${_fmtCountdown(secs)}</div>
+    <div id="gLimitHuman" style="font-size:13px;color:#aaa;margin-bottom:16px;">${_cooldownLabel(secs)}</div>
+    <button onclick="document.getElementById('gameLimitModal')?.remove();clearInterval(_glTimer)" style="background:#f44336;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">${okLbl}</button>`;
   document.body.appendChild(el);
   let s = secs;
   _glTimer = setInterval(() => {
     s--;
-    const txt = document.getElementById('gLimitTxt');
-    if (!txt || s <= 0) { clearInterval(_glTimer); if (txt) txt.textContent = 'Hozir ochilmoqda...'; loadPlaysToday(); return; }
-    txt.textContent = _fmtCountdown(s);
+    const txt   = document.getElementById('gLimitTxt');
+    const human = document.getElementById('gLimitHuman');
+    if (!txt || s <= 0) {
+      clearInterval(_glTimer);
+      if (txt) txt.textContent = isRu ? 'Открывается...' : 'Hozir ochilmoqda...';
+      if (human) human.textContent = '';
+      loadPlaysToday();
+      return;
+    }
+    txt.textContent   = _fmtCountdown(s);
+    if (human) human.textContent = _cooldownLabel(s);
   }, 1000);
 }
 
@@ -641,6 +673,7 @@ function updateGameCardBadges() {
   const gameTypes = ['quiz','css_duel','bug_hunter','code_order','tag_match','selector_quiz'];
   Object.values(_badgeTimers).forEach(t => clearInterval(t));
   _badgeTimers = {};
+  const isRu = (typeof quizLang !== 'undefined') && quizLang === 'ru';
   gameTypes.forEach(gt => {
     const badge = document.getElementById('badge_' + gt);
     if (!badge) return;
@@ -649,7 +682,7 @@ function updateGameCardBadges() {
       let secsLeft = info.seconds_left || 0;
       function updateBadge() {
         if (secsLeft <= 0) {
-          badge.textContent = PLAY_LIMIT + '/' + PLAY_LIMIT + ' qoldi';
+          badge.textContent = isRu ? 'Доступна' : 'O\'ynash mumkin';
           badge.style.color = '#4CAF50';
           clearInterval(_badgeTimers[gt]);
           loadPlaysToday();
@@ -662,9 +695,8 @@ function updateGameCardBadges() {
       updateBadge();
       _badgeTimers[gt] = setInterval(updateBadge, 1000);
     } else {
-      const left = info?.plays_left ?? PLAY_LIMIT;
-      badge.textContent = left + '/' + PLAY_LIMIT + ' qoldi';
-      badge.style.color = left === 0 ? '#f44336' : left === 1 ? '#FF9800' : '#4CAF50';
+      badge.textContent = isRu ? 'Доступна' : 'O\'ynash mumkin';
+      badge.style.color = '#4CAF50';
     }
   });
 }
@@ -778,6 +810,8 @@ async function saveScore(game_type, score, xp_earned) {
       document.getElementById('hdrLvl').textContent = 'Lv.' + res.new_level;
     }
     if (res.leveled_up) toast('Daraja oshdi! Lv.' + res.new_level);
+    /* O'yin tugagach 3 soatlik cooldown boshlash */
+    recordPlay(game_type).catch(()=>{});
     return res;
   } catch { return null; }
 }
@@ -1415,7 +1449,6 @@ let _quizCurrentTopic = 'all';
 function startQuiz(topic = 'all') {
   const gameType = topic === 'all' ? 'quiz' : 'quiz_' + topic;
   if (checkDailyLimit(gameType)) { showLimitModal(gameType); return; }
-  recordPlay(gameType).catch(()=>{});
   _quizCurrentTopic = topic;
   quizScore = 0; quizIdx = 0; quizXp = 0;
   const isRu = quizLang === 'ru';
@@ -1614,7 +1647,6 @@ let cdQ=[], cdIdx=0, cdScore=0, cdTimer=null, cdTimeLeft=20, cdAnswered=false, c
 
 function startCssDuel() {
   if (checkDailyLimit('css_duel')) { showLimitModal('css_duel'); return; }
-  recordPlay('css_duel').catch(()=>{});
   cdScore=0; cdIdx=0; cdXp=0;
   cdQ = [...CSS_DUEL_QUESTIONS].sort(() => Math.random()-.5).slice(0,10);
   document.getElementById('cssDuelGame').style.display   = 'block';
@@ -1812,7 +1844,6 @@ let bhQ=[], bhIdx=0, bhScore=0, bhTimer=null, bhTimeLeft=30, bhAnswered=false, b
 
 function startBugHunter() {
   if (checkDailyLimit('bug_hunter')) { showLimitModal('bug_hunter'); return; }
-  recordPlay('bug_hunter').catch(()=>{});
   bhScore=0; bhIdx=0; bhXp=0;
   bhQ = [...BUG_QUESTIONS].sort(() => Math.random()-.5).slice(0,8);
   document.getElementById('bugHunterGame').style.display   = 'block';
@@ -2007,7 +2038,6 @@ let coPuzzles=[];
 
 function startCodeOrder() {
   if (checkDailyLimit('code_order')) { showLimitModal('code_order'); return; }
-  recordPlay('code_order').catch(()=>{});
   coScore=0; coPuzzleIdx=0; coXp=0;
   coPuzzles = [...CODE_ORDER_PUZZLES].sort(() => Math.random()-.5).slice(0,6);
   document.getElementById('codeOrderGame').style.display   = 'block';
@@ -2128,7 +2158,6 @@ let tmQ=[], tmIdx=0, tmScore=0, tmTimer=null, tmTimeLeft=25, tmAnswered=false, t
 
 function startTagMatch() {
   if (checkDailyLimit('tag_match')) { showLimitModal('tag_match'); return; }
-  recordPlay('tag_match').catch(()=>{});
   tmScore=0; tmIdx=0; tmXp=0;
   tmQ = [...TAG_MATCH_QUESTIONS].sort(() => Math.random()-.5).slice(0,10);
   document.getElementById('tagMatchGame').style.display   = 'block';
@@ -2225,7 +2254,6 @@ let sqQ=[], sqIdx=0, sqScore=0, sqTimer=null, sqTimeLeft=25, sqAnswered=false, s
 
 function startSelectorQuiz() {
   if (checkDailyLimit('selector_quiz')) { showLimitModal('selector_quiz'); return; }
-  recordPlay('selector_quiz').catch(()=>{});
   sqScore=0; sqIdx=0; sqXp=0;
   sqQ = [...SELECTOR_QUESTIONS].sort(() => Math.random()-.5).slice(0,10);
   document.getElementById('selectorGame').style.display   = 'block';

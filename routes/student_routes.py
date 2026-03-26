@@ -487,7 +487,10 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         student = await db.get_student(user_id)
         if not student:
             return web.json_response({"error": "Not registered"}, status=404)
-        after_id = int(request.rel_url.query.get("after_id", "0"))
+        try:
+            after_id = int(request.rel_url.query.get("after_id", "0"))
+        except (ValueError, TypeError):
+            after_id = 0
         msgs = await db.get_chat_messages(limit=50, after_id=after_id)
         return web.json_response({
             "messages": [
@@ -679,7 +682,10 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
             return web.json_response({"error": "Barcha majburiy maydonlarni to'ldiring"}, status=400)
         if has_group and not all([group_time, group_day_type, teacher_name]):
             return web.json_response({"error": "Guruh ma'lumotlarini to'liq kiriting"}, status=400)
-        tg_id = int(telegram_user_id) if telegram_user_id else None
+        try:
+            tg_id = int(telegram_user_id) if telegram_user_id else None
+        except (ValueError, TypeError):
+            return web.json_response({"error": "Noto'g'ri telegram_user_id"}, status=400)
         if tg_id:
             existing = await db.get_pending_registration_by_user(tg_id)
             if existing:

@@ -329,15 +329,16 @@ class GameRoom(Base):
 # ─── Model: O'yin o'ynash hisoblagi ──────────────────────────────────────────
 
 class GamePlayCount(Base):
-    """Har o'quvchi har o'yin uchun kunlik o'ynash soni."""
+    """Har o'quvchi har o'yin uchun so'nggi o'ynash vaqti (3 soatlik blok)."""
     __tablename__ = "game_play_counts"
     __table_args__ = (UniqueConstraint("user_id", "game_type", "date_str"),)
 
-    id:         Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id:    Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
-    game_type:  Mapped[str] = mapped_column(String(30), nullable=False)
-    date_str:   Mapped[str] = mapped_column(String(20), nullable=False)  # "YYYY-MM-DD"
-    play_count: Mapped[int] = mapped_column(Integer, default=0)
+    id:             Mapped[int]               = mapped_column(primary_key=True, autoincrement=True)
+    user_id:        Mapped[int]               = mapped_column(BigInteger, nullable=False, index=True)
+    game_type:      Mapped[str]               = mapped_column(String(30), nullable=False)
+    date_str:       Mapped[str]               = mapped_column(String(20), nullable=False)  # eski mos. kaliti
+    play_count:     Mapped[int]               = mapped_column(Integer, default=0)
+    last_played_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 # ─── Model: Referal o'quvchi ──────────────────────────────────────────────────
@@ -530,6 +531,26 @@ class DatabaseService:
                     logger.info(f"Migration: referral_students.{_col} ustuni qo'shildi.")
                 except Exception:
                     pass
+            # game_play_counts.last_played_at — 3 soatlik cooldown uchun
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "ALTER TABLE game_play_counts ADD COLUMN last_played_at DATETIME"
+                    )
+                )
+                logger.info("Migration: game_play_counts.last_played_at ustuni qo'shildi.")
+            except Exception:
+                pass
+            # Eski kunlik yozuvlarni tozalash (cooldown tizimiga o'tish)
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "DELETE FROM game_play_counts WHERE date_str != 'cooldown'"
+                    )
+                )
+                logger.info("Migration: eski game_play_counts yozuvlari tozalandi.")
+            except Exception:
+                pass
         logger.info("Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi.")
 
     # ── CREATE / UPDATE ────────────────────────────────────────────────────────
@@ -1586,106 +1607,106 @@ class DatabaseService:
                 await session.delete(s)
                 await session.commit()
 
-    # ── GAME PLAY COUNTS (12-soatlik oyna) ──────────────────────────────────────
+    # ── GAME PLAY COUNTS (3 soatlik cooldown) ──────────────────────────────────
     #
-    #   date_str maydoni endi "oyna kaliti" sifatida ishlatiladi:
-    #   window_key = str(int(time.time() // 43200))   (har 12 soatda yangilanadi)
-    #   Shu tufayli migratsiya kerak emas — eski "YYYY-MM-DD" qatorlar avtomatik
-    #   e'tiborga olinmaydi (current window_key mos kelmaydi).
+    #   3 soatlik cooldown tizimi:
+    #   O'yin tugagach, last_played_at yangilanadi.
+    #   Agar hozirgi vaqt - last_played_at < 3 soat bo'lsa, o'yin bloklangan.
+    #   date_str maydoni mos. kaliti sifatida saqlanadi (har doim "cooldown").
     #
-    _PLAY_WINDOW = 43200          # 12 soat (soniyalarda)
-    _PLAY_LIMIT  = 3
+    _COOLDOWN = 10800             # 3 soat (soniyalarda)
 
     @staticmethod
-    def _window_key() -> str:
-        """Joriy 12-soatlik oyna kaliti."""
+    def _cooldown_seconds_left(last_played_at) -> int:
+        """last_played_at dan beri 3 soatlik blok qolgan soniyalari.
+        last_played_at — DB dan kelgan naive datetime (UTC sifatida saqlanadi)."""
         import time as _time
-        return str(int(_time.time() // 43200))
-
-    @staticmethod
-    def _window_seconds_left() -> int:
-        """Joriy 12-soatlik oyna tugashigacha qolgan soniya."""
-        import time as _time
-        now_ts = _time.time()
-        wk = int(now_ts // 43200)
-        expires_at = (wk + 1) * 43200
-        return max(0, int(expires_at - now_ts))
+        import calendar as _cal
+        import datetime as _dt
+        if last_played_at is None:
+            return 0
+        if not isinstance(last_played_at, _dt.datetime):
+            return 0
+        # timegm UTC naive datetime ni POSIX timestamp ga aylantiradi (tz-safe)
+        stored_ts = _cal.timegm(last_played_at.timetuple())
+        elapsed   = _time.time() - stored_ts
+        return max(0, int(10800 - elapsed))
 
     async def get_play_window(self, user_id: int, game_type: str) -> dict:
-        """12 soatlik oynada o'ynash ma'lumotlari.
+        """3 soatlik cooldown holatini qaytaradi.
         Qaytaradi: {count, blocked, seconds_left, plays_left}"""
-        wk = self._window_key()
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GamePlayCount).where(
                     GamePlayCount.user_id   == user_id,
                     GamePlayCount.game_type == game_type,
-                    GamePlayCount.date_str  == wk,
+                    GamePlayCount.date_str  == "cooldown",
                 )
             )
             rec = result.scalar_one_or_none()
-            count = rec.play_count if rec else 0
-        secs = self._window_seconds_left()
-        blocked = count >= self._PLAY_LIMIT
+        last_played = rec.last_played_at if rec else None
+        secs = self._cooldown_seconds_left(last_played)
+        blocked = secs > 0
         return {
-            "count":       count,
-            "blocked":     blocked,
+            "count":        rec.play_count if rec else 0,
+            "blocked":      blocked,
             "seconds_left": secs,
-            "plays_left":  max(0, self._PLAY_LIMIT - count),
+            "plays_left":   0 if blocked else 1,
         }
 
     async def increment_play_in_window(self, user_id: int, game_type: str) -> dict:
-        """O'ynash sonini 1 ga oshiradi va window ma'lumotlarini qaytaradi."""
-        wk = self._window_key()
+        """O'yin tugaganda last_played_at ni hozirgi vaqtga yangilaydi."""
+        import datetime as _dt
+        now = _dt.datetime.utcnow()
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GamePlayCount).where(
                     GamePlayCount.user_id   == user_id,
                     GamePlayCount.game_type == game_type,
-                    GamePlayCount.date_str  == wk,
+                    GamePlayCount.date_str  == "cooldown",
                 )
             )
             rec = result.scalar_one_or_none()
             if rec:
                 rec.play_count += 1
+                rec.last_played_at = now
             else:
                 rec = GamePlayCount(
                     user_id=user_id, game_type=game_type,
-                    date_str=wk, play_count=1,
+                    date_str="cooldown", play_count=1,
+                    last_played_at=now,
                 )
                 session.add(rec)
             await session.commit()
             count = rec.play_count
-        secs = self._window_seconds_left()
-        blocked = count >= self._PLAY_LIMIT
+        secs = self._cooldown_seconds_left(now)
         return {
-            "count":       count,
-            "blocked":     blocked,
+            "count":        count,
+            "blocked":      True,
             "seconds_left": secs,
-            "plays_left":  max(0, self._PLAY_LIMIT - count),
+            "plays_left":   0,
         }
 
     async def get_all_play_windows(self, user_id: int) -> dict:
-        """Joriy 12-soatlik oyna uchun barcha o'yinlar bo'yicha ma'lumot."""
-        wk = self._window_key()
+        """Barcha o'yinlar uchun 3 soatlik cooldown holatini qaytaradi."""
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GamePlayCount).where(
-                    GamePlayCount.user_id  == user_id,
-                    GamePlayCount.date_str == wk,
+                    GamePlayCount.user_id == user_id,
+                    GamePlayCount.date_str == "cooldown",
                 )
             )
             recs = result.scalars().all()
-        secs = self._window_seconds_left()
         out = {}
         for r in recs:
-            count   = r.play_count
-            blocked = count >= self._PLAY_LIMIT
+            last_played = r.last_played_at
+            secs    = self._cooldown_seconds_left(last_played)
+            blocked = secs > 0
             out[r.game_type] = {
-                "count":       count,
-                "blocked":     blocked,
+                "count":        r.play_count,
+                "blocked":      blocked,
                 "seconds_left": secs,
-                "plays_left":  max(0, self._PLAY_LIMIT - count),
+                "plays_left":   0 if blocked else 1,
             }
         return out
 

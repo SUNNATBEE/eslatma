@@ -269,9 +269,9 @@ async def admin_remove_student_do(cb: CallbackQuery, db: DatabaseService) -> Non
             f"<i>O'quvchi qaytadan /start bossa, ro'yxatdan o'tishi so'raladi.</i>",
             reply_markup=kb_back_to_panel(),
         )
+        await cb.answer()
     else:
         await cb.answer("❌ O'quvchi topilmadi.", show_alert=True)
-    await cb.answer()
 
 
 # ════════════════════════════════════════════════════════════════════════════════

@@ -294,6 +294,19 @@ async def main() -> None:
     logger.info("  O'QUV MARKAZ DARS ESLATMASI BOTI ISHGA TUSHMOQDA")
     logger.info("=" * 60)
 
+    # 0. Healthcheck serverini darhol ishga tushirish (Railway/Render timeout oldidan)
+    early_app = web.Application()
+    early_app.router.add_get("/", _health_check)
+    early_app.router.add_get("/health", _health_check)
+    early_runner = web.AppRunner(early_app)
+    await early_runner.setup()
+    early_site = web.TCPSite(early_runner, host="0.0.0.0", port=PORT)
+    try:
+        await early_site.start()
+        logger.info(f"Healthcheck server ishga tushdi | port {PORT}")
+    except OSError as e:
+        logger.warning(f"Healthcheck server port {PORT} band: {e}")
+
     # 1. Ma'lumotlar bazasini ishga tushirish
     db = DatabaseService(DATABASE_URL)
     await db.init_db()
@@ -326,7 +339,8 @@ async def main() -> None:
     scheduler = setup_scheduler(bot=bot, db=db, timezone_str=TIMEZONE, webapp_url=WEBAPP_URL)
     scheduler.start()
 
-    # 6. Keep-alive web server'ni ishga tushirish (Mini App API bilan)
+    # 6. Healthcheck serverni to'xtatib, to'liq API serverni ishga tushirish
+    await early_runner.cleanup()
     web_runner = await start_web_server(bot=bot, db=db)
 
     # 7. Bot command menu'ni sozlash (Telegram "/" menyusi)

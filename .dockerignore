@@ -33,3 +33,10 @@ logs/
 # Test fayllar
 tests/
 .pytest_cache/
+
+# Node / NPM
+node_modules/
+npm-cache/
+
+# Claude
+.claude/

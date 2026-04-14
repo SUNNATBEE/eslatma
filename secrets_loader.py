@@ -3,9 +3,12 @@ secrets_loader.py - Repo tashqarisidagi secret/config payloadlarni yuklash.
 """
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def load_json_mapping(
@@ -26,10 +29,12 @@ def load_json_mapping(
     if not file_path.is_absolute():
         file_path = Path(__file__).resolve().parent / file_path
     if not file_path.exists():
-        raise FileNotFoundError(
+        logger.warning(
             f"Secret fayl topilmadi: {file_path}. "
-            f"{env_file_key} yoki {env_json_key} ni sozlang."
+            f"{env_file_key} yoki {env_json_key} ni sozlang. "
+            f"Bo'sh dict bilan davom etilmoqda."
         )
+        return {}
 
     payload = json.loads(file_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):

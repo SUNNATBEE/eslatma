@@ -20,5 +20,9 @@ env/
 # Logs
 *.log
 
+# Node
+node_modules/
+npm-cache/
+
 # Claude Code memory
 .claude/

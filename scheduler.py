@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 
 import pytz
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -563,16 +564,10 @@ async def send_leaderboard_broadcast(
     timezone_str: str,
 ) -> None:
     """
-    Har 3 kunda bir marta barcha aktiv o'quvchi guruhlariga global top-5 reyting yuboradi.
+    Har 2 kunda bir marta barcha aktiv o'quvchi guruhlariga global top-5 reyting yuboradi.
     Faqat AudienceType.STUDENT guruhlarga yuboriladi (PARENT guruhlar o'tkazib yuboriladi).
-    Xabarda Mini App tugmasi bo'ladi (WebAppInfo — brauzerda emas, Mini App da ochiladi).
+    Xabarda botga o'tish tugmasi bo'ladi.
     """
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-
-    if not webapp_url:
-        logger.warning("LEADERBOARD BROADCAST: WEBAPP_URL sozlanmagan — o'tkazib yuborildi")
-        return
-
     tz       = pytz.timezone(timezone_str)
     date_str = datetime.now(tz).strftime("%d.%m.%Y")
 
@@ -596,21 +591,39 @@ async def send_leaderboard_broadcast(
 
     total = await db.get_students_count() if hasattr(db, "get_students_count") else len(leaders)
     top_line = "\n".join(rows)
-
-    text = (
-        f"🏆 <b>Kunlik Global Reyting</b> — {date_str}\n\n"
-        f"{top_line}\n\n"
-        f"👥 Jami o'quvchilar: <b>{total}</b> ta\n\n"
-        f"💪 Siz ham yetib oling! Har kuni XP to'plang va birinchi o'ringa chiqing! 🚀\n"
-        f"👇 Reyting va Mini App haqida to'liq ma'lumot uchun tugmani bosing."
+    leader = leaders[0]
+    leader_xp = leader.xp or 0
+    runner_up_xp = leaders[1].xp if len(leaders) > 1 and leaders[1].xp is not None else 0
+    gap_text = (
+        f"🔥 1-o'rin uchun farq hozircha <b>{leader_xp - runner_up_xp} XP</b>!"
+        if len(leaders) > 1 else
+        f"🔥 Hozircha taxtda faqat <b>{leader.full_name}</b> hukmron!"
+    )
+    challenge_lines = (
+        "⚡ Tez ko'tarilish formulasi:\n"
+        "• Har kuni kirish\n"
+        "• Davomatni belgilash\n"
+        "• Uy vazifasini tasdiqlash\n"
+        "• O'yinlarda qo'shimcha XP yig'ish"
     )
 
-    # WebAppInfo ishlatiladi — oddiy brauzer emas, Telegram Mini App sifatida ochiladi
-    student_url = webapp_url.rstrip("/") + "/student.html"
+    text = (
+        f"🚀 <b>2 Kunlik Reyting Challenge</b> — {date_str}\n\n"
+        f"{top_line}\n\n"
+        f"👑 Hozirgi yetakchi: <b>{leader.full_name}</b> — <b>{leader_xp} XP</b>\n"
+        f"{gap_text}\n"
+        f"👥 Jami o'quvchilar: <b>{total}</b> ta\n\n"
+        f"{challenge_lines}\n\n"
+        f"🏁 Keyingi reyting xabari chiqquncha TOP ga kirishga harakat qiling.\n"
+        f"👇 Botga o'tib o'z o'rningizni tekshiring."
+    )
+
+    bot_info = await bot.get_me()
+    bot_url = f"https://t.me/{bot_info.username}?start=leaderboard"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="📊 Reytingni ko'rish / Посмотреть рейтинг",
-            web_app=WebAppInfo(url=student_url),
+            text="🤖 Botga o'tish va o'rnimni ko'rish",
+            url=bot_url,
         )],
     ])
 
@@ -821,21 +834,10 @@ def setup_scheduler(
     # tushirgan vaqtdan boshlanadi, shu bois misfire_grace_time=300 (5 daqiqa).
     scheduler.add_job(
         func=send_leaderboard_broadcast,
-        trigger=IntervalTrigger(days=3, timezone=timezone_str),
+        trigger=CronTrigger(day="*/2", hour=21, minute=5, timezone=timezone_str),
         args=[bot, db, webapp_url, timezone_str],
         id="daily_leaderboard_broadcast",
-        name="3 kunlik global reyting xabari",
-        replace_existing=True,
-        misfire_grace_time=300,
-    )
-
-    # Kunlik reyting (har kuni 14:00)
-    scheduler.add_job(
-        func=send_daily_leaderboard,
-        trigger=CronTrigger(hour=14, minute=0, timezone=timezone_str),
-        args=[bot, db, timezone_str],
-        id="daily_leaderboard",
-        name="Kunlik Top-10 reyting",
+        name="2 kunlik global reyting challenge",
         replace_existing=True,
         misfire_grace_time=300,
     )
@@ -866,8 +868,7 @@ def setup_scheduler(
     logger.info(
         f"Scheduler sozlandi: "
         f"har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} (dars eslatmasi) + "
-        f"14:00 (kunlik reyting) + "
         f"har 10 daqiqada dars/davomat eslatmasi + "
-        f"har 3 kunda global reyting broadcast ({timezone_str})"
+        f"har 2 kunda 21:05 global reyting challenge ({timezone_str})"
     )
     return scheduler

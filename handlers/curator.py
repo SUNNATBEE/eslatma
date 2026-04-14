@@ -32,6 +32,7 @@ from keyboards import (
     kb_davomat_mark,
     kb_select_parent_group,
 )
+from utils import verify_secret
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -122,7 +123,7 @@ async def curator_enter_password(
     password = message.text.strip() if message.text else ""
     cred     = CURATORS.get(login, {})
 
-    if cred.get("password") != password:
+    if not verify_secret(cred.get("password", ""), password):
         await message.answer("❌ Parol noto'g'ri. Qayta kiriting:")
         return
 

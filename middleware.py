@@ -64,7 +64,7 @@ class CallbackAnswerMiddleware(BaseMiddleware):
         try:
             await event.bot.answer_callback_query(callback_query_id=event.id)
         except Exception:
-            pass
+            logger.debug("CallbackAnswerMiddleware: callback queryga javob berib bo'lmadi", exc_info=True)
 
         # Handler'ni ishlatamiz
         # Agar handler callback.answer() qayta chaqirsa — xatoni e'tiborsiz qoldiramiz
@@ -124,5 +124,5 @@ class TypingMiddleware(BaseMiddleware):
                     action="typing",
                 )
             except Exception:
-                pass
+                logger.debug("TypingMiddleware: typing action yuborib bo'lmadi", exc_info=True)
         return await handler(event, data)

@@ -11,6 +11,17 @@ from aiohttp import web
 from config import (
     ADMIN_IDS, MINI_ADMIN_LOGINS, SEND_HOUR, SEND_MINUTE, TIMEZONE, WEBAPP_URL,
 )
+from utils import verify_secret
+
+
+def _merge_known_credentials(static_credentials: dict[str, dict], db_credentials: list) -> dict[str, dict]:
+    merged = {
+        mars_id: {"name": cred["name"], "group": cred["group"]}
+        for mars_id, cred in static_credentials.items()
+    }
+    for cred in db_credentials:
+        merged[cred.mars_id] = {"name": cred.name, "group": cred.group_name}
+    return merged
 
 
 def setup_admin_routes(app: web.Application, ctx: dict) -> None:
@@ -34,7 +45,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         username = (body.get("username") or "").strip()
         password = (body.get("password") or "").strip()
         expected = MINI_ADMIN_LOGINS.get(username)
-        if not expected or expected != password:
+        if not expected or not verify_secret(expected, password):
             return web.json_response({"error": "Login yoki parol noto'g'ri"}, status=401)
         token   = secrets.token_hex(32)
         expires = datetime.utcnow() + timedelta(days=30)
@@ -155,13 +166,17 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         from credentials import MARS_CREDENTIALS
+        all_credentials = _merge_known_credentials(
+            MARS_CREDENTIALS,
+            await db.get_all_student_credentials(),
+        )
         today      = datetime.now(tz).strftime("%Y-%m-%d")
         registered = await db.get_all_students()
         att_recs   = await db.get_attendance_by_date(today)
         reg_map = {s.mars_id: s for s in registered if s.mars_id}
         att_map = {r.user_id: r.status for r in att_recs}
         result = []
-        for mars_id, cred in MARS_CREDENTIALS.items():
+        for mars_id, cred in all_credentials.items():
             reg = reg_map.get(mars_id)
             result.append({
                 "mars_id":    mars_id,

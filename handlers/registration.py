@@ -19,6 +19,7 @@ from config import ADMIN_IDS
 from credentials import MARS_CREDENTIALS, MARS_GROUPS
 from database import DatabaseService
 from keyboards import kb_mars_groups, kb_student_menu
+from utils import is_hashed_secret, verify_secret
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -106,6 +107,7 @@ async def reg_enter_password(
 
     # Avval statik ro'yxatdan, so'ng DB dan tekshiramiz
     cred = MARS_CREDENTIALS.get(mars_id)
+    db_cred = None
     if not cred:
         db_cred = await db.get_student_credential(mars_id)
         if db_cred:
@@ -119,12 +121,14 @@ async def reg_enter_password(
         await state.set_state(RegFSM.waiting_mars_id)
         return
 
-    if cred["password"] != password:
+    if not verify_secret(cred["password"], password):
         await message.answer(
             "❌ <b>Parol noto'g'ri!</b>\n\n"
             "Parolni tekshirib qayta kiriting:",
         )
         return
+    if db_cred and not is_hashed_secret(db_cred.password):
+        await db.upgrade_student_credential_password(mars_id, password)
 
     if cred["group"] != sel_group:
         await message.answer(

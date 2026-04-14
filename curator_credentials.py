@@ -1,20 +1,11 @@
 """
-curator_credentials.py — Kuratorlar login/parol ma'lumotlari.
-
-Parollarni o'zgartirish uchun shu faylni tahrirlang.
-telegram_username — agar bo'lsa @ bilan yozing (masalan "@diyora"),
-  bo'lmasa bo'sh qoldiring "".
+curator_credentials.py - Kurator loginlarini tashqi secret fayldan yuklaydi.
 """
 
-CURATORS: dict[str, dict] = {
-    "diyora": {
-        "password":           "diyora2024",   # ← parolni o'zgartiring
-        "full_name":          "Diyora",
-        "telegram_username":  "@mars_teamlead_curator",             # ← "@diyora" ko'rinishida to'ldiring
-    },
-    "zuhra": {
-        "password":           "zuhra2024",    # ← parolni o'zgartiring
-        "full_name":          "Zuhra",
-        "telegram_username":  "@mars_yunusobod_curator",             # ← "@zuhra" ko'rinishida to'ldiring
-    },
-}
+from secrets_loader import load_json_mapping
+
+CURATORS: dict[str, dict] = load_json_mapping(
+    env_json_key="CURATORS_JSON",
+    env_file_key="CURATORS_FILE",
+    default_filename="curators.json",
+)

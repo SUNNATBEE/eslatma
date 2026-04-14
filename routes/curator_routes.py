@@ -8,6 +8,17 @@ from aiohttp import web
 
 from config import ADMIN_IDS
 from curator_credentials import CURATORS
+from utils import verify_secret
+
+
+def _merge_known_credentials(static_credentials: dict[str, dict], db_credentials: list) -> dict[str, dict]:
+    merged = {
+        mars_id: {"name": cred["name"], "group": cred["group"]}
+        for mars_id, cred in static_credentials.items()
+    }
+    for cred in db_credentials:
+        merged[cred.mars_id] = {"name": cred.name, "group": cred.group_name}
+    return merged
 
 
 def setup_curator_routes(app: web.Application, ctx: dict) -> None:
@@ -45,7 +56,7 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
         login    = (body.get("login") or "").strip().lower()
         password = (body.get("password") or "").strip()
         cred = CURATORS.get(login)
-        if not cred or cred["password"] != password:
+        if not cred or not verify_secret(cred["password"], password):
             return web.json_response({"error": "Login yoki parol noto'g'ri"}, status=403)
         await db.set_curator_session(user_id, login)
         await db.update_curator_last_active(user_id)
@@ -94,10 +105,14 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
         if not session:
             return web.json_response({"error": "Not logged in"}, status=403)
         from credentials import MARS_CREDENTIALS
+        all_credentials = _merge_known_credentials(
+            MARS_CREDENTIALS,
+            await db.get_all_student_credentials(),
+        )
         registered = await db.get_all_students()
         reg_map    = {s.mars_id: s for s in registered if s.mars_id}
         result = []
-        for mars_id, cred in MARS_CREDENTIALS.items():
+        for mars_id, cred in all_credentials.items():
             reg = reg_map.get(mars_id)
             result.append({
                 "mars_id":    mars_id,

@@ -162,7 +162,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         try:
             await bot.send_message(user_id, text, parse_mode="HTML")
         except Exception:
-            pass
+            logger.warning("Level-up xabari yuborilmadi | user_id=%s level=%s", user_id, new_level, exc_info=True)
         if new_level == 7:
             student = await db.get_student(user_id)
             notif   = (
@@ -174,7 +174,12 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
                 try:
                     await bot.send_message(admin_id, notif, parse_mode="HTML")
                 except Exception:
-                    pass
+                    logger.warning(
+                        "Legend level admin notify yuborilmadi | admin_id=%s user_id=%s",
+                        admin_id,
+                        user_id,
+                        exc_info=True,
+                    )
 
     # ── Auth helper ───────────────────────────────────────────────────────────
     def _auth(request: web.Request) -> int | None:

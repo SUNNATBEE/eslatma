@@ -71,6 +71,27 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
             )
             return
 
+    if deep_link == "leaderboard":
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo as WAI
+        from config import WEBAPP_URL as _WA
+        if _WA:
+            markup = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="🏆 Mini App — Reytingni ochish",
+                    web_app=WAI(url=f"{_WA.rstrip('/')}/webapp/student.html"),
+                )
+            ]])
+            await message.answer(
+                "🏁 <b>Reyting challenge sahifasiga xush kelibsiz!</b>\n\n"
+                "Bu yerda siz:\n"
+                "• guruh va global reytingni ko'rasiz\n"
+                "• XP, streak va darajangizni tekshirasiz\n"
+                "• topga chiqish uchun vazifalarni bajarasiz\n\n"
+                "👇 Quyidagi tugma orqali kabinetga o'ting:",
+                reply_markup=markup,
+            )
+            return
+
     if _is_admin(user_id):
         await message.answer(
             f"👋 <b>Assalomu alaykum, Admin!</b>\n\n"

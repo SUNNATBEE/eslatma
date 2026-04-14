@@ -1,5 +1,7 @@
 # Maxfiy fayl — hech qachon git'ga push qilmang!
 .env
+student_credentials.json
+curators.json
 
 # Python
 __pycache__/

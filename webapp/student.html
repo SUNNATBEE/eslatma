@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1023,6 +1024,383 @@
       background: var(--accent); color: #fff;
       padding: 2px 7px; border-radius: 10px; margin-left: 5px;
     }
+
+    /* Premium 3D shell */
+    #app {
+      position: relative;
+      max-width: 520px;
+      margin: 0 auto;
+      background:
+        linear-gradient(180deg, rgba(6, 10, 18, .92), rgba(8, 12, 22, .98)),
+        var(--bg);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.04),
+        0 28px 90px rgba(0,0,0,.55),
+        inset 0 1px 0 rgba(255,255,255,.04);
+      overflow: hidden;
+      isolation: isolate;
+    }
+    #app::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(0,212,255,.18), transparent 28%),
+        radial-gradient(circle at 100% 15%, rgba(139,92,246,.2), transparent 30%),
+        linear-gradient(120deg, rgba(255,255,255,.06), transparent 20%, transparent 80%, rgba(255,255,255,.04));
+      opacity: .85;
+      z-index: -1;
+    }
+    .header {
+      padding: 14px 14px 10px;
+      background:
+        linear-gradient(180deg, rgba(10,14,26,.84), rgba(12,18,30,.62));
+      box-shadow: 0 12px 40px rgba(0,0,0,.24);
+    }
+    .content {
+      padding: 16px 14px 22px;
+      background:
+        radial-gradient(circle at top left, rgba(0,212,255,.06), transparent 20%),
+        radial-gradient(circle at bottom right, rgba(245,158,11,.05), transparent 16%);
+    }
+    .page.active {
+      animation: pageSlideIn .28s ease;
+    }
+    .hero-shell {
+      position: relative;
+      overflow: hidden;
+      border-radius: 28px;
+      padding: 18px;
+      margin-bottom: 14px;
+      background:
+        linear-gradient(135deg, rgba(4,12,24,.96), rgba(15,25,44,.9) 40%, rgba(36,15,71,.82) 100%);
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow:
+        0 20px 60px rgba(0,0,0,.34),
+        inset 0 1px 0 rgba(255,255,255,.08),
+        inset 0 -40px 70px rgba(0,0,0,.18);
+      transform-style: preserve-3d;
+    }
+    .hero-shell::before {
+      content: "";
+      position: absolute;
+      inset: -20% -10% auto auto;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(0,212,255,.24), transparent 62%);
+      filter: blur(18px);
+      opacity: .9;
+      pointer-events: none;
+    }
+    .hero-shell::after {
+      content: "";
+      position: absolute;
+      inset: auto auto -30px -30px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(245,158,11,.18), transparent 70%);
+      filter: blur(12px);
+      pointer-events: none;
+    }
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.08);
+      color: rgba(255,255,255,.82);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(120px, .8fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+    }
+    .hero-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(22px, 5.2vw, 34px);
+      line-height: 1.02;
+      letter-spacing: -.04em;
+      margin-bottom: 10px;
+      color: #fff;
+      text-wrap: balance;
+    }
+    .hero-title strong {
+      color: #a5f3fc;
+      text-shadow: 0 0 22px rgba(0,212,255,.34);
+    }
+    .hero-sub {
+      max-width: 28ch;
+      font-size: 13px;
+      line-height: 1.55;
+      color: rgba(226,232,240,.8);
+    }
+    .hero-orbit {
+      position: relative;
+      min-height: 170px;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,.09), transparent 48%),
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.08);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .hero-planet {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 96px;
+      height: 96px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 30%, #fff, #7dd3fc 18%, #0ea5e9 42%, #0f172a 74%);
+      box-shadow:
+        0 0 0 10px rgba(255,255,255,.03),
+        0 0 50px rgba(14,165,233,.4);
+    }
+    .hero-ring {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 150px;
+      height: 150px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow: inset 0 0 25px rgba(255,255,255,.02);
+    }
+    .hero-ring.r2 {
+      width: 210px;
+      height: 210px;
+      border-style: dashed;
+      opacity: .75;
+    }
+    .hero-star,
+    .hero-sat {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 12px rgba(255,255,255,.8);
+    }
+    .hero-star.s1 { width: 5px; height: 5px; top: 24px; left: 24px; }
+    .hero-star.s2 { width: 7px; height: 7px; right: 26px; top: 30px; background: #fde68a; }
+    .hero-star.s3 { width: 4px; height: 4px; right: 38px; bottom: 28px; background: #c4b5fd; }
+    .hero-sat {
+      width: 16px;
+      height: 16px;
+      top: 24px;
+      right: 34px;
+      background: linear-gradient(135deg, #f8fafc, #38bdf8);
+    }
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-metric {
+      border-radius: 18px;
+      padding: 12px 10px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(12px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .hero-metric-label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(255,255,255,.56);
+      margin-bottom: 6px;
+    }
+    .hero-metric-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      margin: 14px 0 12px;
+      flex-wrap: wrap;
+    }
+    .hero-action {
+      flex: 1;
+      min-width: 130px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.06);
+      color: #fff;
+      border-radius: 18px;
+      padding: 12px 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .hero-action strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+    .hero-action span {
+      font-size: 11px;
+      color: rgba(255,255,255,.62);
+    }
+    .hero-action:active {
+      transform: scale(.97);
+    }
+    .premium-panel,
+    .motiv-banner,
+    .daily-challenge,
+    .phone-row,
+    .menu-card,
+    .card,
+    .class-card,
+    .mood-row,
+    .stat-chip,
+    .chat-input-wrap,
+    .hw-box,
+    .streak-card,
+    .perk-card,
+    .lb-item.is-me {
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.18),
+        inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .stats-strip {
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat-chip {
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 12px 8px;
+      border-radius: 18px;
+      transform-style: preserve-3d;
+    }
+    .stat-chip .sc-val {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+    }
+    .menu-grid {
+      gap: 10px;
+    }
+    .menu-card {
+      position: relative;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      border-radius: 20px;
+      padding: 16px 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      overflow: hidden;
+      transform-style: preserve-3d;
+    }
+    .menu-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -30% -55% auto;
+      width: 120px;
+      height: 120px;
+      background: radial-gradient(circle, rgba(0,212,255,.16), transparent 64%);
+      pointer-events: none;
+    }
+    .mc-icon {
+      transform: translateZ(24px);
+    }
+    .class-card {
+      border: 1px solid rgba(255,255,255,.1);
+      box-shadow:
+        0 20px 40px rgba(0,0,0,.24),
+        inset 0 1px 0 rgba(255,255,255,.1);
+    }
+    .tabbar {
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+      background: rgba(11,16,28,.84);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 -8px 30px rgba(0,0,0,.18);
+    }
+    .tab-item.active {
+      text-shadow: 0 0 14px rgba(0,212,255,.38);
+    }
+    :root.theme-light #app {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.9), rgba(247,250,255,.97));
+      box-shadow:
+        0 0 0 1px rgba(15,23,42,.05),
+        0 30px 80px rgba(15,23,42,.1);
+    }
+    :root.theme-light .hero-shell {
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.96), rgba(233,242,255,.94) 45%, rgba(230,226,255,.92));
+      box-shadow:
+        0 18px 42px rgba(15,23,42,.12),
+        inset 0 1px 0 rgba(255,255,255,.65);
+    }
+    :root.theme-light .hero-title,
+    :root.theme-light .hero-metric-value,
+    :root.theme-light .hero-action,
+    :root.theme-light .hero-action strong {
+      color: #0f172a;
+    }
+    :root.theme-light .hero-sub,
+    :root.theme-light .hero-action span,
+    :root.theme-light .hero-kicker,
+    :root.theme-light .hero-metric-label {
+      color: rgba(15,23,42,.68);
+    }
+    :root.theme-light .hero-action,
+    :root.theme-light .hero-metric {
+      background: rgba(255,255,255,.66);
+      border-color: rgba(15,23,42,.08);
+    }
+    @media (hover:hover) {
+      .menu-card:hover,
+      .stat-chip:hover,
+      .hero-action:hover {
+        transform: translateY(-4px) rotateX(4deg);
+        border-color: rgba(0,212,255,.28);
+        box-shadow:
+          0 18px 34px rgba(0,0,0,.24),
+          0 0 0 1px rgba(0,212,255,.12);
+      }
+    }
+    @media (max-width: 430px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-orbit {
+        min-height: 132px;
+        order: -1;
+      }
+      .hero-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .hero-action {
+        min-width: 100%;
+      }
+      .content {
+        padding: 12px 12px 20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1050,6 +1428,48 @@
 
     <!-- ═════════════════════════ HOME PAGE ═════════════════════════ -->
     <div class="page active" id="page-home">
+      <section class="hero-shell premium-panel" id="heroShell">
+        <div class="hero-kicker">MARS IT MINI APP</div>
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <h1 class="hero-title"><strong id="heroName">Yuklanmoqda</strong> uchun yangi orbit</h1>
+            <p class="hero-sub" id="heroSubtitle">Har bir check-in, vazifa va o'yin sizni top reyting sari yaqinlashtiradi.</p>
+            <div class="hero-actions">
+              <button class="hero-action" onclick="goPage('progress')">
+                <strong>Mening natijam</strong>
+                <span>XP, daraja, streak</span>
+              </button>
+              <button class="hero-action" onclick="goPage('group-lb')">
+                <strong>Reytingni ochish</strong>
+                <span>Guruh ichida holatingiz</span>
+              </button>
+            </div>
+          </div>
+          <div class="hero-orbit" aria-hidden="true">
+            <div class="hero-ring"></div>
+            <div class="hero-ring r2"></div>
+            <div class="hero-planet"></div>
+            <div class="hero-star s1"></div>
+            <div class="hero-star s2"></div>
+            <div class="hero-star s3"></div>
+            <div class="hero-sat"></div>
+          </div>
+        </div>
+        <div class="hero-metrics">
+          <div class="hero-metric">
+            <span class="hero-metric-label">XP</span>
+            <span class="hero-metric-value" id="heroXp">—</span>
+          </div>
+          <div class="hero-metric">
+            <span class="hero-metric-label">Streak</span>
+            <span class="hero-metric-value" id="heroStreak">—</span>
+          </div>
+          <div class="hero-metric">
+            <span class="hero-metric-label">Rank</span>
+            <span class="hero-metric-value" id="heroRank">—</span>
+          </div>
+        </div>
+      </section>
       <!-- Motivatsion banner -->
       <div class="motiv-banner" id="motivBanner" style="display:none">
         <div class="motiv-icon" id="motivIcon">🚀</div>
@@ -2513,6 +2933,7 @@ function goPage(name) {
   if (name === 'chat')                        loadChat();
   if (name === 'games')                       { showGHub(); loadPlaysToday(); }
   if (name === 'referral')                    loadReferral();
+  animatePageEnter(name);
 }
 
 /* ── Toast ───────────────────────────────────────────────────────── */
@@ -2611,6 +3032,12 @@ function updateStatsStrip(prog) {
   document.getElementById('statXP').textContent      = prog.xp ?? '—';
   document.getElementById('statStreak').textContent  = (prog.streak_days ?? '—') + '';
   document.getElementById('statRank').textContent    = prog.rank ? '#' + prog.rank : '—';
+  const heroXp = document.getElementById('heroXp');
+  const heroStreak = document.getElementById('heroStreak');
+  const heroRank = document.getElementById('heroRank');
+  if (heroXp) heroXp.textContent = prog.xp ?? '—';
+  if (heroStreak) heroStreak.textContent = prog.streak_days ?? '—';
+  if (heroRank) heroRank.textContent = prog.rank ? '#' + prog.rank : '—';
   // Level badge in header
   document.getElementById('hdrLevel').textContent = 'Lv.' + (prog.level ?? 1);
   // Streak flame animation (7+ kun bo'lsa)
@@ -4245,6 +4672,10 @@ async function init() {
     document.getElementById('hdrGroup').textContent = me.group_name;
     _curAvatar = me.avatar_emoji || '';
     document.getElementById('hdrAvatar').textContent = _curAvatar || me.full_name.charAt(0).toUpperCase();
+    const heroName = document.getElementById('heroName');
+    const heroSubtitle = document.getElementById('heroSubtitle');
+    if (heroName) heroName.textContent = me.full_name;
+    if (heroSubtitle) heroSubtitle.textContent = `${me.group_name} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
     document.getElementById('statAttend').textContent = '—';
 
     if (student.phone_number) {
@@ -4335,6 +4766,7 @@ async function init() {
 
     // Daily challenge widget
     loadDailyChallenge();
+    initPremiumUi();
 
   } catch(e) {
     const classEl = document.getElementById('classCard');
@@ -4642,6 +5074,68 @@ async function loadDailyChallenge() {
       document.getElementById('dcProgressLbl').textContent  = progress + ' / ' + total;
     }
   } catch {}
+}
+
+function initPremiumUi() {
+  const heroName = document.getElementById('heroName');
+  const hdrName = document.getElementById('hdrName');
+  const hdrGroup = document.getElementById('hdrGroup');
+  const heroSubtitle = document.getElementById('heroSubtitle');
+  if (heroName && hdrName && hdrName.textContent) heroName.textContent = hdrName.textContent;
+  if (heroSubtitle && hdrGroup && hdrGroup.textContent) {
+    heroSubtitle.textContent = `${hdrGroup.textContent} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
+  }
+
+  const tiltTargets = document.querySelectorAll('.hero-shell, .menu-card, .stat-chip');
+  tiltTargets.forEach((node) => {
+    if (node.dataset.tiltReady === '1') return;
+    node.dataset.tiltReady = '1';
+    node.addEventListener('pointermove', (event) => {
+      if (window.innerWidth < 700) return;
+      const rect = node.getBoundingClientRect();
+      const px = (event.clientX - rect.left) / rect.width - 0.5;
+      const py = (event.clientY - rect.top) / rect.height - 0.5;
+      node.style.transform = `perspective(900px) rotateX(${(-py * 7).toFixed(2)}deg) rotateY(${(px * 8).toFixed(2)}deg) translateY(-4px)`;
+    });
+    node.addEventListener('pointerleave', () => {
+      node.style.transform = '';
+    });
+  });
+
+  if (typeof gsap === 'undefined') return;
+  gsap.killTweensOf('.hero-shell, .hero-kicker, .hero-title, .hero-sub, .hero-action, .hero-metric, .hero-planet, .hero-ring, .hero-sat, .stats-strip .stat-chip, .menu-grid .menu-card');
+  gsap.from('.hero-shell', { y: 26, opacity: 0, duration: .8, ease: 'power3.out' });
+  gsap.from('.hero-kicker, .hero-title, .hero-sub, .hero-action, .hero-metric', {
+    y: 18,
+    opacity: 0,
+    duration: .65,
+    stagger: .05,
+    delay: .12,
+    ease: 'power2.out'
+  });
+  gsap.from('.hero-planet', { scale: .84, opacity: 0, duration: .95, delay: .18, ease: 'back.out(1.5)' });
+  gsap.to('.hero-ring', { rotate: 360, duration: 24, repeat: -1, ease: 'none' });
+  gsap.to('.hero-ring.r2', { rotate: -360, duration: 34, repeat: -1, ease: 'none' });
+  gsap.to('.hero-planet', { y: -8, duration: 2.4, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+  gsap.to('.hero-sat', { x: -16, y: 10, duration: 2.1, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+  gsap.from('.stats-strip .stat-chip', { y: 20, opacity: 0, duration: .45, stagger: .04, delay: .24, ease: 'power2.out' });
+  gsap.from('.menu-grid .menu-card', { y: 18, opacity: 0, duration: .42, stagger: .035, delay: .32, ease: 'power2.out' });
+}
+
+function animatePageEnter(name) {
+  if (typeof gsap === 'undefined') return;
+  const page = document.getElementById('page-' + name);
+  if (!page) return;
+  const targets = page.querySelectorAll('.card, .menu-card, .stat-chip, .lb-item, .hw-box, .streak-card, .motiv-banner, .daily-challenge, .hero-shell');
+  if (!targets.length) return;
+  gsap.fromTo(targets, { y: 18, opacity: 0 }, {
+    y: 0,
+    opacity: 1,
+    duration: .42,
+    stagger: .03,
+    overwrite: 'auto',
+    ease: 'power2.out'
+  });
 }
 
 applyLang();

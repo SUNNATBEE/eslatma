@@ -91,7 +91,7 @@ async def student_read_confirm(
             f"🕐 {time_str}",
         )
     except Exception:
-        pass
+        logger.warning("Read receipt admin notify yuborilmadi | admin_id=%s user_id=%s", admin_id, cb.from_user.id, exc_info=True)
 
     # Tugmani o'chiramiz
     try:

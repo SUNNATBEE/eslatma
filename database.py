@@ -20,6 +20,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from utils import hash_secret
+
 logger = logging.getLogger(__name__)
 
 
@@ -1042,19 +1044,42 @@ class DatabaseService:
     async def add_student_credential(
         self, mars_id: str, name: str, password: str, group_name: str,
     ) -> None:
+        stored_password = hash_secret(password)
         async with self.session_factory() as session:
             result = await session.execute(select(StudentCredential).where(StudentCredential.mars_id == mars_id))
             existing = result.scalar_one_or_none()
             if existing:
-                existing.name = name; existing.password = password; existing.group_name = group_name
+                existing.name = name
+                existing.password = stored_password
+                existing.group_name = group_name
             else:
-                session.add(StudentCredential(mars_id=mars_id, name=name, password=password, group_name=group_name))
+                session.add(
+                    StudentCredential(
+                        mars_id=mars_id,
+                        name=name,
+                        password=stored_password,
+                        group_name=group_name,
+                    )
+                )
             await session.commit()
 
     async def get_student_credential(self, mars_id: str) -> Optional["StudentCredential"]:
         async with self.session_factory() as session:
             result = await session.execute(select(StudentCredential).where(StudentCredential.mars_id == mars_id))
             return result.scalar_one_or_none()
+
+    async def upgrade_student_credential_password(self, mars_id: str, raw_password: str) -> bool:
+        """Legacy plain parolni hash formatga ko'chiradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(StudentCredential).where(StudentCredential.mars_id == mars_id)
+            )
+            credential = result.scalar_one_or_none()
+            if not credential:
+                return False
+            credential.password = hash_secret(raw_password)
+            await session.commit()
+            return True
 
     async def get_all_student_credentials(self) -> list["StudentCredential"]:
         async with self.session_factory() as session:

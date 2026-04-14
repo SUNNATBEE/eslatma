@@ -3,13 +3,32 @@ routes/student_routes.py — Talaba API endpointlari
 Endpointlar: /api/me, /api/student/*, /api/referral/*, /api/chat, /api/class-schedule, /api/public/*
 """
 import asyncio
+import logging
 import json
+import re
 from datetime import datetime, timedelta
 
 from aiohttp import web
 
 from config import ADMIN_IDS, CHANNEL_LINK, WEBAPP_URL
-from database import GroupType
+from utils import is_hashed_secret, verify_secret
+
+logger = logging.getLogger(__name__)
+
+
+def _normalize_mars_id(raw: str) -> str:
+    value = (raw or "").strip()
+    upper = value.upper()
+    if upper.startswith("P") and len(upper) >= 2 and upper[1:].isdigit():
+        return upper
+    return value
+
+
+async def _send_notification(bot, chat_id: int, text: str, *, context: str) -> None:
+    try:
+        await bot.send_message(chat_id, text)
+    except Exception:
+        logger.warning("Notification yuborilmadi | context=%s chat_id=%s", context, chat_id, exc_info=True)
 
 
 def setup_student_routes(app: web.Application, ctx: dict) -> None:
@@ -51,13 +70,25 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         if not student:
             return web.json_response({"error": "Not registered"}, status=404)
         tomorrow = datetime.now(tz) + timedelta(days=1)
-        day_num  = tomorrow.day
-        is_odd   = day_num % 2 == 1
-        lesson_day = is_odd
+        from class_schedule import CLASS_SCHEDULE
+
+        if tomorrow.weekday() == 6:
+            return web.json_response({
+                "tomorrow": tomorrow.strftime("%d.%m.%Y"),
+                "day_type": None,
+                "has_lesson": False,
+                "class_time": None,
+                "group_name": student.group_name,
+            })
+
+        day_type = "ODD" if tomorrow.weekday() in (0, 2, 4) else "EVEN"
+        class_time = CLASS_SCHEDULE.get(day_type, {}).get(student.group_name)
         return web.json_response({
-            "tomorrow":   tomorrow.strftime("%d.%m.%Y"),
-            "day_type":   "Toq" if is_odd else "Juft",
-            "has_lesson": lesson_day,
+            "tomorrow": tomorrow.strftime("%d.%m.%Y"),
+            "day_type": "Toq" if day_type == "ODD" else "Juft",
+            "has_lesson": class_time is not None,
+            "class_time": class_time,
+            "group_name": student.group_name,
         })
 
     async def api_homework(request: web.Request) -> web.Response:
@@ -132,10 +163,7 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
                 + (f"💬 Sabab: <i>{reason}</i>" if reason else "")
             )
         for admin_id in ADMIN_IDS:
-            try:
-                await bot.send_message(admin_id, notify_text)
-            except Exception:
-                pass
+            await _send_notification(bot, admin_id, notify_text, context="attendance:admin")
         try:
             from sqlalchemy import select as sa_select
             from database import CuratorSession
@@ -144,12 +172,9 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
                 curator_sessions = list(result.scalars().all())
             for cs in curator_sessions:
                 if cs.telegram_id not in ADMIN_IDS:
-                    try:
-                        await bot.send_message(cs.telegram_id, notify_text)
-                    except Exception:
-                        pass
+                    await _send_notification(bot, cs.telegram_id, notify_text, context="attendance:curator")
         except Exception:
-            pass
+            logger.warning("Curator sessionlarini yuklash yoki notify yuborish muvaffaqiyatsiz", exc_info=True)
         return web.json_response({"ok": True, "date": today, "status": status_val})
 
     async def api_attendance_today(request: web.Request) -> web.Response:
@@ -198,7 +223,6 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
     # ── Student Registration ───────────────────────────────────────────────────
 
     async def api_student_register(request: web.Request) -> web.Response:
-        import re as _re
         user_id = _get_user_id(request.headers.get("X-Init-Data", ""))
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
@@ -206,24 +230,29 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
             body = await request.json()
         except Exception:
             return web.json_response({"error": "Bad JSON"}, status=400)
-        mars_id    = (body.get("mars_id")    or "").strip()
+        mars_id    = _normalize_mars_id(body.get("mars_id") or "")
         password   = (body.get("password")   or "").strip()
         phone      = (body.get("phone")      or "").strip()
         group_name = (body.get("group_name") or "").strip()
         if not mars_id or not password or not phone or not group_name:
             return web.json_response({"error": "Barcha maydonlarni to'ldiring"}, status=400)
-        if not _re.fullmatch(r"\+998\d{9}", phone):
+        if not (mars_id.isdigit() or (mars_id.startswith("P") and mars_id[1:].isdigit())):
+            return web.json_response({"error": "Mars ID faqat raqam yoki P12345 formatida bo'lishi kerak"}, status=400)
+        if not re.fullmatch(r"\+998\d{9}", phone):
             return web.json_response({"error": "Telefon formati: +998901234567"}, status=400)
         from credentials import MARS_CREDENTIALS
         cred = MARS_CREDENTIALS.get(mars_id)
+        db_cred = None
         if not cred:
             db_cred = await db.get_student_credential(mars_id)
             if db_cred:
                 cred = {"password": db_cred.password, "name": db_cred.name, "group": db_cred.group_name}
         if not cred:
             return web.json_response({"error": "Bu Mars ID topilmadi"}, status=403)
-        if cred["password"] != password:
+        if not verify_secret(cred["password"], password):
             return web.json_response({"error": "Parol noto'g'ri"}, status=403)
+        if db_cred and not is_hashed_secret(db_cred.password):
+            await db.upgrade_student_credential_password(mars_id, password)
         if cred["group"] != group_name:
             return web.json_response({
                 "error": f"Sizning guruhingiz: {cred['group']}. {group_name} ni tanlamang."
@@ -255,10 +284,7 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
             f"💬 {tg_un}"
         )
         for admin_id in ADMIN_IDS:
-            try:
-                await bot.send_message(admin_id, notify)
-            except Exception:
-                pass
+            await _send_notification(bot, admin_id, notify, context="student-register:admin")
         return web.json_response({"ok": True, "full_name": cred["name"], "group_name": group_name, "is_new": is_new})
 
     # ── Student Gamification ───────────────────────────────────────────────────

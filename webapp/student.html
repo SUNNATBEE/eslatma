@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -996,6 +997,245 @@
 
     /* ── XP Modal animation ── */
     @keyframes xpPop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+
+    /* ══════════════════════════════════════════════════════════════
+       3D IMMERSIVE ANIMATIONS & EFFECTS
+    ══════════════════════════════════════════════════════════════ */
+
+    /* 3D perspective container */
+    .content { perspective: 1200px; }
+    .page.active {
+      transform-style: preserve-3d;
+      animation: page3dEntrance .5s cubic-bezier(.22,.68,.36,1.2) forwards;
+    }
+    @keyframes page3dEntrance {
+      0%   { opacity: 0; transform: perspective(1200px) rotateX(8deg) translateY(40px) scale(.94); }
+      60%  { opacity: 1; transform: perspective(1200px) rotateX(-2deg) translateY(-4px) scale(1.01); }
+      100% { opacity: 1; transform: perspective(1200px) rotateX(0) translateY(0) scale(1); }
+    }
+
+    /* Floating particles canvas */
+    #particles-canvas {
+      position: fixed; inset: 0; z-index: -1;
+      pointer-events: none; opacity: .6;
+    }
+    :root.theme-light #particles-canvas { opacity: .3; }
+
+    /* 3D card hover effect for ALL interactive cards */
+    .menu-card, .stat-chip, .game-card, .hw-box, .streak-card,
+    .class-card, .mood-row, .daily-challenge, .phone-row,
+    .ach-item, .perk-card, .room-card, .hero-action, .hero-metric {
+      transform-style: preserve-3d;
+      transition: transform .35s cubic-bezier(.22,.68,.36,1.2),
+                  box-shadow .35s ease,
+                  border-color .3s ease;
+      will-change: transform;
+    }
+
+    /* Neon glow pulse for active cards */
+    @keyframes neonPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(0,212,255,.2), inset 0 1px 0 rgba(255,255,255,.06); }
+      50%      { box-shadow: 0 0 20px rgba(0,212,255,.35), 0 0 40px rgba(139,92,246,.15), inset 0 1px 0 rgba(255,255,255,.1); }
+    }
+    .menu-card:hover, .game-card:hover { animation: neonPulse 2s ease-in-out infinite; }
+
+    /* 3D flip animation for cards */
+    @keyframes card3dFlipIn {
+      0%   { opacity: 0; transform: perspective(800px) rotateY(-25deg) translateX(-30px) scale(.9); }
+      100% { opacity: 1; transform: perspective(800px) rotateY(0) translateX(0) scale(1); }
+    }
+    @keyframes card3dSlideUp {
+      0%   { opacity: 0; transform: perspective(800px) rotateX(12deg) translateY(50px) scale(.92); }
+      100% { opacity: 1; transform: perspective(800px) rotateX(0) translateY(0) scale(1); }
+    }
+    @keyframes card3dBounce {
+      0%   { opacity: 0; transform: perspective(900px) rotateX(-10deg) translateY(60px) scale(.85); }
+      60%  { opacity: 1; transform: perspective(900px) rotateX(3deg) translateY(-8px) scale(1.03); }
+      80%  { transform: perspective(900px) rotateX(-1deg) translateY(3px) scale(.99); }
+      100% { opacity: 1; transform: perspective(900px) rotateX(0) translateY(0) scale(1); }
+    }
+    @keyframes floatUpDown {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+
+    /* Shimmer sweep on stat values */
+    @keyframes shimmerText {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    .stat-chip .sc-val, .hero-metric-value, .level-badge, .lb-xp {
+      background: linear-gradient(90deg, var(--text) 30%, var(--electric) 50%, var(--text) 70%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmerText 3s linear infinite;
+    }
+    :root.theme-light .stat-chip .sc-val,
+    :root.theme-light .hero-metric-value {
+      background: linear-gradient(90deg, #0f172a 30%, #0ea5e9 50%, #0f172a 70%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Glowing border animation */
+    @keyframes borderGlow {
+      0%, 100% { border-color: rgba(0,212,255,.15); }
+      50%      { border-color: rgba(139,92,246,.35); }
+    }
+    .hero-shell { animation: borderGlow 4s ease-in-out infinite; }
+
+    /* Tab bar 3D press effect */
+    .tab-item {
+      transition: transform .2s cubic-bezier(.22,.68,.36,1.2), color .15s;
+      transform-style: preserve-3d;
+    }
+    .tab-item:active {
+      transform: perspective(400px) rotateX(15deg) scale(.9);
+    }
+    .tab-item.active .tab-icon {
+      animation: floatUpDown 2s ease-in-out infinite;
+    }
+
+    /* Streak fire animation */
+    @keyframes fireGlow {
+      0%, 100% { text-shadow: 0 0 8px rgba(245,158,11,.5); transform: scale(1); }
+      50%      { text-shadow: 0 0 20px rgba(239,68,68,.7), 0 0 40px rgba(245,158,11,.4); transform: scale(1.15); }
+    }
+    .streak-icon { animation: fireGlow 1.5s ease-in-out infinite; display: inline-block; }
+
+    /* Achievement unlock burst */
+    @keyframes achieveUnlock {
+      0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+      60%  { transform: scale(1.15) rotate(3deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    .ach-item.unlocked .ach-icon { animation: achieveUnlock .6s cubic-bezier(.22,.68,.36,1.2); }
+
+    /* Level-up card entrance */
+    .levelup-overlay.show .levelup-card {
+      animation: card3dBounce .7s cubic-bezier(.22,.68,.36,1.2) forwards;
+    }
+
+    /* Homework card entrance */
+    .hw-box {
+      border-left: 3px solid var(--electric);
+    }
+
+    /* Chat bubble pop-in */
+    @keyframes bubblePop {
+      0%   { opacity: 0; transform: scale(.7) translateY(12px); }
+      60%  { transform: scale(1.05) translateY(-2px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .chat-msg { animation: bubblePop .3s cubic-bezier(.22,.68,.36,1.2) forwards; }
+
+    /* Leaderboard podium entrance */
+    @keyframes podiumRise {
+      0%   { opacity: 0; transform: translateY(40px) scale(.85); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .podium-col { animation: podiumRise .5s cubic-bezier(.22,.68,.36,1.2) forwards; }
+    .podium-col.p2 { animation-delay: .1s; opacity: 0; }
+    .podium-col.p1 { animation-delay: .2s; opacity: 0; }
+    .podium-col.p3 { animation-delay: .15s; opacity: 0; }
+
+    /* Referral section glow */
+    #page-referral .menu-card,
+    #referralSection > div {
+      border: 1px solid rgba(0,212,255,.2);
+      box-shadow: 0 0 30px rgba(0,212,255,.08);
+    }
+
+    /* Games hub card rainbow border */
+    #page-games .menu-card {
+      position: relative;
+      overflow: hidden;
+    }
+    #page-games .menu-card::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: conic-gradient(
+        from var(--rainbow-angle, 0deg),
+        #00d4ff, #8b5cf6, #f59e0b, #10b981, #ef4444, #00d4ff
+      );
+      border-radius: inherit;
+      z-index: -1;
+      opacity: 0;
+      transition: opacity .4s;
+    }
+    #page-games .menu-card:hover::before,
+    #page-games .menu-card:active::before {
+      opacity: 1;
+      animation: rainbowRotate 3s linear infinite;
+    }
+    #page-games .menu-card::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      background: var(--bg2);
+      border-radius: calc(var(--radius) - 2px);
+      z-index: -1;
+    }
+    @keyframes rainbowRotate {
+      to { --rainbow-angle: 360deg; }
+    }
+    @property --rainbow-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    /* XP counter pop animation */
+    @keyframes xpCountUp {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.3); color: var(--gold); }
+      100% { transform: scale(1); }
+    }
+    .xp-animate { animation: xpCountUp .4s ease; }
+
+    /* Header avatar breathing glow */
+    .header-avatar {
+      animation: avatarGlow 3s ease-in-out infinite;
+    }
+    @keyframes avatarGlow {
+      0%, 100% { box-shadow: 0 0 16px rgba(0,212,255,.35), inset 0 0 8px rgba(255,255,255,.1); }
+      50%      { box-shadow: 0 0 24px rgba(139,92,246,.5), 0 0 48px rgba(0,212,255,.2), inset 0 0 12px rgba(255,255,255,.15); }
+    }
+
+    /* Progress bar liquid animation */
+    .xp-bar-fill, .dc-progress-fill, .typing-progress-fill {
+      background: linear-gradient(90deg, var(--electric), var(--neon), var(--electric));
+      background-size: 200% 100%;
+      animation: liquidFlow 2s linear infinite;
+    }
+    @keyframes liquidFlow {
+      0%   { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    /* Ripple effect on buttons */
+    .att-btn, .game-btn, .hw-confirm-btn, .reg-btn, .no-modal-submit {
+      position: relative;
+      overflow: hidden;
+    }
+    .att-btn::after, .game-btn::after, .hw-confirm-btn::after, .reg-btn::after, .no-modal-submit::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(255,255,255,.3) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity .4s;
+      pointer-events: none;
+    }
+    .att-btn:active::after, .game-btn:active::after, .hw-confirm-btn:active::after,
+    .reg-btn:active::after, .no-modal-submit:active::after {
+      opacity: 1;
+    }
 
     /* ── Daily challenge widget ── */
     .daily-challenge {
@@ -5086,60 +5326,357 @@ function initPremiumUi() {
     heroSubtitle.textContent = `${hdrGroup.textContent} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
   }
 
-  const tiltTargets = document.querySelectorAll('.hero-shell, .menu-card, .stat-chip');
+  // 3D Tilt effect for all interactive cards (mobile + desktop)
+  const tiltTargets = document.querySelectorAll('.hero-shell, .menu-card, .stat-chip, .game-card, .hw-box, .streak-card, .ach-item, .perk-card, .hero-action, .hero-metric');
   tiltTargets.forEach((node) => {
     if (node.dataset.tiltReady === '1') return;
     node.dataset.tiltReady = '1';
     node.addEventListener('pointermove', (event) => {
-      if (window.innerWidth < 700) return;
       const rect = node.getBoundingClientRect();
       const px = (event.clientX - rect.left) / rect.width - 0.5;
       const py = (event.clientY - rect.top) / rect.height - 0.5;
-      node.style.transform = `perspective(900px) rotateX(${(-py * 7).toFixed(2)}deg) rotateY(${(px * 8).toFixed(2)}deg) translateY(-4px)`;
+      const maxTilt = window.innerWidth < 700 ? 5 : 10;
+      gsap.to(node, {
+        rotateX: -py * maxTilt,
+        rotateY: px * maxTilt,
+        z: 20,
+        duration: .3,
+        ease: 'power2.out',
+        transformPerspective: 800
+      });
     });
     node.addEventListener('pointerleave', () => {
-      node.style.transform = '';
+      gsap.to(node, {
+        rotateX: 0, rotateY: 0, z: 0,
+        duration: .5,
+        ease: 'elastic.out(1, .5)',
+        transformPerspective: 800
+      });
+    });
+  });
+
+  // Ripple effect on button clicks
+  document.querySelectorAll('.att-btn, .game-btn, .hw-confirm-btn, .reg-btn, .no-modal-submit, .hero-action, .menu-card').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      const rect = btn.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(0);
+      const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(0);
+      btn.style.setProperty('--ripple-x', x + '%');
+      btn.style.setProperty('--ripple-y', y + '%');
     });
   });
 
   if (typeof gsap === 'undefined') return;
+
+  // Create floating particles
+  initParticles();
+
   gsap.killTweensOf('.hero-shell, .hero-kicker, .hero-title, .hero-sub, .hero-action, .hero-metric, .hero-planet, .hero-ring, .hero-sat, .stats-strip .stat-chip, .menu-grid .menu-card');
-  gsap.from('.hero-shell', { y: 26, opacity: 0, duration: .8, ease: 'power3.out' });
-  gsap.from('.hero-kicker, .hero-title, .hero-sub, .hero-action, .hero-metric', {
-    y: 18,
-    opacity: 0,
-    duration: .65,
-    stagger: .05,
-    delay: .12,
-    ease: 'power2.out'
+
+  // Hero section — dramatic 3D entrance
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  tl.from('.hero-shell', {
+    y: 60, opacity: 0, rotateX: 12, scale: .88,
+    duration: .9, transformPerspective: 1000, clearProps: 'transform'
+  })
+  .from('.hero-kicker', { x: -30, opacity: 0, duration: .5 }, '-=.5')
+  .from('.hero-title', { y: 30, opacity: 0, rotateX: -8, duration: .6, transformPerspective: 800 }, '-=.35')
+  .from('.hero-sub', { y: 20, opacity: 0, duration: .4 }, '-=.25')
+  .from('.hero-action', {
+    y: 30, opacity: 0, rotateY: -15, scale: .85,
+    duration: .55, stagger: .08, transformPerspective: 600, ease: 'back.out(1.7)'
+  }, '-=.2')
+  .from('.hero-metric', {
+    y: 30, opacity: 0, rotateX: 20, scale: .8,
+    duration: .5, stagger: .06, transformPerspective: 600, ease: 'back.out(1.5)'
+  }, '-=.3');
+
+  // Planet entrance — bouncy 3D
+  gsap.from('.hero-planet', {
+    scale: 0, opacity: 0, rotateZ: -30,
+    duration: 1.1, delay: .3, ease: 'elastic.out(1, .4)'
   });
-  gsap.from('.hero-planet', { scale: .84, opacity: 0, duration: .95, delay: .18, ease: 'back.out(1.5)' });
-  gsap.to('.hero-ring', { rotate: 360, duration: 24, repeat: -1, ease: 'none' });
-  gsap.to('.hero-ring.r2', { rotate: -360, duration: 34, repeat: -1, ease: 'none' });
-  gsap.to('.hero-planet', { y: -8, duration: 2.4, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-  gsap.to('.hero-sat', { x: -16, y: 10, duration: 2.1, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-  gsap.from('.stats-strip .stat-chip', { y: 20, opacity: 0, duration: .45, stagger: .04, delay: .24, ease: 'power2.out' });
-  gsap.from('.menu-grid .menu-card', { y: 18, opacity: 0, duration: .42, stagger: .035, delay: .32, ease: 'power2.out' });
+
+  // Orbit rings — continuous rotation
+  gsap.to('.hero-ring', { rotate: 360, duration: 20, repeat: -1, ease: 'none' });
+  gsap.to('.hero-ring.r2', { rotate: -360, duration: 28, repeat: -1, ease: 'none' });
+
+  // Planet floating
+  gsap.to('.hero-planet', {
+    y: -10, rotateZ: 5,
+    duration: 2.8, repeat: -1, yoyo: true, ease: 'sine.inOut'
+  });
+
+  // Satellite floating orbit
+  gsap.to('.hero-sat', {
+    x: -16, y: 12, rotateZ: 10,
+    duration: 2.5, repeat: -1, yoyo: true, ease: 'sine.inOut'
+  });
+
+  // Stars twinkling
+  gsap.to('.hero-star', {
+    opacity: .3, scale: .6,
+    duration: 1.2, repeat: -1, yoyo: true, stagger: .4, ease: 'sine.inOut'
+  });
+
+  // Stats strip — 3D cascade from bottom
+  gsap.from('.stats-strip .stat-chip', {
+    y: 40, opacity: 0, rotateX: 25, scale: .8,
+    duration: .55, stagger: .06, delay: .4,
+    transformPerspective: 600, ease: 'back.out(1.5)',
+    clearProps: 'transform'
+  });
+
+  // Menu grid — 3D flip in from alternating sides
+  const menuCards = document.querySelectorAll('.menu-grid .menu-card');
+  menuCards.forEach((card, i) => {
+    const fromLeft = i % 2 === 0;
+    gsap.from(card, {
+      x: fromLeft ? -40 : 40,
+      y: 30,
+      opacity: 0,
+      rotateY: fromLeft ? -20 : 20,
+      scale: .85,
+      duration: .6,
+      delay: .45 + i * .06,
+      transformPerspective: 600,
+      ease: 'back.out(1.4)',
+      clearProps: 'transform'
+    });
+  });
+
+  // Motivational banner bounce
+  gsap.from('.motiv-banner', {
+    x: -60, opacity: 0, rotateZ: -3,
+    duration: .6, delay: .7, ease: 'back.out(1.5)', clearProps: 'transform'
+  });
+
+  // Daily challenge slide up
+  gsap.from('.daily-challenge', {
+    y: 40, opacity: 0, rotateX: 10,
+    duration: .55, delay: .8, transformPerspective: 600,
+    ease: 'back.out(1.3)', clearProps: 'transform'
+  });
+}
+
+// Floating particles background
+function initParticles() {
+  let canvas = document.getElementById('particles-canvas');
+  if (canvas) return;
+  canvas = document.createElement('canvas');
+  canvas.id = 'particles-canvas';
+  document.body.insertBefore(canvas, document.body.firstChild);
+  const ctx = canvas.getContext('2d');
+  let w, h, particles = [];
+  const COLORS = ['#00d4ff', '#8b5cf6', '#f59e0b', '#10b981', '#ffd700'];
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  for (let i = 0; i < 35; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 2.5 + .8,
+      dx: (Math.random() - .5) * .4,
+      dy: (Math.random() - .5) * .3 - .15,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      alpha: Math.random() * .5 + .2,
+      pulse: Math.random() * Math.PI * 2
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    for (const p of particles) {
+      p.x += p.dx;
+      p.y += p.dy;
+      p.pulse += .02;
+      const a = p.alpha * (.6 + .4 * Math.sin(p.pulse));
+
+      if (p.x < -10) p.x = w + 10;
+      if (p.x > w + 10) p.x = -10;
+      if (p.y < -10) p.y = h + 10;
+      if (p.y > h + 10) p.y = -10;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = a;
+      ctx.fill();
+
+      // Glow effect
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+      const grd = ctx.createRadialGradient(p.x, p.y, p.r * .5, p.x, p.y, p.r * 3);
+      grd.addColorStop(0, p.color);
+      grd.addColorStop(1, 'transparent');
+      ctx.fillStyle = grd;
+      ctx.globalAlpha = a * .3;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+  draw();
 }
 
 function animatePageEnter(name) {
   if (typeof gsap === 'undefined') return;
   const page = document.getElementById('page-' + name);
   if (!page) return;
-  const targets = page.querySelectorAll('.card, .menu-card, .stat-chip, .lb-item, .hw-box, .streak-card, .motiv-banner, .daily-challenge, .hero-shell');
-  if (!targets.length) return;
-  gsap.fromTo(targets, { y: 18, opacity: 0 }, {
-    y: 0,
-    opacity: 1,
-    duration: .42,
-    stagger: .03,
-    overwrite: 'auto',
-    ease: 'power2.out'
-  });
+
+  // Different 3D animation per page type
+  const animConfigs = {
+    home: () => {
+      // Home already animated by initPremiumUi on first load
+      const targets = page.querySelectorAll('.card, .motiv-banner, .daily-challenge, .mood-row, .phone-row');
+      if (targets.length) {
+        gsap.fromTo(targets, { y: 30, opacity: 0, rotateX: 10 }, {
+          y: 0, opacity: 1, rotateX: 0,
+          duration: .5, stagger: .04,
+          transformPerspective: 800, ease: 'back.out(1.3)',
+          overwrite: 'auto', clearProps: 'transform'
+        });
+      }
+    },
+    homework: () => {
+      const boxes = page.querySelectorAll('.hw-box, .card, .spinner');
+      gsap.fromTo(boxes, { x: -50, opacity: 0, rotateY: -12 }, {
+        x: 0, opacity: 1, rotateY: 0,
+        duration: .55, stagger: .07,
+        transformPerspective: 800, ease: 'back.out(1.5)',
+        overwrite: 'auto', clearProps: 'transform'
+      });
+      // Section title slides from top
+      const title = page.querySelector('.section-title');
+      if (title) gsap.fromTo(title, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: .4, ease: 'power2.out' });
+    },
+    progress: () => {
+      const items = page.querySelectorAll('.level-card, .streak-card, .card, .ach-item, .perk-card, .section-title, .spinner');
+      gsap.fromTo(items, { y: 50, opacity: 0, rotateX: 15, scale: .88 }, {
+        y: 0, opacity: 1, rotateX: 0, scale: 1,
+        duration: .6, stagger: .04,
+        transformPerspective: 900, ease: 'back.out(1.4)',
+        overwrite: 'auto', clearProps: 'transform'
+      });
+    },
+    history: () => {
+      const histItems = page.querySelectorAll('.hist-item, .card, .spinner');
+      gsap.fromTo(histItems, { x: 40, opacity: 0, rotateY: 10 }, {
+        x: 0, opacity: 1, rotateY: 0,
+        duration: .45, stagger: .03,
+        transformPerspective: 600, ease: 'power3.out',
+        overwrite: 'auto', clearProps: 'transform'
+      });
+    },
+    chat: () => {
+      const wrap = page.querySelector('.chat-msgs-wrap');
+      const input = page.querySelector('.chat-input-wrap');
+      if (wrap) gsap.fromTo(wrap, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: .4, ease: 'power2.out' });
+      if (input) gsap.fromTo(input, { y: 30, opacity: 0, rotateX: 8 }, {
+        y: 0, opacity: 1, rotateX: 0,
+        duration: .5, delay: .15, transformPerspective: 600, ease: 'back.out(1.3)',
+        clearProps: 'transform'
+      });
+    },
+    games: () => {
+      const cards = page.querySelectorAll('.menu-card, .game-card, .section-title');
+      cards.forEach((card, i) => {
+        const angle = (i % 2 === 0) ? -20 : 20;
+        gsap.fromTo(card,
+          { y: 40, opacity: 0, rotateY: angle, scale: .8 },
+          {
+            y: 0, opacity: 1, rotateY: 0, scale: 1,
+            duration: .6, delay: i * .05,
+            transformPerspective: 700, ease: 'back.out(1.6)',
+            overwrite: 'auto', clearProps: 'transform'
+          }
+        );
+      });
+    },
+    'group-lb': () => {
+      // Podium dramatic entrance
+      const podiums = page.querySelectorAll('.podium-col');
+      gsap.fromTo(podiums, { y: 60, opacity: 0, rotateX: 20, scale: .7 }, {
+        y: 0, opacity: 1, rotateX: 0, scale: 1,
+        duration: .7, stagger: .1,
+        transformPerspective: 800, ease: 'elastic.out(1, .6)',
+        overwrite: 'auto', clearProps: 'transform'
+      });
+      // Leaderboard items cascade
+      const lbItems = page.querySelectorAll('.lb-item, .card, .spinner');
+      gsap.fromTo(lbItems, { x: -30, opacity: 0 }, {
+        x: 0, opacity: 1,
+        duration: .4, stagger: .03, delay: .3,
+        ease: 'power2.out', overwrite: 'auto', clearProps: 'transform'
+      });
+    },
+    referral: () => {
+      const items = page.querySelectorAll('#referralSection > div, button');
+      gsap.fromTo(items, { y: 40, opacity: 0, rotateZ: -3, scale: .9 }, {
+        y: 0, opacity: 1, rotateZ: 0, scale: 1,
+        duration: .55, stagger: .06,
+        ease: 'back.out(1.5)',
+        overwrite: 'auto', clearProps: 'transform'
+      });
+    }
+  };
+
+  // Run page-specific animation or fallback
+  if (animConfigs[name]) {
+    animConfigs[name]();
+  } else {
+    const targets = page.querySelectorAll('.card, .menu-card, .stat-chip, .lb-item, .hw-box, .streak-card, .motiv-banner, .daily-challenge, .hero-shell');
+    if (targets.length) {
+      gsap.fromTo(targets, { y: 30, opacity: 0, rotateX: 8 }, {
+        y: 0, opacity: 1, rotateX: 0,
+        duration: .5, stagger: .04,
+        transformPerspective: 800, overwrite: 'auto',
+        ease: 'back.out(1.3)', clearProps: 'transform'
+      });
+    }
+  }
 }
 
 applyLang();
 init();
+
+// ── Header 3D entrance on load ──
+if (typeof gsap !== 'undefined') {
+  gsap.from('.header', {
+    y: -50, opacity: 0,
+    duration: .6, ease: 'back.out(1.5)'
+  });
+  gsap.from('.header-avatar', {
+    scale: 0, rotateZ: -30, opacity: 0,
+    duration: .7, delay: .2, ease: 'elastic.out(1, .5)'
+  });
+  gsap.from('.header-name, .header-group', {
+    x: -20, opacity: 0,
+    duration: .5, stagger: .1, delay: .25, ease: 'power2.out'
+  });
+  gsap.from('.header-right > *', {
+    y: -15, opacity: 0, rotateX: 20,
+    duration: .4, stagger: .05, delay: .35,
+    transformPerspective: 400, ease: 'back.out(1.5)'
+  });
+
+  // Tabbar 3D entrance from bottom
+  gsap.from('.tabbar', {
+    y: 60, opacity: 0,
+    duration: .6, delay: .1, ease: 'back.out(1.3)'
+  });
+  gsap.from('.tab-item', {
+    y: 30, opacity: 0, scale: .7,
+    duration: .45, stagger: .04, delay: .25,
+    ease: 'back.out(1.6)', clearProps: 'transform'
+  });
+}
 </script>
 </body>
 </html>

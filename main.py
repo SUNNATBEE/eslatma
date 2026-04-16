@@ -140,12 +140,12 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         """O'quvchiga level oshganda xabar yuboradi; Lv.7 da adminni xabardor qiladi."""
         from database import _level_name, LEVEL_UP_BONUS
         PERK_TEXT = {
-            2: "💬 Chat + 🎨 Emoji avatar ochildi!",
-            3: "⭐ Streak bonuslari oshdi!",
-            4: "📊 Chat da VIP belgisi va batafsil statistika!",
-            5: "🌟 Reyting da sariq ism!",
-            6: "⚡ 2x XP multiplikator faollashdi — barcha XP ikki barobar!",
-            7: "👑 LEGEND! Admin bilan bog'laning — 1 oylik Telegram Premium kutmoqda!",
+            2: "💬 Chat ochildi + 🎨 Emoji avatar!",
+            3: "⭐ Streak bonuslar 2x kuchaydi!",
+            4: "📊 VIP belgi + batafsil statistika!",
+            5: "🌟 Reytingda oltin ism — hammaga ko'rinasan!",
+            6: "⚡ 2x XP mode ON — hamma XP ikki barobar!",
+            7: "👑 LEGEND! Adminga yoz — Telegram Premium seniki!",
         }
         bonus  = LEVEL_UP_BONUS.get(new_level, 0)
         lname  = _level_name(new_level)
@@ -153,9 +153,9 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         icons  = {1:'🎯',2:'⭐',3:'🌟',4:'💎',5:'🏆',6:'⚡',7:'👑'}
         icon   = icons.get(new_level, '🎉')
         text   = (
-            f"{icon} <b>Tabriklaymiz! Daraja oshdi!</b>\n\n"
+            f"{icon} <b>LEVEL UP!</b>\n\n"
             f"🏅 {new_level}-daraja — <b>{lname}</b>\n"
-            f"🎁 Bonus: <b>+{bonus} XP</b>\n"
+            f"🎁 +<b>{bonus} XP</b> bonus!\n"
         )
         if perk:
             text += f"✨ {perk}\n"

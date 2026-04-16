@@ -65,20 +65,24 @@ def get_tomorrow_info(timezone_str: str) -> TomorrowInfo:
 # ─── Xabar shablonlari ────────────────────────────────────────────────────────
 
 _MOTIVATSION_GAPLAR = [
-    "Bugun yangi bilim olish vaqti! 💡",
-    "Har bir dars seni kelajakka yaqinlashtiradi! 🚀",
-    "Ustoz seni kutmoqda! ⭐",
-    "Bilim — eng katta boylik! 📖",
-    "Har kun o'qish — muvaffaqiyat kaliti! 🔑",
-    "Zo'r natijalar zo'r harakat talab qiladi! 💪",
-    "Qiyinchilik — o'sishning boshlanishi! 🌱",
-    "Bugun maksimal kuch bilan kel! ⚡",
+    "Kod yozish — superqahramon bo'lish demak! 🦸",
+    "Bugun yangi skill olib, levelingni oshir! 🎮",
+    "Sen hali bitta bug'ni ham yengoching yo'q? Keling! 🐛💥",
+    "Mars IT dagi eng zo'r dasturchi kim? Sen! 🚀",
+    "Ctrl+S qilib qo'y — ertaga sening kuni! 💾⚡",
+    "Kelajak senatorlari hozir kod yozyapti! 🌟",
+    "O'yin o'ynab XP yig' — o'qib PRO bo'l! 🏆",
+    "ERROR topding? Demak GROW qilding! 📈",
+    "Bugun darsda nima o'rganasan? Surpriz! 🎁",
+    "Dasturlash = cheksiz kreativlik! 🎨💻",
+    "Hello World dan Hello Future gacha! 🌍✨",
+    "Brain.exe yuklanmoqda... 99% tayyorsan! 🧠",
 ]
 
 _WEEKDAY_EXTRA: dict[int, str] = {
-    0: "Yangi hafta, yangi g'alabalar! 🎯",
-    4: "Hafta yakunida zo'r dars! 🏆",
-    5: "Shanba darsi — ikki baravar qiziqarli! 🎉",
+    0: "Yangi hafta = yangi mission! Let's go! 🎯🔥",
+    4: "Juma — hafta finali! Power mode ON! 🏆⚡",
+    5: "Shanba darsi — 2x qiziqarli va foydali! 🎉🚀",
 }
 
 
@@ -95,18 +99,18 @@ def build_reminder_message(info: TomorrowInfo, audience: AudienceType) -> str:
     if audience == AudienceType.PARENT:
         return (
             f"👨‍👩‍👧 <b>Assalomu alaykum!</b>\n\n"
-            f"Ertaga — <b>{info.weekday_uz}, {info.date_str}</b>{extra_line}\n\n"
-            f"Farzandingizning darsga tayyorligini nazorat qiling.\n"
-            f"Uy vazifasini bajarganini tekshiring! 📚\n\n"
+            f"📅 Ertaga — <b>{info.weekday_uz}, {info.date_str}</b>{extra_line}\n\n"
+            f"✅ Farzandingiz darsga tayyor ekanini tekshiring\n"
+            f"📚 Uy vazifasi bajarilganmi?\n\n"
             f"💡 {motiv}"
         )
     else:  # STUDENT
         return (
-            f"📚 <b>Assalomu alaykum!</b>\n\n"
-            f"Ertaga — <b>{info.weekday_uz}, {info.date_str}</b>{extra_line}\n\n"
-            f"Uy vazifasini bajarmaganlar — hoziroq bajaring!\n"
-            f"Darsga kechikib kelmang! ⏰\n\n"
-            f"🚀 {motiv}"
+            f"🚀 <b>Hey, dasturchi!</b>\n\n"
+            f"📅 Ertaga — <b>{info.weekday_uz}, {info.date_str}</b>{extra_line}\n\n"
+            f"📝 Vazifa qildingmi? Hozir qil!\n"
+            f"⏰ Kechikma — dars kutmaydi!\n\n"
+            f"🎮 {motiv}"
         )
 
 
@@ -364,8 +368,8 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
                     continue
                 _sent_first_reminder.add(key)
                 text = (
-                    f"📚 Bugun soat <b>{class_time_str}</b> da dars bor!\n"
-                    f"Kelasizmi?"
+                    f"🎯 Bugun soat <b>{class_time_str}</b> da dars!\n"
+                    f"Tayyor bo'l, dasturchi! Kelasanmi? 💻"
                 )
                 try:
                     sent = await bot.send_message(
@@ -389,8 +393,8 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
                     except Exception:
                         _first_reminder_msg_ids.pop(key, None)
                 text = (
-                    f"⏰ Hali javob bermagansiz!\n"
-                    f"Dars <b>{class_time_str}</b> da boshlanadi."
+                    f"⚡ Hoy! Hali javob bermading!\n"
+                    f"Dars <b>{class_time_str}</b> da — qo'ldan boy berma! 🏃"
                 )
                 try:
                     await bot.send_message(
@@ -466,9 +470,8 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
             continue
 
         notify_text = (
-            f"📋 <b>{group_name}</b> guruhi dars boshlangandan "
-            f"<b>20 daqiqa</b> o'tdi!\n\n"
-            f"Davomat yoqlamasini ota-ona guruhiga yuborishingiz mumkin."
+            f"📋 <b>{group_name}</b> — dars boshlangan, 20 daq o'tdi!\n\n"
+            f"⏰ Davomatni ota-ona guruhiga yuboring."
         )
         for cs in curator_sessions:
             # Kurator uchun avto xabar o'chirilgan bo'lsa — o'tkazamiz
@@ -524,9 +527,11 @@ async def send_daily_leaderboard(
     top_line = "\n".join(rows)
 
     text = (
-        f"🏆 <b>Kunlik Reyting</b> — {date_str}\n\n"
+        f"🏆 <b>TOP 10 — Bugungi Reyting</b>\n"
+        f"📅 {date_str}\n\n"
         f"{top_line}\n\n"
-        f"💪 Siz ham yetib oling! Har kuni XP to'plang va birinchi o'ringa chiqing! 🚀"
+        f"🔥 Sen ham bu ro'yxatda bo'lishing mumkin!\n"
+        f"💪 XP yig' va tepaga chiq! 🚀"
     )
 
     # Faqat aktiv O'QUVCHI guruhlariga yuboramiz (ota-ona guruhlar emas)
@@ -595,27 +600,26 @@ async def send_leaderboard_broadcast(
     leader_xp = leader.xp or 0
     runner_up_xp = leaders[1].xp if len(leaders) > 1 and leaders[1].xp is not None else 0
     gap_text = (
-        f"🔥 1-o'rin uchun farq hozircha <b>{leader_xp - runner_up_xp} XP</b>!"
+        f"⚔️ 1-o'rin uchun farq atigi <b>{leader_xp - runner_up_xp} XP</b>!"
         if len(leaders) > 1 else
-        f"🔥 Hozircha taxtda faqat <b>{leader.full_name}</b> hukmron!"
+        f"⚔️ Taxtda faqat <b>{leader.full_name}</b> — sen qo'rqitolasan!"
     )
     challenge_lines = (
-        "⚡ Tez ko'tarilish formulasi:\n"
-        "• Har kuni kirish\n"
-        "• Davomatni belgilash\n"
-        "• Uy vazifasini tasdiqlash\n"
-        "• O'yinlarda qo'shimcha XP yig'ish"
+        "⚡ XP formula:\n"
+        "• Har kuni kir ✅\n"
+        "• Davomat belgila 📋\n"
+        "• Vazifani bajir 📝\n"
+        "• O'yin o'yna 🎮"
     )
 
     text = (
-        f"🚀 <b>2 Kunlik Reyting Challenge</b> — {date_str}\n\n"
+        f"🚀 <b>Reyting Challenge!</b> — {date_str}\n\n"
         f"{top_line}\n\n"
-        f"👑 Hozirgi yetakchi: <b>{leader.full_name}</b> — <b>{leader_xp} XP</b>\n"
+        f"👑 Lider: <b>{leader.full_name}</b> — <b>{leader_xp} XP</b>\n"
         f"{gap_text}\n"
-        f"👥 Jami o'quvchilar: <b>{total}</b> ta\n\n"
+        f"👥 {total} ta o'quvchi\n\n"
         f"{challenge_lines}\n\n"
-        f"🏁 Keyingi reyting xabari chiqquncha TOP ga kirishga harakat qiling.\n"
-        f"👇 Botga o'tib o'z o'rningizni tekshiring."
+        f"🏁 TOP ga chiq — botda o'rningni tekshir! 👇"
     )
 
     bot_info = await bot.get_me()
@@ -674,10 +678,10 @@ async def check_inactive_students(bot: Bot, db: DatabaseService, timezone_str: s
         try:
             await bot.send_message(
                 student.user_id,
-                "⚠️ <b>Akkountingiz o'chirildi!</b>\n\n"
-                "Botda <b>7 kun</b> davomida faollik kuzatilmadi.\n\n"
-                "Akkountingizni qayta faollashtirish uchun:\n"
-                "/start → ro'yxatdan qayta o'ting.",
+                "⚠️ <b>Akkaunt o'chirildi!</b>\n\n"
+                "7 kun kirmagansan 😔\n\n"
+                "Qaytmoqchimisan? 👇\n"
+                "/start — qayta ro'yxatdan o't!",
                 parse_mode="HTML",
             )
         except Exception:
@@ -711,10 +715,10 @@ async def send_streak_reminders(bot: Bot, db: DatabaseService, timezone_str: str
             try:
                 await bot.send_message(
                     student.user_id,
-                    f"🔥 <b>Streak xavf ostida!</b>\n\n"
-                    f"Sizda hozirda <b>{streak} kunlik streak</b> bor!\n"
-                    f"Bugun Mini App ga kirmadingiz — streak yo'qolmasligi uchun hoziroq kiring.\n\n"
-                    f"💡 Har kun kirish = ko'proq XP + bonus!",
+                    f"🔥 <b>Streak yonmoqda — o'chirma!</b>\n\n"
+                    f"Senda <b>{streak} kunlik streak</b> bor! 💪\n"
+                    f"Bugun kirmading — hozir kir, yo'qotma! ⏳\n\n"
+                    f"🎮 Kir → XP ol → Streak saqla!",
                     parse_mode="HTML",
                 )
                 sent_count += 1
@@ -744,10 +748,10 @@ async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: st
                 updated = await db.get_student(student.user_id)
                 await bot.send_message(
                     student.user_id,
-                    f"🎉 <b>Haftalik Streak Bonus!</b>\n\n"
-                    f"Ajoyib! Siz <b>7 kun ketma-ket</b> Mini App ga kirdingiz!\n"
-                    f"<b>+{XP_WEEKLY_BONUS} XP</b> bonus berildi 🚀\n\n"
-                    f"Jami XP: <b>{updated.xp if updated else '?'}</b>",
+                    f"🎉 <b>7 kun streak — BONUS!</b>\n\n"
+                    f"Zo'rsan! 7 kun ketma-ket kirding! 🔥\n"
+                    f"<b>+{XP_WEEKLY_BONUS} XP</b> oldin! 🚀\n\n"
+                    f"⭐ Jami: <b>{updated.xp if updated else '?'} XP</b>",
                     parse_mode="HTML",
                 )
                 awarded += 1

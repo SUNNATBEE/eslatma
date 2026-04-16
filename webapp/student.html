@@ -1722,19 +1722,19 @@
       <div class="mood-row" id="moodRow" style="display:none">
         <div class="mood-label" data-i18n="mood.label">Bugun kayfiyating?</div>
         <div class="mood-btns">
-          <button class="mood-btn" id="mood-happy" onclick="setMood('happy')" title="Yaxshi">😊</button>
-          <button class="mood-btn" id="mood-ok"    onclick="setMood('ok')"    title="Normal">😐</button>
-          <button class="mood-btn" id="mood-sad"   onclick="setMood('sad')"   title="Yomon">😔</button>
+          <button class="mood-btn" id="mood-happy" onclick="setMood('happy')" data-i18n-title="mood.title.happy" title="Yaxshi">😊</button>
+          <button class="mood-btn" id="mood-ok"    onclick="setMood('ok')"    data-i18n-title="mood.title.ok"    title="Normal">😐</button>
+          <button class="mood-btn" id="mood-sad"   onclick="setMood('sad')"   data-i18n-title="mood.title.sad"   title="Yomon">😔</button>
         </div>
       </div>
 
       <!-- Daily challenge widget -->
       <div class="daily-challenge" id="dailyChallengeWidget" style="display:none">
         <div class="dc-header">
-          <div class="dc-title">Bugungi vazifa</div>
+          <div class="dc-title" data-i18n="dc.title">Bugungi vazifa</div>
           <div class="dc-xp-badge" id="dcXpBadge">+0 XP</div>
         </div>
-        <div class="dc-task" id="dcTask">Yuklanmoqda...</div>
+        <div class="dc-task" id="dcTask" data-i18n="dc.loading">Yuklanmoqda...</div>
         <div id="dcBody">
           <div class="dc-progress-bar"><div class="dc-progress-fill" id="dcProgressFill" style="width:0%"></div></div>
           <div class="dc-progress-lbl" id="dcProgressLbl"></div>
@@ -2410,7 +2410,7 @@
     <div class="ps-row"><div class="ps-row-icon">🆔</div><div id="psMarsId">—</div></div>
     <div class="ps-row"><div class="ps-row-icon">⭐</div><div id="psXp">—</div></div>
     <div class="ps-row"><div class="ps-row-icon">🔥</div><div id="psStreak">—</div></div>
-    <button class="ps-logout" onclick="doLogout()">🚪 Profildan chiqish</button>
+    <button class="ps-logout" data-i18n="profile.logout" onclick="doLogout()">🚪 Profildan chiqish</button>
   </div>
 </div>
 
@@ -2419,11 +2419,11 @@
   <div class="levelup-card" onclick="event.stopPropagation()">
     <div class="levelup-bignum" id="luNum">7</div>
     <div class="levelup-icon"  id="luIcon">👑</div>
-    <div class="levelup-title">Daraja oshdi!</div>
+    <div class="levelup-title" data-i18n="levelup.title">Daraja oshdi!</div>
     <div class="levelup-name"  id="luName">Super qahramon</div>
     <div class="levelup-bonus" id="luBonus">+500 XP Bonus 🎁</div>
     <div class="levelup-perk"  id="luPerk"></div>
-    <button class="levelup-close" onclick="closeLevelUp()">🎉 Davom etish</button>
+    <button class="levelup-close" data-i18n="levelup.continue" onclick="closeLevelUp()">🎉 Davom etish</button>
   </div>
 </div>
 
@@ -2442,7 +2442,7 @@
     <div class="spm-stats">
       <div class="spm-stat"><div class="spm-stat-val" id="spmXp">0</div><div class="spm-stat-lbl">XP</div></div>
       <div class="spm-stat"><div class="spm-stat-val" id="spmStreak">0</div><div class="spm-stat-lbl">🔥 Streak</div></div>
-      <div class="spm-stat"><div class="spm-stat-val" id="spmWins">0</div><div class="spm-stat-lbl">🏆 G'alaba</div></div>
+      <div class="spm-stat"><div class="spm-stat-val" id="spmWins">0</div><div class="spm-stat-lbl" data-i18n="spm.wins">🏆 G'alaba</div></div>
     </div>
     <div id="spmDmLocked" class="spm-locked">🔒 Xabar yuborish uchun 3-darajaga yeting</div>
     <button class="spm-dm-btn" id="spmDmBtn" onclick="openDm()" style="display:none">💬 Shaxsiy xabar yuborish</button>
@@ -3075,18 +3075,21 @@ const GUIDE_LEVELS = [
 function renderGuideLevels() {
   const el = document.getElementById('guide-levels-list');
   if (!el) return;
-  const perks = LEVEL_PERKS_UZ;
+  const perks = _lang === 'ru' ? LEVEL_PERKS_RU : LEVEL_PERKS_UZ;
+  const startLabel = _lang === 'ru' ? 'Начальный' : 'Boshlang\'ich';
+  const totalLabel = _lang === 'ru' ? 'Всего 20 уровней' : 'Jami 20 ta daraja';
   el.innerHTML = GUIDE_LEVELS.map(lv => {
-    const xpLabel = lv.xp === 0 ? 'Boshlang\'ich' : lv.xp.toLocaleString() + ' XP';
+    const lvName = perks[lv.num]?.name || lv.name;
+    const xpLabel = lv.xp === 0 ? startLabel : lv.xp.toLocaleString() + ' XP';
     const bonus = perks[lv.num]?.bonus ? `<span style="color:#f1c40f;font-size:11px;margin-left:4px;">${perks[lv.num].bonus}</span>` : '';
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);">
       <div style="width:26px;height:26px;border-radius:50%;background:${lv.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;">${lv.num}</div>
-      <div style="flex:1;font-size:13px;font-weight:700;color:var(--text);">${lv.name}</div>
+      <div style="flex:1;font-size:13px;font-weight:700;color:var(--text);">${lvName}</div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
         <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${lv.bg};color:${lv.color};border:1px solid ${lv.color}40;">${xpLabel}</span>${bonus}
       </div>
     </div>`;
-  }).join('') + `<div style="padding-top:4px;font-size:11px;color:var(--sub);text-align:center;">Jami 20 ta daraja</div>`;
+  }).join('') + `<div style="padding-top:4px;font-size:11px;color:var(--sub);text-align:center;">${totalLabel}</div>`;
 }
 
 const LEVEL_UP_BONUS = {
@@ -3674,8 +3677,8 @@ function closeProfileSheet() {
 async function doLogout() {
   closeProfileSheet();
   const confirmed = await new Promise(resolve => {
-    if (tg?.showConfirm) { tg.showConfirm("Profildan chiqmoqchimisiz?", resolve); }
-    else { resolve(window.confirm("Profildan chiqmoqchimisiz?")); }
+    if (tg?.showConfirm) { tg.showConfirm(t('confirm.exit'), resolve); }
+    else { resolve(window.confirm(t('confirm.exit'))); }
   });
   if (!confirmed) return;
   try { await api('/student/logout', { method: 'POST' }); } catch {}
@@ -3837,6 +3840,18 @@ const T = {
     'game.chess.draw.msg':"🤝 Durrang!",
     'game.multi.win.msg':"🏆 G'alaba!", 'game.multi.lose.msg':"😔 Keyingi safar!",
     'open.in_bot':"Botga qaytib uy vazifasini ko'ring 📖",
+    /* Daily challenge */
+    'dc.title':"Bugungi vazifa", 'dc.loading':"Yuklanmoqda...", 'dc.done':"XP olindi",
+    /* Profile sheet */
+    'profile.logout':"🚪 Profildan chiqish",
+    /* Level-up overlay */
+    'levelup.title':"Daraja oshdi!", 'levelup.continue':"🎉 Davom etish",
+    /* Student profile modal */
+    'spm.wins':"🏆 G'alaba",
+    /* Check-in */
+    'dc.checkin':"Kunlik kirish",
+    /* Mood titles */
+    'mood.title.happy':"Yaxshi", 'mood.title.ok':"Normal", 'mood.title.sad':"Yomon",
   },
   ru: {
     /* Menu */
@@ -3927,6 +3942,18 @@ const T = {
     'game.chess.draw.msg':"🤝 Ничья!",
     'game.multi.win.msg':"🏆 Победа!", 'game.multi.lose.msg':"😔 В следующий раз!",
     'open.in_bot':"Вернитесь в бот, чтобы увидеть домашнее задание 📖",
+    /* Daily challenge */
+    'dc.title':"Задание дня", 'dc.loading':"Загрузка...", 'dc.done':"XP получено",
+    /* Profile sheet */
+    'profile.logout':"🚪 Выйти из профиля",
+    /* Level-up overlay */
+    'levelup.title':"Уровень повышен!", 'levelup.continue':"🎉 Продолжить",
+    /* Student profile modal */
+    'spm.wins':"🏆 Победы",
+    /* Check-in */
+    'dc.checkin':"Ежедневный вход",
+    /* Mood titles */
+    'mood.title.happy':"Хорошо", 'mood.title.ok':"Нормально", 'mood.title.sad':"Грустно",
   },
 };
 let _lang = localStorage.getItem('app_lang') || 'uz';
@@ -3939,20 +3966,47 @@ function toggleLang() {
 function applyLang() {
   const btn = document.getElementById('langBtn');
   if (btn) btn.textContent = _lang === 'uz' ? '🇷🇺' : '🇺🇿';
-  // Matn elementlari
+  // data-i18n matn elementlari
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     const val = t(key);
     if (val && val !== key) el.textContent = val;
   });
-  // Placeholder atributlari
+  // data-i18n-placeholder atributlari
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder');
     const val = t(key);
     if (val && val !== key) el.placeholder = val;
   });
+  // data-i18n-title atributlari (tooltip/title)
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const val = t(key);
+    if (val && val !== key) el.title = val;
+  });
   // Dinamik JS bilan render qilingan kard
   if (classInfo !== undefined) renderClassCard(classInfo);
+  // Guide levels jadvali — har doim qayta render
+  renderGuideLevels();
+  // Joriy sahifani qayta yuklash
+  if (_currentTabName === 'progress') { progressLoaded = false; loadProgress && loadProgress(); }
+  else if (_currentTabName === 'homework') { loadHomework && loadHomework(); }
+  else if (_currentTabName === 'history') { historyLoaded = false; loadHistory && loadHistory(); }
+  else if (_currentTabName === 'games') { showGHub && showGHub(); }
+  else if (_currentTabName === 'group-lb') { loadGroupLeaderboard && loadGroupLeaderboard(); }
+  else if (_currentTabName === 'referral') { loadReferral && loadReferral(); }
+  // Home sahifa elementlari
+  loadDailyChallenge && loadDailyChallenge();
+  // Profile sheet ochiq bo'lsa qayta render
+  if (document.getElementById('profileSheet')?.classList.contains('show')) { openProfileSheet(); }
+  // Hero subtitle (initPremiumUi dan olinadigan matn)
+  const heroSubtitle = document.getElementById('heroSubtitle');
+  const hdrGroup = document.getElementById('hdrGroup');
+  if (heroSubtitle && hdrGroup && hdrGroup.textContent && hdrGroup.textContent !== '—') {
+    heroSubtitle.textContent = _lang === 'ru'
+      ? `Современный личный кабинет для группы ${hdrGroup.textContent}: прогресс, рейтинг и центр заданий.`
+      : `${hdrGroup.textContent} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -3989,7 +4043,7 @@ async function saveGameScore(gameType, score, xpEarned) {
     const newLevel = res?.new_level || 1;
     const lvlName = res?.level_name || ('Lv.' + newLevel);
     const nextXp = res?.next_level_xp || 0;
-    showXpModal('🎉', "G'alaba!", xpEarned, newXp, lvlName, 0, nextXp);
+    showXpModal('🎉', t('game.multi.win.msg'), xpEarned, newXp, lvlName, 0, nextXp);
     profileData = null; // refresh on next open
   } catch(e) { toast(`🎯 +${xpEarned} XP ${t('toast.xp_earned') || 'olindi!'} `); }
 }
@@ -4981,7 +5035,7 @@ async function init() {
     api('/student/checkin', { method: 'POST' }).then(async (res) => {
       if (!res.already_done && res.xp_gained > 0) {
         const bonus = res.streak_bonus > 0 ? ` + ${res.streak_bonus} XP streak bonusi` : '';
-        setTimeout(() => toast(`🎉 Kunlik kirish: +${res.xp_gained} XP${bonus}`), 1000);
+        setTimeout(() => toast(`🎉 ${t('dc.checkin')}: +${res.xp_gained} XP${bonus}`), 1000);
       }
       if (res.leveled_up && res.new_level) {
         setTimeout(() => showLevelUp(res.new_level), 1800);
@@ -5274,7 +5328,7 @@ async function loadGroupLeaderboard() {
     el.innerHTML = leaders.slice(0, 10).map(s => {
       const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
       const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
-      const sizBadge = s.is_me ? '<span class="lb-siz-badge">Siz</span>' : '';
+      const sizBadge = s.is_me ? `<span class="lb-siz-badge">${_lang === 'ru' ? 'Вы' : 'Siz'}</span>` : '';
       return `<div class="lb-item lb-item-sm ${s.is_me ? 'is-me' : ''}">
         <div class="lb-rank ${rankCls}">${rankIcon}</div>
         <div class="lb-info">
@@ -5305,7 +5359,7 @@ async function loadDailyChallenge() {
     document.getElementById('dcXpBadge').textContent = '+' + (d.xp_reward || 0) + ' XP';
     document.getElementById('dcTask').textContent = d.task;
     if (d.completed) {
-      document.getElementById('dcBody').innerHTML = '<div class="dc-done">✅ +' + (d.xp_reward || 0) + ' XP olindi</div>';
+      document.getElementById('dcBody').innerHTML = '<div class="dc-done">✅ +' + (d.xp_reward || 0) + ' ' + t('dc.done') + '</div>';
     } else {
       const progress = d.progress || 0;
       const total    = d.total || 1;
@@ -5323,7 +5377,9 @@ function initPremiumUi() {
   const heroSubtitle = document.getElementById('heroSubtitle');
   if (heroName && hdrName && hdrName.textContent) heroName.textContent = hdrName.textContent;
   if (heroSubtitle && hdrGroup && hdrGroup.textContent) {
-    heroSubtitle.textContent = `${hdrGroup.textContent} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
+    heroSubtitle.textContent = _lang === 'ru'
+      ? `Современный личный кабинет для группы ${hdrGroup.textContent}: прогресс, рейтинг и центр заданий.`
+      : `${hdrGroup.textContent} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
   }
 
   // 3D Tilt effect for all interactive cards (mobile + desktop)

@@ -160,10 +160,10 @@ async def reg_enter_password(
     )
     await state.set_state(RegFSM.waiting_phone)
     await message.answer(
-        f"✅ <b>Parol to'g'ri!</b>\n\n"
-        f"📱 Shaxsiy <b>telefon raqamingizni</b> kiriting:\n\n"
-        f"Namuna: <code>+998901234567</code>\n"
-        f"<i>(+998 dan boshlang, jami 12 raqam)</i>",
+        "✅ <b>Parol to'g'ri!</b>\n\n"
+        "📱 Shaxsiy <b>telefon raqamingizni</b> kiriting:\n\n"
+        "Namuna: <code>+998901234567</code>\n"
+        "<i>(+998 dan boshlang, jami 12 raqam)</i>",
     )
 
 

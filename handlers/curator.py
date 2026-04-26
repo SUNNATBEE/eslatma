@@ -146,7 +146,8 @@ async def curator_enter_password(
 async def cur_panel(cb: CallbackQuery, state: FSMContext, db: DatabaseService) -> None:
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
-        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
     await db.update_curator_last_active(cb.from_user.id)
     await state.clear()
     cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
@@ -246,7 +247,7 @@ async def cur_davomat_menu(
         )
     except TelegramBadRequest:
         await cb.message.answer(
-            f"📋 Davomat yoqlama — guruhni tanlang:",
+            "📋 Davomat yoqlama — guruhni tanlang:",
             reply_markup=builder.as_markup(),
         )
     await cb.answer()
@@ -260,7 +261,8 @@ async def cur_davomat_menu(
 async def cur_list(cb: CallbackQuery, db: DatabaseService) -> None:
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
-        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
 
     active_group = cb.data.split(":", 2)[2]
     students     = await db.get_all_students()
@@ -285,12 +287,14 @@ async def cur_list(cb: CallbackQuery, db: DatabaseService) -> None:
 async def cur_contact(cb: CallbackQuery, db: DatabaseService) -> None:
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
-        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
 
     student_id = int(cb.data.split(":")[2])
     student    = await db.get_student(student_id)
     if not student:
-        await cb.answer("❌ O'quvchi topilmadi!", show_alert=True); return
+        await cb.answer("❌ O'quvchi topilmadi!", show_alert=True)
+        return
 
     existing = await db.get_active_curator_chat_by_curator(cb.from_user.id)
     has_chat = existing is not None and existing.student_user_id == student_id
@@ -322,7 +326,8 @@ async def cur_chat_start(
 ) -> None:
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
-        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True); return
+        await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
+        return
 
     student_id = int(cb.data.split(":")[2])
 
@@ -334,7 +339,8 @@ async def cur_chat_start(
         await cb.answer(
             f"⚠️ Sizda faol chat bor: {oname}\nAvval uni yakunlang.",
             show_alert=True,
-        ); return
+        )
+        return
 
     # O'quvchi boshqa kurator chatidami?
     if await db.get_active_curator_chat_by_student(student_id):
@@ -343,7 +349,8 @@ async def cur_chat_start(
 
     student = await db.get_student(student_id)
     if not student:
-        await cb.answer("❌ O'quvchi topilmadi!", show_alert=True); return
+        await cb.answer("❌ O'quvchi topilmadi!", show_alert=True)
+        return
 
     await db.start_curator_chat(cb.from_user.id, student_id, session.curator_key)
 
@@ -366,7 +373,8 @@ async def cur_chat_start(
             f"O'quvchi botni bloklagan yoki o'chirgan bo'lishi mumkin.\n"
             f"<code>{e}</code>",
         )
-        await cb.answer(); return
+        await cb.answer()
+        return
 
     try:
         await cb.message.edit_text(
@@ -392,7 +400,8 @@ async def cur_resume(cb: CallbackQuery, db: DatabaseService) -> None:
     student_id = int(cb.data.split(":")[2])
     student    = await db.get_student(student_id)
     if not student:
-        await cb.answer(); return
+        await cb.answer()
+        return
     try:
         await cb.message.edit_text(
             f"💬 <b>{student.full_name}</b> bilan chat davom etmoqda.\n\nXabarlaringizni yuboring.",
@@ -400,7 +409,7 @@ async def cur_resume(cb: CallbackQuery, db: DatabaseService) -> None:
         )
     except TelegramBadRequest:
         await cb.message.answer(
-            f"💬 Xabarlaringizni yuboring.",
+            "💬 Xabarlaringizni yuboring.",
             reply_markup=kb_curator_active_chat(student_id),
         )
     await cb.answer()
@@ -473,7 +482,7 @@ async def student_relay_to_curator(
         )
         await bot.send_message(
             chat.curator_telegram_id,
-            f"<i>Barcha ma'lumotni oldingizmi? «Javobni oldim» tugmasini bosing.</i>",
+            "<i>Barcha ma'lumotni oldingizmi? «Javobni oldim» tugmasini bosing.</i>",
             reply_markup=kb_curator_active_chat(message.from_user.id),
         )
     except Exception as e:
@@ -531,7 +540,8 @@ async def cur_end_confirm(
 ) -> None:
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
-        await cb.answer(); return
+        await cb.answer()
+        return
 
     student_id = int(cb.data.split(":")[2])
     student    = await db.get_student(student_id)
@@ -868,6 +878,7 @@ async def cur_att_update(
 
     try:
         from sqlalchemy import select
+
         from database import CuratorSession
         async with db.session_factory() as db_sess:
             result = await db_sess.execute(select(CuratorSession))

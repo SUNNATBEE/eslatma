@@ -4,12 +4,16 @@ Endpointlar: /api/admin/*, /api/mini-admin/*
 """
 import asyncio
 import secrets
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from aiohttp import web
 
 from config import (
-    ADMIN_IDS, MINI_ADMIN_LOGINS, SEND_HOUR, SEND_MINUTE, TIMEZONE, WEBAPP_URL,
+    MINI_ADMIN_LOGINS,
+    SEND_HOUR,
+    SEND_MINUTE,
+    TIMEZONE,
+    WEBAPP_URL,
 )
 from utils import verify_secret
 
@@ -48,7 +52,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if not expected or not verify_secret(expected, password):
             return web.json_response({"error": "Login yoki parol noto'g'ri"}, status=401)
         token   = secrets.token_hex(32)
-        expires = datetime.utcnow() + timedelta(days=30)
+        expires = datetime.now(UTC) + timedelta(days=30)
         _mini_sessions[token] = {"username": username, "expires": expires}
         return web.json_response({"ok": True, "token": token, "username": username})
 
@@ -59,7 +63,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             return web.json_response({"ok": False}, status=401)
         token = auth_header[7:].strip()
         sess  = _mini_sessions.get(token)
-        if not sess or datetime.utcnow() > sess["expires"]:
+        if not sess or datetime.now(UTC) > sess["expires"]:
             if sess:
                 del _mini_sessions[token]
             return web.json_response({"ok": False}, status=401)
@@ -339,9 +343,10 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         user_id = _admin_auth(request)
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
-        from scheduler import get_tomorrow_info, build_reminder_message
-        from database import GroupType
         import pytz as _pytz
+
+        from database import GroupType
+        from scheduler import build_reminder_message, get_tomorrow_info
         _tz = _pytz.timezone(TIMEZONE)
         info = get_tomorrow_info(TIMEZONE)
         h = await db.get_setting("SEND_HOUR",   str(SEND_HOUR))
@@ -384,6 +389,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         from sqlalchemy import select
+
         from database import CuratorSession
         groups = await db.get_all_groups()
         per_group = {}
@@ -489,7 +495,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             body = {}
         group_name = body.get("group_name")
         try:
-            from scheduler import send_daily_reminders, send_daily_reminder_to_group
+            from scheduler import send_daily_reminder_to_group, send_daily_reminders
             if group_name and group_name != "all":
                 result = await send_daily_reminder_to_group(
                     bot=bot, db=db, timezone_str=TIMEZONE, group_name=group_name
@@ -660,7 +666,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             await db.award_referral_xp(rs.referrer_user_id, rs_id)
             wa_url = WEBAPP_URL.rstrip("/") + "/webapp/student.html" if WEBAPP_URL else None
             try:
-                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+                from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
                 ref_msg = (
                     f"🎉 <b>Siz taklif qilgan do'st qabul qilindi!</b>\n\n"
                     f"👤 {rs.full_name}\n📚 Guruh: {group_name}\n\n"
@@ -689,7 +695,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
                     f"Endi Mini App orqali kiring va o'qishni boshlang!"
                 )
                 if wa_url:
-                    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+                    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
                     kb = InlineKeyboardMarkup(inline_keyboard=[[
                         InlineKeyboardButton(
                             text="📱 Mini App ni ochish",
@@ -861,6 +867,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if not group_name or not text:
             return web.json_response({"error": "group_name va text kerak"}, status=400)
         from sqlalchemy import select
+
         from database import Group
         async with db.session_factory() as session:
             result = await session.execute(select(Group).where(Group.name == group_name))

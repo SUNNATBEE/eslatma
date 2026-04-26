@@ -145,8 +145,10 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
         present_count = sum(1 for r in att_records if r.status == "yes")
         absent_count  = sum(1 for r in att_records if r.status == "no")
         pending_count = max(total - present_count - absent_count, 0)
+        from sqlalchemy import func as sa_func
+        from sqlalchemy import select
+
         from database import HomeworkConfirmation
-        from sqlalchemy import func as sa_func, select
         async with db.session_factory() as sess:
             hw_result = await sess.execute(
                 select(sa_func.count(HomeworkConfirmation.id)).where(
@@ -231,10 +233,10 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
             body = await request.json()
         except Exception:
             return web.json_response({"error": "Bad JSON"}, status=400)
-        group_name     = body.get("group_name", "—")
-        marks          = body.get("marks", [])
+        group_name = body.get("group_name", "—")
+        marks = body.get("marks", [])
         parent_chat_id = body.get("parent_chat_id")
-        date_str       = body.get("date_str", datetime.now(tz).strftime("%Y-%m-%d"))
+        date_str = body.get("date_str", datetime.now(tz).strftime("%Y-%m-%d"))
         if not parent_chat_id or not marks:
             return web.json_response({"error": "Missing fields"}, status=400)
         cname = CURATORS.get(session.curator_key, {}).get("full_name", session.curator_key)
@@ -243,7 +245,7 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
             date_fmt = f"{d}.{m}.{y}"
         except Exception:
             date_fmt = date_str
-        lines = [f"{cname} | MARS IT", f"{date_fmt}", "📌Davomat", ""]
+        lines = [f"{cname} | MARS IT", f"📚 {group_name}", f"{date_fmt}", "📌Davomat", ""]
         for mark in marks:
             emoji = "✅" if mark.get("present") else "❌"
             lines.append(f"{mark.get('full_name', '—')} {emoji}")
@@ -291,6 +293,7 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
                 pass
         try:
             from sqlalchemy import select
+
             from database import CuratorSession
             async with db.session_factory() as sess:
                 result = await sess.execute(select(CuratorSession))

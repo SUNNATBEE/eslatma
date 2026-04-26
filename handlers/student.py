@@ -91,7 +91,12 @@ async def student_read_confirm(
             f"🕐 {time_str}",
         )
     except Exception:
-        logger.warning("Read receipt admin notify yuborilmadi | admin_id=%s user_id=%s", admin_id, cb.from_user.id, exc_info=True)
+        logger.warning(
+            "Read receipt admin notify yuborilmadi | admin_id=%s user_id=%s",
+            admin_id,
+            cb.from_user.id,
+            exc_info=True,
+        )
 
     # Tugmani o'chiramiz
     try:
@@ -288,7 +293,8 @@ class HomeworkFSM(StatesGroup):
 @router.callback_query(F.data == "admin:hw_menu")
 async def admin_hw_menu(cb: CallbackQuery, state: FSMContext) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     await state.clear()
     try:
         await cb.message.edit_text(
@@ -303,7 +309,8 @@ async def admin_hw_menu(cb: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "admin:hw_list")
 async def admin_hw_list(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     homeworks = {}
     for g in MARS_GROUPS:
@@ -328,7 +335,8 @@ async def admin_hw_list(cb: CallbackQuery, db: DatabaseService) -> None:
 @router.callback_query(F.data.startswith("hw:delete_ask:"))
 async def admin_hw_delete_ask(cb: CallbackQuery) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     group = cb.data.split(":", 2)[2]
     try:
         await cb.message.edit_text(
@@ -347,7 +355,8 @@ async def admin_hw_delete_ask(cb: CallbackQuery) -> None:
 @router.callback_query(F.data.startswith("hw:delete_yes:"))
 async def admin_hw_delete_yes(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     group = cb.data.split(":", 2)[2]
     deleted = await db.delete_homework(group)
     msg = f"✅ <b>{group}</b> uy vazifasi o'chirildi." if deleted else f"📭 <b>{group}</b> da vazifa yo'q edi."
@@ -361,7 +370,8 @@ async def admin_hw_delete_yes(cb: CallbackQuery, db: DatabaseService) -> None:
 @router.callback_query(F.data.startswith("hw:edit:"))
 async def admin_hw_edit_start(cb: CallbackQuery, state: FSMContext) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     group = cb.data.split(":", 2)[2]
     await state.update_data(group=group)
     await state.set_state(HomeworkFSM.waiting_content)

@@ -10,19 +10,26 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
-from config import ADMIN_IDS, SEND_HOUR, SEND_MINUTE, TIMEZONE
+from config import ADMIN_IDS, SEND_HOUR, SEND_MINUTE, TIMEZONE, WEBAPP_URL
 from database import AudienceType, DatabaseService, GroupType
 from handlers.pending import pending_groups
 from keyboards import (
-    kb_admin_panel, kb_back_to_panel, kb_cancel_fsm,
-    kb_choose_audience, kb_choose_type, kb_confirm_delete,
-    kb_group_actions, kb_group_list, kb_group_selector,
+    kb_admin_panel,
+    kb_back_to_panel,
+    kb_cancel_fsm,
+    kb_choose_audience,
+    kb_choose_type,
+    kb_confirm_delete,
+    kb_group_actions,
+    kb_group_list,
+    kb_group_selector,
 )
 from scheduler import (
-    build_reminder_message, get_tomorrow_info,
-    send_daily_reminders, send_leaderboard_broadcast,
+    build_reminder_message,
+    get_tomorrow_info,
+    send_daily_reminders,
+    send_leaderboard_broadcast,
 )
-from config import WEBAPP_URL
 from utils import safe_edit, safe_edit_markup
 
 logger = logging.getLogger(__name__)
@@ -77,7 +84,7 @@ async def cb_admin_panel(callback: CallbackQuery) -> None:
     if not _is_admin(callback.from_user.id):
         await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
         return
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         "🎛 <b>Admin Panel</b>\n\nAmal tanlang:",
         reply_markup=kb_admin_panel(),
     )
@@ -101,7 +108,7 @@ async def cb_admin_list(callback: CallbackQuery, db: DatabaseService) -> None:
     label = filter_labels.get(active_filter, "Hammasi")
 
     if not groups:
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             "📭 <b>Guruhlar yo'q</b>\n\nGuruh qo'shish uchun ➕ ni bosing.",
             reply_markup=kb_admin_panel(),
         )
@@ -115,7 +122,7 @@ async def cb_admin_list(callback: CallbackQuery, db: DatabaseService) -> None:
         f"🎓 O'quvchilar: <b>{student_count}</b>\n\n"
         f"Guruhni tanlang:"
     )
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         text, reply_markup=kb_group_list(groups, active_filter)
     )
     await callback.answer()
@@ -134,7 +141,7 @@ async def cb_admin_status(callback: CallbackQuery, db: DatabaseService) -> None:
     odd_active  = sum(1 for g in groups if g.group_type == GroupType.ODD  and g.is_active)
     even_active = sum(1 for g in groups if g.group_type == GroupType.EVEN and g.is_active)
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"📊 <b>Bot holati</b>\n\n"
         f"<b>Guruhlar:</b>\n"
         f"  Jami: {len(groups)} ta\n"
@@ -159,7 +166,7 @@ async def cb_admin_test_send(callback: CallbackQuery, bot: Bot, db: DatabaseServ
     info      = get_tomorrow_info(TIMEZONE)
     next_type = "Toq" if info.group_type == GroupType.ODD else "Juft"
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"⏳ <b>Barcha guruhlarga test yuborilmoqda...</b>\n"
         f"📅 {info.date_str} ({next_type} kun) | Kutib turing..."
     )
@@ -167,7 +174,7 @@ async def cb_admin_test_send(callback: CallbackQuery, bot: Bot, db: DatabaseServ
 
     try:
         await send_daily_reminders(bot=bot, db=db, timezone_str=TIMEZONE)
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             f"✅ <b>Test muvaffaqiyatli!</b>\n\n"
             f"📅 {info.date_str} — {next_type} kun\n"
             f"👨‍👩‍👧 Ota-onalarga alohida xabar\n"
@@ -176,7 +183,7 @@ async def cb_admin_test_send(callback: CallbackQuery, bot: Bot, db: DatabaseServ
         )
     except Exception as e:
         logger.error(f"Test xatosi: {e}")
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             f"❌ <b>Xatolik:</b>\n<code>{e}</code>",
             reply_markup=kb_back_to_panel(),
         )
@@ -187,7 +194,8 @@ async def cb_admin_test_send(callback: CallbackQuery, bot: Bot, db: DatabaseServ
 @router.callback_query(F.data == "admin:test_leaderboard")
 async def cb_admin_test_leaderboard(callback: CallbackQuery, bot: Bot, db: DatabaseService) -> None:
     if not _is_admin(callback.from_user.id):
-        await callback.answer("❌", show_alert=True); return
+        await callback.answer("❌", show_alert=True)
+        return
     await callback.answer()
     await safe_edit(callback.message, "⏳ <b>Reyting broadcast test qilinmoqda...</b>")
     try:
@@ -209,7 +217,8 @@ async def cb_admin_test_leaderboard(callback: CallbackQuery, bot: Bot, db: Datab
 @router.callback_query(F.data == "admin:cleanup_duplicates")
 async def cb_admin_cleanup_dupes(callback: CallbackQuery, db: DatabaseService) -> None:
     if not _is_admin(callback.from_user.id):
-        await callback.answer("❌", show_alert=True); return
+        await callback.answer("❌", show_alert=True)
+        return
     await callback.answer()
     await safe_edit(callback.message, "⏳ Dublikat o'quvchilar qidirilmoqda...")
     dupes = await db.find_duplicate_students()
@@ -249,7 +258,7 @@ async def cb_delete_all_msgs(callback: CallbackQuery, bot: Bot, db: DatabaseServ
         await callback.answer("📭 O'chiriladigan xabar yo'q!", show_alert=True)
         return
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"⏳ <b>{len(groups)} ta guruhdan xabar o'chirilmoqda...</b>"
     )
     await callback.answer()
@@ -354,13 +363,13 @@ async def cb_group_test(callback: CallbackQuery, bot: Bot, db: DatabaseService) 
         logger.info(f"Test yuborildi: '{group.name}' msg_id={sent.message_id}")
 
         group = await db.get_group_by_chat_id(chat_id)
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             _group_card(group) + "\n✅ <b>Test muvaffaqiyatli yuborildi!</b>",
             reply_markup=kb_group_actions(group),
         )
     except Exception as e:
         logger.error(f"Test xatosi '{group.name}': {e}")
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             f"{_group_card(group)}\n❌ <b>Xatolik:</b> <code>{e}</code>",
             reply_markup=kb_group_actions(group),
         )
@@ -386,7 +395,7 @@ async def cb_group_delete_msg(callback: CallbackQuery, bot: Bot, db: DatabaseSer
         logger.info(f"Xabar o'chirildi: '{group.name}' msg_id={group.last_message_id}")
 
         group = await db.get_group_by_chat_id(chat_id)
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             _group_card(group) + "\n✅ <b>Xabar o'chirildi!</b>",
             reply_markup=kb_group_actions(group),
         )
@@ -413,7 +422,7 @@ async def cb_group_delete_ask(callback: CallbackQuery, db: DatabaseService) -> N
         await callback.answer("❌ Guruh topilmadi!", show_alert=True)
         return
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"⚠️ <b>Tasdiqlash!</b>\n\n"
         f"<b>{group.name}</b> guruhini ro'yxatdan o'chirishni xohlaysizmi?\n"
         f"Bu amalni qaytarib bo'lmaydi!",
@@ -453,7 +462,7 @@ async def cb_add_start(callback: CallbackQuery, state: FSMContext, db: DatabaseS
     bot_chats = await db.get_bot_chats()
 
     if not bot_chats:
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             "😔 <b>Hali hech bir guruhda yo'q</b>\n\n"
             "Botni guruhlarga qo'shing, keyin shu tugmani bosing.\n\n"
             "Bot guruhga qo'shilganda avtomatik ro'yxat yangilanadi.",
@@ -465,7 +474,7 @@ async def cb_add_start(callback: CallbackQuery, state: FSMContext, db: DatabaseS
     await state.set_state(BulkAddFSM.selecting_groups)
     await state.update_data(selected=[])
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"➕ <b>Guruhlarni tanlang</b>\n\n"
         f"Bot a'zo bo'lgan guruhlar: <b>{len(bot_chats)}</b> ta\n\n"
         f"Qo'shmoqchi bo'lgan guruhlarni belgilang (✅),\n"
@@ -522,7 +531,7 @@ async def fsm_got_type(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(group_type=gtype.value)
     await state.set_state(AddGroupFSM.waiting_audience)
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"✅ Jadval: <b>{label}</b>\n\n"
         f"<b>4/4 — Auditoriya turi</b>\n\n"
         f"Bu guruh kimlar uchun?",
@@ -555,7 +564,7 @@ async def fsm_got_audience(
             chat_id=chat_id, name=name,
             group_type=group_type, audience=audience,
         )
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             f"🎉 <b>Guruh muvaffaqiyatli qo'shildi!</b>\n\n"
             f"📌 Nomi: <b>{group.name}</b>\n"
             f"🆔 Chat ID: <code>{group.chat_id}</code>\n"
@@ -570,7 +579,7 @@ async def fsm_got_audience(
         )
     except Exception as e:
         logger.error(f"FSM saqlash xatosi: {e}")
-        await safe_edit(callback.message, 
+        await safe_edit(callback.message,
             f"❌ <b>Saqlashda xatolik!</b>\n<code>{e}</code>",
             reply_markup=kb_admin_panel(),
         )
@@ -599,7 +608,7 @@ async def cb_select_toggle(callback: CallbackQuery, state: FSMContext, db: Datab
     await state.update_data(selected=list(selected))
 
     bot_chats = await db.get_bot_chats()
-    await safe_edit_markup(callback.message, 
+    await safe_edit_markup(callback.message,
         reply_markup=kb_group_selector(bot_chats, selected)
     )
     await callback.answer()
@@ -611,7 +620,7 @@ async def cb_select_all(callback: CallbackQuery, state: FSMContext, db: Database
     bot_chats = await db.get_bot_chats()
     selected  = {c.chat_id for c in bot_chats}
     await state.update_data(selected=list(selected))
-    await safe_edit_markup(callback.message, 
+    await safe_edit_markup(callback.message,
         reply_markup=kb_group_selector(bot_chats, selected)
     )
     await callback.answer(f"☑️ {len(selected)} ta tanlandi!")
@@ -622,7 +631,7 @@ async def cb_select_none(callback: CallbackQuery, state: FSMContext, db: Databas
     """Tanlashni bekor qilish."""
     bot_chats = await db.get_bot_chats()
     await state.update_data(selected=[])
-    await safe_edit_markup(callback.message, 
+    await safe_edit_markup(callback.message,
         reply_markup=kb_group_selector(bot_chats, set())
     )
     await callback.answer("⬜ Bekor qilindi")
@@ -639,7 +648,7 @@ async def cb_select_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         return
 
     await state.set_state(BulkAddFSM.waiting_type)
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"✅ <b>{len(selected)} ta guruh tanlandi</b>\n\n"
         f"<b>Jadval turi</b>\n\n"
         f"Bu guruhlar qaysi kunlarda dars oladi?",
@@ -661,7 +670,7 @@ async def bulk_got_type(callback: CallbackQuery, state: FSMContext) -> None:
     data  = await state.get_data()
     count = len(data.get("selected", []))
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"✅ Jadval: <b>{label}</b>\n\n"
         f"<b>Auditoriya</b>\n\n"
         f"Bu <b>{count} ta</b> guruh kimlar uchun?",
@@ -716,7 +725,7 @@ async def bulk_got_audience(
     if len(saved_names) > 10:
         names_text += f"\n  ... va yana {len(saved_names)-10} ta"
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"🎉 <b>Guruhlar qo'shildi!</b>\n\n"
         f"📋 Jadval: {type_label}\n"
         f"👥 Auditoriya: {aud_label}\n\n"
@@ -754,7 +763,7 @@ async def cb_quickadd_start(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(chat_id=chat_id, name=title)
     await state.set_state(AddGroupFSM.waiting_type)
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         f"➕ <b>Guruh qo'shilmoqda</b>\n\n"
         f"📌 Nomi: <b>{title}</b>\n"
         f"🆔 Chat ID: <code>{chat_id}</code>\n\n"
@@ -775,7 +784,7 @@ async def cb_quickadd_skip(callback: CallbackQuery) -> None:
     chat_id = int(callback.data.split(":")[2])
     pending_groups.pop(chat_id, None)  # Xotiradan o'chiramiz
 
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         "⏭ <b>O'tkazib yuborildi.</b>\n\n"
         "Kerak bo'lsa paneldan qo'shishingiz mumkin:",
         reply_markup=kb_admin_panel(),
@@ -936,7 +945,7 @@ async def cb_guide_show(callback: CallbackQuery, bot: Bot) -> None:
         fail_msg  = "⚠️ Avval botni ishga tushiring: botga /start yuboring."
 
     mini_app_url = WEBAPP_URL.rstrip("/") + "/student.html"
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
     kb = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text=btn_text, web_app=WebAppInfo(url=mini_app_url)),
     ]])
@@ -962,7 +971,7 @@ async def cb_noop(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "fsm:cancel")
 async def fsm_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await safe_edit(callback.message, 
+    await safe_edit(callback.message,
         "❌ <b>Bekor qilindi.</b>\n\nAdmin panel:",
         reply_markup=kb_admin_panel(),
     )

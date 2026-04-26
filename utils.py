@@ -6,7 +6,6 @@ import hashlib
 import hmac
 import logging
 import secrets
-from typing import Optional
 
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardMarkup, Message
@@ -56,7 +55,7 @@ def verify_secret(stored_value: str, candidate: str) -> bool:
 async def safe_edit(
     message: Message,
     text: str,
-    reply_markup: Optional[InlineKeyboardMarkup] = None,
+    reply_markup: InlineKeyboardMarkup | None = None,
 ) -> None:
     """
     Xabarni tahrirlaydi. Agar matn o'zgarmagan bo'lsa xatolikni e'tiborsiz qoldiradi.
@@ -72,7 +71,7 @@ async def safe_edit(
 
 async def safe_edit_markup(
     message: Message,
-    reply_markup: Optional[InlineKeyboardMarkup] = None,
+    reply_markup: InlineKeyboardMarkup | None = None,
 ) -> None:
     """Faqat reply_markup ni tahrirlaydi."""
     try:

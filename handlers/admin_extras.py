@@ -7,13 +7,12 @@ import logging
 from datetime import datetime, timedelta
 
 import pytz
-
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import BufferedInputFile, CallbackQuery, Message, InlineKeyboardButton
+from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import ADMIN_IDS, SEND_HOUR, SEND_MINUTE, TIMEZONE
@@ -32,7 +31,8 @@ router = Router()
 @router.callback_query(F.data == "admin:stats")
 async def admin_stats(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     students  = await db.get_all_students()
     # Asia/Tashkent vaqti bo'yicha bugungi sana (server UTC da ishlasa ham to'g'ri)
@@ -74,13 +74,14 @@ async def admin_stats(cb: CallbackQuery, db: DatabaseService) -> None:
 @router.callback_query(F.data == "admin:excel_export")
 async def admin_excel_export(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     await cb.answer("⏳ Tayyorlanmoqda...")
 
     try:
         import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.styles import Alignment, Font, PatternFill
 
         students = await db.get_all_students()
         wb = openpyxl.Workbook()
@@ -146,7 +147,8 @@ class BroadcastFSM(StatesGroup):
 @router.callback_query(F.data == "admin:broadcast")
 async def admin_broadcast_start(cb: CallbackQuery, state: FSMContext) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     await state.set_state(BroadcastFSM.waiting_target)
     builder = InlineKeyboardBuilder()
@@ -218,7 +220,8 @@ class AddCredentialFSM(StatesGroup):
 @router.callback_query(F.data == "admin:add_student_cred")
 async def admin_add_cred_start(cb: CallbackQuery, state: FSMContext) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     await state.set_state(AddCredentialFSM.waiting_group)
     try:
         await cb.message.edit_text(
@@ -293,7 +296,8 @@ class TimeFSM(StatesGroup):
 @router.callback_query(F.data == "admin:set_time")
 async def admin_set_time_start(cb: CallbackQuery, state: FSMContext, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     cur_h = await db.get_setting("SEND_HOUR", str(SEND_HOUR))
     cur_m = await db.get_setting("SEND_MINUTE", str(SEND_MINUTE))
@@ -307,7 +311,7 @@ async def admin_set_time_start(cb: CallbackQuery, state: FSMContext, db: Databas
         )
     except TelegramBadRequest:
         await cb.message.answer(
-            f"⏰ Yangi vaqtni kiriting (HH:MM):\n<i>Bekor qilish: /start</i>",
+            "⏰ Yangi vaqtni kiriting (HH:MM):\n<i>Bekor qilish: /start</i>",
         )
     await cb.answer()
 
@@ -343,9 +347,12 @@ async def admin_set_time_save(message: Message, state: FSMContext, db: DatabaseS
 # AVTO XABARLAR BOSHQARUVI
 # ════════════════════════════════════════════════════════════════════════════════
 
-_ICON   = lambda v: "🟢" if v == "1" else "🔴"
-_LBL    = lambda v: "Yoq" if v == "1" else "O'ch"
-_STATE  = lambda v: "yoqildi 🟢" if v == "1" else "o'chirildi 🔴"
+def _icon(v: str) -> str:
+    return "🟢" if v == "1" else "🔴"
+
+
+def _state(v: str) -> str:
+    return "yoqildi 🟢" if v == "1" else "o'chirildi 🔴"
 
 
 # ── Asosiy sahifa ─────────────────────────────────────────────────────────────
@@ -360,25 +367,25 @@ async def _build_main_auto_msg(db: DatabaseService):
     text = (
         "🔔 <b>Avto xabarlar boshqaruvi</b>\n\n"
         f"📅 <b>Kunlar:</b>\n"
-        f"  {_ICON(odd)} Toq kun (Du/Ch/Ju)\n"
-        f"  {_ICON(evn)} Juft kun (Se/Pa/Sh)\n\n"
+        f"  {_icon(odd)} Toq kun (Du/Ch/Ju)\n"
+        f"  {_icon(evn)} Juft kun (Se/Pa/Sh)\n\n"
         f"⚙️ <b>Umumiy:</b>\n"
-        f"  {_ICON(g)} Guruhga kunlik xabar (20:00)\n"
-        f"  {_ICON(s)} O'quvchiga davomat so'rovi\n"
-        f"  {_ICON(c)} Kuratorga eslatma\n\n"
+        f"  {_icon(g)} Guruhga kunlik xabar (20:00)\n"
+        f"  {_icon(s)} O'quvchiga davomat so'rovi\n"
+        f"  {_icon(c)} Kuratorga eslatma\n\n"
         "<i>Alohida guruh/kurator boshqaruvi uchun quyidagi tugmalardan foydalaning.</i>"
     )
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text=f"{_ICON(odd)} Toq kun",  callback_data="auto_msg:day:odd"),
-        InlineKeyboardButton(text=f"{_ICON(evn)} Juft kun", callback_data="auto_msg:day:even"),
+        InlineKeyboardButton(text=f"{_icon(odd)} Toq kun",  callback_data="auto_msg:day:odd"),
+        InlineKeyboardButton(text=f"{_icon(evn)} Juft kun", callback_data="auto_msg:day:even"),
     )
     builder.row(
-        InlineKeyboardButton(text=f"{_ICON(g)} Guruhlar",    callback_data="auto_msg:toggle:groups"),
-        InlineKeyboardButton(text=f"{_ICON(s)} O'quvchilar", callback_data="auto_msg:toggle:students"),
+        InlineKeyboardButton(text=f"{_icon(g)} Guruhlar",    callback_data="auto_msg:toggle:groups"),
+        InlineKeyboardButton(text=f"{_icon(s)} O'quvchilar", callback_data="auto_msg:toggle:students"),
     )
     builder.row(
-        InlineKeyboardButton(text=f"{_ICON(c)} Kuratorlar",  callback_data="auto_msg:toggle:curators"),
+        InlineKeyboardButton(text=f"{_icon(c)} Kuratorlar",  callback_data="auto_msg:toggle:curators"),
     )
     builder.row(
         InlineKeyboardButton(text="📋 Guruhlar alohida →",  callback_data="auto_msg:groups:all"),
@@ -393,7 +400,8 @@ async def _build_main_auto_msg(db: DatabaseService):
 @router.callback_query(F.data == "admin:auto_msg")
 async def admin_auto_msg(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     text, kb = await _build_main_auto_msg(db)
     try:
         await cb.message.edit_text(text, reply_markup=kb)
@@ -407,19 +415,21 @@ async def admin_auto_msg(cb: CallbackQuery, db: DatabaseService) -> None:
 @router.callback_query(F.data.startswith("auto_msg:toggle:"))
 async def admin_auto_msg_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     target = cb.data.split(":")[2]  # groups | students | curators
     key_map   = {"groups": "AUTO_MSG_GROUPS", "students": "AUTO_MSG_STUDENTS", "curators": "AUTO_MSG_CURATORS"}
     label_map = {"groups": "Guruhlar", "students": "O'quvchilar", "curators": "Kuratorlar"}
     setting_key = key_map.get(target)
     if not setting_key:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     cur = await db.get_setting(setting_key, "1")
     new = "0" if cur == "1" else "1"
     await db.set_setting(setting_key, new)
-    await cb.answer(f"{label_map[target]}: {_STATE(new)}", show_alert=True)
+    await cb.answer(f"{label_map[target]}: {_state(new)}", show_alert=True)
 
     text, kb = await _build_main_auto_msg(db)
     try:
@@ -433,7 +443,8 @@ async def admin_auto_msg_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
 @router.callback_query(F.data.startswith("auto_msg:day:"))
 async def admin_auto_msg_day(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     day = cb.data.split(":")[2]  # odd | even
     key = "AUTO_MSG_ODD" if day == "odd" else "AUTO_MSG_EVEN"
@@ -442,7 +453,7 @@ async def admin_auto_msg_day(cb: CallbackQuery, db: DatabaseService) -> None:
     cur = await db.get_setting(key, "1")
     new = "0" if cur == "1" else "1"
     await db.set_setting(key, new)
-    await cb.answer(f"{lbl}: {_STATE(new)}", show_alert=True)
+    await cb.answer(f"{lbl}: {_state(new)}", show_alert=True)
 
     text, kb = await _build_main_auto_msg(db)
     try:
@@ -497,7 +508,7 @@ async def _build_groups_auto_msg(db: DatabaseService, aud_filter: str):
         active_mark = "" if g.is_active else " 🔴"
         builder.row(
             InlineKeyboardButton(
-                text=f"{_ICON(state)} {g.name} ({aud_short}){active_mark}",
+                text=f"{_icon(state)} {g.name} ({aud_short}){active_mark}",
                 callback_data=f"auto_msg:grp:{aud_filter}:{g.name}",
             )
         )
@@ -508,7 +519,8 @@ async def _build_groups_auto_msg(db: DatabaseService, aud_filter: str):
 @router.callback_query(F.data.startswith("auto_msg:groups:"))
 async def admin_auto_msg_groups_page(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     aud_filter = cb.data.split(":")[2]  # all | parent | student
     text, kb = await _build_groups_auto_msg(db, aud_filter)
     try:
@@ -521,18 +533,20 @@ async def admin_auto_msg_groups_page(cb: CallbackQuery, db: DatabaseService) -> 
 @router.callback_query(F.data.startswith("auto_msg:grp:"))
 async def admin_auto_msg_group_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     parts = cb.data.split(":", 3)  # ["auto_msg", "grp", filter, group_name]
     if len(parts) < 4:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     aud_filter, group_name = parts[2], parts[3]
 
     key = f"AUTO_MSG_GROUP:{group_name}"
     cur = await db.get_setting(key, "1")
     new = "0" if cur == "1" else "1"
     await db.set_setting(key, new)
-    await cb.answer(f"'{group_name}': {_STATE(new)}", show_alert=True)
+    await cb.answer(f"'{group_name}': {_state(new)}", show_alert=True)
 
     text, kb = await _build_groups_auto_msg(db, aud_filter)
     try:
@@ -545,6 +559,7 @@ async def admin_auto_msg_group_toggle(cb: CallbackQuery, db: DatabaseService) ->
 
 async def _build_curators_auto_msg(db: DatabaseService):
     from sqlalchemy import select
+
     from database import CuratorSession
 
     async with db.session_factory() as session:
@@ -563,7 +578,7 @@ async def _build_curators_auto_msg(db: DatabaseService):
             last = cs.last_active.strftime("%d.%m %H:%M") if cs.last_active else "—"
             builder.row(
                 InlineKeyboardButton(
-                    text=f"{_ICON(state)} {cs.curator_key} | {last}",
+                    text=f"{_icon(state)} {cs.curator_key} | {last}",
                     callback_data=f"auto_msg:cur:{cs.telegram_id}",
                 )
             )
@@ -574,7 +589,8 @@ async def _build_curators_auto_msg(db: DatabaseService):
 @router.callback_query(F.data == "auto_msg:curators")
 async def admin_auto_msg_curators_page(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
     text, kb = await _build_curators_auto_msg(db)
     try:
         await cb.message.edit_text(text, reply_markup=kb)
@@ -586,14 +602,15 @@ async def admin_auto_msg_curators_page(cb: CallbackQuery, db: DatabaseService) -
 @router.callback_query(F.data.startswith("auto_msg:cur:"))
 async def admin_auto_msg_curator_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     tg_id_str = cb.data.split(":")[2]
     key = f"AUTO_MSG_CURATOR:{tg_id_str}"
     cur = await db.get_setting(key, "1")
     new = "0" if cur == "1" else "1"
     await db.set_setting(key, new)
-    await cb.answer(f"Kurator: {_STATE(new)}", show_alert=True)
+    await cb.answer(f"Kurator: {_state(new)}", show_alert=True)
 
     text, kb = await _build_curators_auto_msg(db)
     try:
@@ -609,7 +626,8 @@ async def admin_auto_msg_curator_toggle(cb: CallbackQuery, db: DatabaseService) 
 @router.callback_query(F.data == "admin:check_activity")
 async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     all_inactive = await db.get_inactive_students(days=7)
 
@@ -665,12 +683,14 @@ async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
 async def student_hw_history(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     student = await db.get_student(cb.from_user.id)
     if not student:
-        await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True); return
+        await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True)
+        return
 
     await db.update_last_active(cb.from_user.id)
     history = await db.get_homework_history(student.group_name, limit=5)
     if not history:
-        await cb.answer("📭 Hozircha uy vazifasi tarixi yo'q.", show_alert=True); return
+        await cb.answer("📭 Hozircha uy vazifasi tarixi yo'q.", show_alert=True)
+        return
 
     await cb.message.answer(
         f"📜 <b>{student.group_name} — Oxirgi {len(history)} ta uy vazifasi:</b>"
@@ -699,7 +719,8 @@ class GroupMsgFSM(StatesGroup):
 @router.callback_query(F.data.startswith("admin:grp_msg:"))
 async def admin_grp_msg_start(cb: CallbackQuery, state: FSMContext) -> None:
     if cb.from_user.id not in ADMIN_IDS:
-        await cb.answer("❌", show_alert=True); return
+        await cb.answer("❌", show_alert=True)
+        return
 
     target = cb.data.split(":")[2]   # "student" | "parent"
     label  = "O'quvchilar guruhlariga" if target == "student" else "Ota-onalar guruhlariga"

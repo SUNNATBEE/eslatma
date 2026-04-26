@@ -9,8 +9,7 @@ from aiohttp import web
 
 def setup_game_routes(app: web.Application, ctx: dict) -> None:
     """O'yin va leaderboard endpointlarini ro'yxatdan o'tkazadi."""
-    bot              = ctx["bot"]
-    db               = ctx["db"]
+    db = ctx["db"]
     _auth            = ctx["auth"]
     _mini_admin_auth = ctx["mini_admin_auth"]
     _notify_level_up = ctx["notify_level_up"]

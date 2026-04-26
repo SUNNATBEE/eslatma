@@ -2,10 +2,8 @@
 keyboards.py — Barcha inline keyboard layoutlari.
 """
 
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from aiogram.types import WebAppInfo
 
 from config import CHANNEL_LINK, WEBAPP_URL
 from database import AudienceType, BotChat, Group, GroupType
@@ -508,7 +506,7 @@ def kb_curator_confirm_end(student_user_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="✅ Ha, yakunlayman",   callback_data=f"cur:end_confirm:{student_user_id}"),
-        InlineKeyboardButton(text="❌ Davom etish",        callback_data=f"cur:end_cancel"),
+        InlineKeyboardButton(text="❌ Davom etish",        callback_data="cur:end_cancel"),
     )
     return builder.as_markup()
 

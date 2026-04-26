@@ -18,7 +18,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from class_schedule import CLASS_SCHEDULE
-from config import SEND_HOUR, SEND_MINUTE, TIMEZONE
+from config import SEND_HOUR, SEND_MINUTE
 from database import AudienceType, DatabaseService, GroupType
 
 # Scheduler global ref (reschedule uchun)
@@ -235,6 +235,7 @@ async def send_daily_reminder_to_group(
     """Admin mini app orqali bitta guruhga test yuborish.
     Returns (message_id, chat_id) on success, None on failure."""
     from sqlalchemy import select
+
     from database import Group
 
     try:
@@ -423,6 +424,7 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
         return
 
     from sqlalchemy import select
+
     from database import CuratorSession
     from keyboards import kb_davomat_start
 
@@ -489,7 +491,8 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
         logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
 
 
-# ─── Kunlik reyting (Leaderboard) — har kuni 14:00 ──────────────────────────
+# ─── Kunlik reyting (Top-10) — rejalashtiruvchida alohida ishga tushirilmaydi;
+#     avtomatik xabar: send_leaderboard_broadcast (haftalik).
 
 _RANK_ICONS = {1: "🥇", 2: "🥈", 3: "🥉", 4: "4️⃣", 5: "5️⃣"}
 
@@ -500,7 +503,8 @@ async def send_daily_leaderboard(
     timezone_str: str,
 ) -> None:
     """
-    Har kuni 14:00 da Top 10 o'quvchilarga reyting xabari yuboradi.
+    (Qo'lda/chaqiruv uchun) Top 10 o'quvchiga reyting xabari.
+    Avtomatik reja: `send_leaderboard_broadcast` (haftasiga 1 marta) ishlatiladi.
     Barcha aktiv STUDENT guruhlarga yuboriladi (ota-ona guruhlari o'tkazib yuboriladi).
     """
     tz       = pytz.timezone(timezone_str)
@@ -527,7 +531,7 @@ async def send_daily_leaderboard(
     top_line = "\n".join(rows)
 
     text = (
-        f"🏆 <b>TOP 10 — Bugungi Reyting</b>\n"
+        f"🏆 <b>TOP 10 — Global reyting</b>\n"
         f"📅 {date_str}\n\n"
         f"{top_line}\n\n"
         f"🔥 Sen ham bu ro'yxatda bo'lishing mumkin!\n"
@@ -559,7 +563,7 @@ async def send_daily_leaderboard(
     logger.info(f"DAILY LEADERBOARD: {ok} guruhga yuborildi, {fail} xato | {date_str}")
 
 
-# ─── Kunlik global reyting broadcast ─────────────────────────────────────────
+# ─── Haftalik global reyting broadcast ──────────────────────────────────────
 
 
 async def send_leaderboard_broadcast(
@@ -569,7 +573,8 @@ async def send_leaderboard_broadcast(
     timezone_str: str,
 ) -> None:
     """
-    Har 2 kunda bir marta barcha aktiv o'quvchi guruhlariga global top-5 reyting yuboradi.
+    Haftasiga 1 marta barcha aktiv o'quvchi guruhlariga global top-5 reyting yuboradi
+    (reja: dushanba 21:05, TIMEZONE).
     Faqat AudienceType.STUDENT guruhlarga yuboriladi (PARENT guruhlar o'tkazib yuboriladi).
     Xabarda botga o'tish tugmasi bo'ladi.
     """
@@ -613,7 +618,7 @@ async def send_leaderboard_broadcast(
     )
 
     text = (
-        f"🚀 <b>Reyting Challenge!</b> — {date_str}\n\n"
+        f"🚀 <b>Haftalik reyting challenge</b> — {date_str}\n\n"
         f"{top_line}\n\n"
         f"👑 Lider: <b>{leader.full_name}</b> — <b>{leader_xp} XP</b>\n"
         f"{gap_text}\n"
@@ -832,16 +837,13 @@ def setup_scheduler(
         misfire_grace_time=300,
     )
 
-    # Global reyting broadcast (har 3 kunda bir marta, 21:05 da)
-    # IntervalTrigger(days=3) — har 3 kunda bir marta ishga tushadi.
-    # Birinchi ishga tushish: start_date ko'rsatilmasa botni qayta ishga
-    # tushirgan vaqtdan boshlanadi, shu bois misfire_grace_time=300 (5 daqiqa).
+    # Global reyting broadcast — haftasiga 1 marta (dushanba 21:05)
     scheduler.add_job(
         func=send_leaderboard_broadcast,
-        trigger=CronTrigger(day="*/2", hour=21, minute=5, timezone=timezone_str),
+        trigger=CronTrigger(day_of_week="mon", hour=21, minute=5, timezone=timezone_str),
         args=[bot, db, webapp_url, timezone_str],
-        id="daily_leaderboard_broadcast",
-        name="2 kunlik global reyting challenge",
+        id="weekly_leaderboard_broadcast",
+        name="Haftalik global reyting (TOP-5)",
         replace_existing=True,
         misfire_grace_time=300,
     )
@@ -873,6 +875,6 @@ def setup_scheduler(
         f"Scheduler sozlandi: "
         f"har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} (dars eslatmasi) + "
         f"har 10 daqiqada dars/davomat eslatmasi + "
-        f"har 2 kunda 21:05 global reyting challenge ({timezone_str})"
+        f"har Dushanba 21:05 haftalik global reyting ({timezone_str})"
     )
     return scheduler

@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
+const { sleep } = require('./fixtures');
 
 const WEBAPP_DIR = path.resolve(__dirname, '..', 'webapp');
 const htmlFiles = ['student.html', 'games.html', 'admin-mini.html', 'curator.html', 'guide.html', 'admin.html'];
@@ -81,7 +82,7 @@ for (const htmlFile of htmlFiles) {
       // Add TG mock before page loads
       await page.addInitScript(TG_MOCK_SCRIPT);
       await page.goto(`file://${filePath.replace(/\\/g, '/')}`);
-      await page.waitForTimeout(2000);
+      await sleep(2000);
 
       // Filter out network-related errors (expected for file:// protocol)
       const realErrors = jsErrors.filter(e =>
@@ -141,11 +142,22 @@ for (const htmlFile of htmlFiles) {
 
       // Dinamik yaratilgan elementlarni filter qilish
       const dynamicPatterns = ['refRegOverlay', 'directRegOverlay', 'gameLimitModal', 'multiRoom_', 'chess_'];
-      const missingIds = referencedIds.filter(id =>
-        !declaredIds.includes(id) &&
-        !dynamicPatterns.some(p => id.startsWith(p)) &&
-        !id.includes('${') // template literal
-      );
+      const studentDynamicIds = new Set([
+        'tWpm', 'tTimer', 'tAcc', 'typingResult', 'typingStartBtn', 'typingInput', 'typingText',
+        'quizCatTabs', 'quizStartBtn', 'quizCard', 'quizInfoRow', 'quizTimerBar', 'quizResult',
+        'qNum', 'qXp', 'quizQ', 'quizOpts', 'qTimer', 'quizTimerFill',
+        'g2048Score', 'g2048Result', 'g2048Board', 'g2048Best',
+        'memMoves', 'memFound', 'memTimer', 'memResult', 'memStartBtn', 'memBoard',
+        'chessStatus', 'chessResult', 'chessBoard',
+        'multiLobby', 'multiGame', 'multiRoomList', 'multiResult', 'multiText', 'multiInput',
+        'mOpName', 'mP1Bar', 'mP2Bar', 'particles-canvas',
+      ]);
+      const missingIds = referencedIds.filter((id) => {
+        if (declaredIds.includes(id) || id.includes('${')) return false;
+        if (dynamicPatterns.some((p) => id.startsWith(p))) return false;
+        if (htmlFile === 'student.html' && studentDynamicIds.has(id)) return false;
+        return true;
+      });
 
       const uniqueMissing = [...new Set(missingIds)];
       if (uniqueMissing.length > 0) {

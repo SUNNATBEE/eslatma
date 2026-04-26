@@ -3,14 +3,14 @@ routes/student_routes.py — Talaba API endpointlari
 Endpointlar: /api/me, /api/student/*, /api/referral/*, /api/chat, /api/class-schedule, /api/public/*
 """
 import asyncio
-import logging
 import json
+import logging
 import re
 from datetime import datetime, timedelta
 
 from aiohttp import web
 
-from config import ADMIN_IDS, CHANNEL_LINK, WEBAPP_URL
+from config import ADMIN_IDS, CHANNEL_LINK
 from utils import is_hashed_secret, verify_secret
 
 logger = logging.getLogger(__name__)
@@ -166,6 +166,7 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
             await _send_notification(bot, admin_id, notify_text, context="attendance:admin")
         try:
             from sqlalchemy import select as sa_select
+
             from database import CuratorSession
             async with db.session_factory() as sess:
                 result = await sess.execute(sa_select(CuratorSession))
@@ -603,6 +604,7 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         import pytz as _pytz
+
         from config import TIMEZONE as _TZ
         _tz = _pytz.timezone(_TZ)
         year_month = datetime.now(_tz).strftime("%Y-%m")
@@ -730,7 +732,12 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         })
         group_info = ""
         if has_group:
-            day_label = "Toq kunlar" if group_day_type == "ODD" else "Juft kunlar" if group_day_type == "EVEN" else group_day_type
+            if group_day_type == "ODD":
+                day_label = "Toq kunlar"
+            elif group_day_type == "EVEN":
+                day_label = "Juft kunlar"
+            else:
+                day_label = group_day_type
             group_info = (
                 f"\n🏫 Guruh vaqti: {group_time}\n"
                 f"📅 Kun turi: {day_label}\n"
@@ -779,6 +786,7 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         if not user_id:
             return web.json_response({"error": "Unauthorized"}, status=401)
         import pytz as _pytz
+
         from config import TIMEZONE as _TZ
         _tz = _pytz.timezone(_TZ)
         today_str = datetime.now(_tz).strftime("%Y-%m-%d")

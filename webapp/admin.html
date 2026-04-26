@@ -759,8 +759,8 @@
         </div>
         <div class="amsg-row">
           <div class="amsg-row-info">
-            <div class="amsg-row-title">🏆 Kunlik reyting xabari</div>
-            <div class="amsg-row-sub">Har kuni soat 21:05 da global reyting top-5</div>
+            <div class="amsg-row-title">🏆 Haftalik reyting xabari</div>
+            <div class="amsg-row-sub">Har dushanba soat 21:05 da global reyting top-5</div>
           </div>
           <label class="toggle"><input type="checkbox" id="amsg-leaderboard" onchange="toggleAmsg('leaderboard',this.checked)"><span class="toggle-slider"></span></label>
         </div>
@@ -1715,20 +1715,6 @@ async function loadInactive() {
     toast('⚠️ ' + e.message);
   } finally {
     btn.disabled = false; btn.textContent = '🔍 Ko\'rish';
-  }
-}
-
-async function doTestSend() {
-  const btn = document.getElementById('testSendBtn');
-  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
-  try {
-    await api('/admin/test-send', { method: 'POST', body: '{}' });
-    toast('🚀 Test xabar yuborilmoqda...');
-    tg?.HapticFeedback?.notificationOccurred('success');
-  } catch (e) {
-    toast('⚠️ ' + e.message);
-  } finally {
-    setTimeout(() => { btn.disabled = false; btn.textContent = '🚀 Test yuborish'; }, 3000);
   }
 }
 

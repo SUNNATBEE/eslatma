@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0a0f1a" />
+  <meta name="theme-color" content="#0c1022" />
   <link rel="manifest" href="/webapp/manifest.json" />
   <title>Mars IT — Shaxsiy Kabinet</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,6 +31,11 @@
       --gold-bright:  #ffd700;
       --success-glow: #10b981;
       --danger-glow:  #ef4444;
+      /* Bolado‘stona premium aksentlar */
+      --candy-pink:   #ff5c9d;
+      --candy-lime:   #c4f538;
+      --candy-amber:  #ffcb47;
+      --candy-sky:    #5eead4;
 
       /* Telegram overrides with space fallbacks */
       --bg:       var(--tg-theme-bg-color,           #0d0d18);
@@ -46,15 +51,18 @@
       --success:  #10b981;
       --warn:     #f59e0b;
       --gold:     #ffd700;
-      --radius:   16px;
-      --radius-sm:12px;
-      --shadow:   0 8px 32px rgba(0,0,0,.6);
+      --radius:   20px;
+      --radius-sm:14px;
+      --shadow:   0 14px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
       --card-border: rgba(0,212,255,.1);
       --glass-bg:    rgba(13,13,24,.75);
       --glass-bg2:   rgba(18,18,31,.8);
       --glow-blue:   0 0 20px rgba(0,212,255,.3);
       --glow-purple: 0 0 20px rgba(139,92,246,.3);
       --glow-gold:   0 0 20px rgba(245,158,11,.3);
+      /* Ripple — JS setProperty orqali yangilanadi */
+      --ripple-x: 50%;
+      --ripple-y: 50%;
     }
 
     /* Light theme overrides */
@@ -88,10 +96,12 @@
       content: '';
       position: fixed; inset: 0; z-index: -2;
       background:
-        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,212,255,.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,92,246,.12) 0%, transparent 60%),
-        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(245,158,11,.05) 0%, transparent 70%),
-        var(--space-base);
+        radial-gradient(ellipse 70% 45% at 12% -5%, rgba(255,92,157,.14) 0%, transparent 55%),
+        radial-gradient(ellipse 65% 50% at 88% 8%, rgba(196,245,56,.1) 0%, transparent 50%),
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,212,255,.13) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,92,246,.14) 0%, transparent 60%),
+        radial-gradient(ellipse 45% 38% at 50% 55%, rgba(255,203,71,.06) 0%, transparent 65%),
+        linear-gradient(180deg, #070a12 0%, #0c1022 45%, #0a0818 100%);
       pointer-events: none;
     }
     :root.theme-light body::before {
@@ -106,12 +116,14 @@
       content: '';
       position: fixed; inset: 0; z-index: -1;
       background-image:
+        radial-gradient(circle 4px at 12% 22%, rgba(255,92,157,.45) 0%, transparent 100%),
+        radial-gradient(circle 3px at 78% 12%, rgba(196,245,56,.5) 0%, transparent 100%),
         radial-gradient(circle 3px at 15% 25%, rgba(0,212,255,.4) 0%, transparent 100%),
         radial-gradient(circle 2px at 75% 15%, rgba(139,92,246,.5) 0%, transparent 100%),
-        radial-gradient(circle 4px at 85% 70%, rgba(0,212,255,.3) 0%, transparent 100%),
-        radial-gradient(circle 2px at 25% 80%, rgba(245,158,11,.4) 0%, transparent 100%),
+        radial-gradient(circle 4px at 85% 70%, rgba(94,234,212,.35) 0%, transparent 100%),
+        radial-gradient(circle 2px at 25% 80%, rgba(255,203,71,.45) 0%, transparent 100%),
         radial-gradient(circle 3px at 60% 40%, rgba(139,92,246,.35) 0%, transparent 100%);
-      animation: floatOrbs 15s ease-in-out infinite alternate;
+      animation: floatOrbs 18s ease-in-out infinite alternate;
       pointer-events: none;
     }
     :root.theme-light body::after { opacity: .4; }
@@ -345,14 +357,27 @@
     .page.active { display: block; animation: pageSlideIn .18s ease; }
     @keyframes pageSlideIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
-    /* ── Motivatsion banner ── */
-    .motiv-banner { background:linear-gradient(135deg,rgba(82,136,193,.15),rgba(76,175,125,.1));
-      border:1px solid rgba(82,136,193,.25); border-radius:var(--radius-sm); padding:10px 14px;
-      margin-bottom:10px; display:flex; align-items:center; gap:10px;
-      animation:motivFadeIn .4s ease; }
+    /* ── Motivatsion banner (bolado‘stona + premium) ── */
+    .motiv-banner {
+      background: linear-gradient(105deg,
+        rgba(255,92,157,.14) 0%,
+        rgba(196,245,56,.1) 32%,
+        rgba(0,212,255,.12) 65%,
+        rgba(139,92,246,.1) 100%);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: motivFadeIn .45s ease;
+      box-shadow: 0 8px 28px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.06);
+    }
     @keyframes motivFadeIn { from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);} }
-    .motiv-icon { font-size:22px; flex-shrink:0; }
-    .motiv-text { font-size:13px; font-weight:600; color:var(--text); line-height:1.4; }
+    .motiv-icon { font-size: 26px; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,.25)); animation: motivWiggle 2.4s ease-in-out infinite; }
+    @keyframes motivWiggle { 0%,100%{transform:rotate(0);} 22%{transform:rotate(-7deg);} 44%{transform:rotate(6deg);} 66%{transform:rotate(-4deg);} }
+    .motiv-text { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.45; }
 
     /* ── Skeleton loader ── */
     .skeleton { background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.12) 50%,rgba(255,255,255,.06) 75%);
@@ -366,8 +391,18 @@
     @keyframes flamePulse { 0%,100%{transform:scale(1);}50%{transform:scale(1.3);} }
 
     .section-title {
-      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
-      color: var(--sub); margin: 0 0 8px 4px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-transform: none;
+      margin: 16px 0 10px 0;
+      padding: 7px 14px;
+      display: inline-block;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(255,92,157,.14), rgba(196,245,56,.1), rgba(0,212,255,.12));
+      border: 1px solid rgba(255,255,255,.1);
+      color: #e8ecff;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
     }
 
     /* ── Card ── */
@@ -406,45 +441,90 @@
 
     /* ── Mood row ── */
     .mood-row {
-      background: var(--bg2); border-radius: var(--radius-sm);
-      padding: 12px 14px; margin-bottom: 12px;
-      display: flex; align-items: center; gap: 10px;
-      border: 1px solid rgba(255,255,255,.05);
+      background: linear-gradient(145deg, rgba(32,36,58,.95), rgba(20,24,42,.92));
+      border-radius: var(--radius-sm);
+      padding: 14px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 6px 22px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.05);
     }
     .mood-label { font-size: 12px; color: var(--sub); flex: 1; }
     .mood-btns  { display: flex; gap: 6px; }
     .mood-btn {
-      width: 38px; height: 38px; border-radius: 50%; border: 2px solid transparent;
-      background: rgba(255,255,255,.06); font-size: 20px;
-      cursor: pointer; transition: transform .12s, border-color .15s;
-      -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.08);
+      background: linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.03));
+      font-size: 22px;
+      cursor: pointer;
+      transition: transform .15s, border-color .2s, box-shadow .2s;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
     }
-    .mood-btn:active { transform: scale(.9); }
-    .mood-btn.active { border-color: var(--accent); background: rgba(82,136,193,.2); }
+    .mood-btn:active { transform: scale(.88); }
+    .mood-btn.active {
+      border-color: transparent;
+      background: linear-gradient(145deg, rgba(255,92,157,.25), rgba(0,212,255,.2));
+      box-shadow: 0 0 0 2px rgba(196,245,56,.45), 0 8px 20px rgba(0,212,255,.2);
+    }
 
     /* ── Stats strip ── */
     .stats-strip {
       display: flex; gap: 8px; margin-bottom: 12px;
     }
     .stat-chip {
-      flex: 1; background: var(--bg2); border-radius: var(--radius-sm);
-      padding: 10px 8px; text-align: center;
-      border: 1px solid rgba(255,255,255,.05);
+      flex: 1;
+      background: linear-gradient(165deg, rgba(30,34,54,.98), rgba(18,22,38,.95));
+      border-radius: var(--radius-sm);
+      padding: 12px 8px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
     }
-    .stat-chip .sc-icon  { font-size: 18px; }
+    .stat-chip:nth-child(1) { border-top: 3px solid var(--gold-bright); }
+    .stat-chip:nth-child(2) { border-top: 3px solid #fb923c; }
+    .stat-chip:nth-child(3) { border-top: 3px solid var(--candy-sky); }
+    .stat-chip:nth-child(4) { border-top: 3px solid var(--candy-lime); }
+    .stat-chip .sc-icon  { font-size: 20px; }
     .stat-chip .sc-val   { font-size: 15px; font-weight: 800; margin-top: 1px; }
     .stat-chip .sc-label { font-size: 9px; color: var(--sub); text-transform: uppercase; letter-spacing: .4px; margin-top: 1px; }
 
     /* ── Menu grid ── */
     .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .menu-card {
-      background: var(--bg2); border-radius: var(--radius); padding: 14px 12px;
-      cursor: pointer; transition: transform .12s, opacity .12s;
-      -webkit-tap-highlight-color: transparent; user-select: none;
-      border: 1px solid rgba(255,255,255,.05);
+      background: linear-gradient(165deg, rgba(32,36,58,.98), rgba(20,24,42,.95));
+      border-radius: var(--radius);
+      padding: 16px 14px;
+      cursor: pointer;
+      transition: transform .14s, opacity .14s, box-shadow .25s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow: 0 8px 26px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.06);
+      position: relative;
+      overflow: hidden;
     }
-    .menu-card:active { transform: scale(.96); opacity: .85; }
-    .menu-card .mc-icon  { font-size: 24px; margin-bottom: 5px; }
+    .menu-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--candy-pink), var(--candy-lime), var(--electric), var(--neon));
+      opacity: .9;
+      border-radius: var(--radius) var(--radius) 0 0;
+      pointer-events: none;
+    }
+    .menu-card:active { transform: scale(.96); opacity: .92; }
+    .menu-card .mc-icon  { font-size: 28px; margin-bottom: 6px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.3)); }
     .menu-card .mc-label { font-size: 13px; font-weight: 600; }
     .menu-card .mc-sub   { font-size: 11px; color: var(--sub); margin-top: 2px; }
 
@@ -1237,14 +1317,17 @@
       opacity: 1;
     }
 
-    /* ── Daily challenge widget ── */
+    /* ── Daily challenge widget (mini-quest) ── */
     .daily-challenge {
-      background: var(--bg2); border-radius: var(--radius-sm);
-      padding: 13px 14px; margin-bottom: 12px;
-      border: 1px solid var(--card-border);
+      background: linear-gradient(125deg, rgba(36,20,52,.92), rgba(18,28,48,.95) 50%, rgba(12,40,42,.88));
+      border-radius: var(--radius-sm);
+      padding: 14px 15px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(255,255,255,.1);
+      box-shadow: 0 10px 32px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.07);
     }
     .dc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .dc-title { font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; flex: 1; }
+    .dc-title { font-size: 12px; font-weight: 800; color: #c7d2fe; letter-spacing: .04em; flex: 1; }
     .dc-xp-badge {
       font-size: 11px; font-weight: 800;
       background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -1531,11 +1614,17 @@
     }
     .stat-chip {
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-      border: 1px solid rgba(255,255,255,.08);
+      border-width: 3px 1px 1px;
+      border-style: solid;
+      border-color: rgba(255,255,255,.08);
+      border-top-color: var(--gold-bright);
       padding: 12px 8px;
       border-radius: 18px;
       transform-style: preserve-3d;
     }
+    .stat-chip:nth-child(2) { border-top-color: #fb923c; }
+    .stat-chip:nth-child(3) { border-top-color: var(--candy-sky); }
+    .stat-chip:nth-child(4) { border-top-color: var(--candy-lime); }
     .stat-chip .sc-val {
       font-family: 'Orbitron', sans-serif;
       font-size: 16px;
@@ -1553,13 +1642,14 @@
       overflow: hidden;
       transform-style: preserve-3d;
     }
-    .menu-card::after {
+    #page-home .menu-card::after {
       content: "";
       position: absolute;
       inset: auto -30% -55% auto;
       width: 120px;
       height: 120px;
-      background: radial-gradient(circle, rgba(0,212,255,.16), transparent 64%);
+      background: radial-gradient(circle, rgba(255,92,157,.12), transparent 55%),
+        radial-gradient(circle, rgba(0,212,255,.14), transparent 64%);
       pointer-events: none;
     }
     .mc-icon {
@@ -1572,14 +1662,19 @@
         inset 0 1px 0 rgba(255,255,255,.1);
     }
     .tabbar {
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
-      background: rgba(11,16,28,.84);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      box-shadow: 0 -8px 30px rgba(0,0,0,.18);
+      padding: 8px 4px calc(env(safe-area-inset-bottom, 0px) + 6px);
+      border-radius: 22px 22px 0 0;
+      margin-top: 2px;
+      background: linear-gradient(180deg, rgba(22,28,48,.94), rgba(10,14,26,.98));
+      border-top: 1px solid rgba(255,255,255,.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 -14px 44px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
     }
+    .tab-item .tab-icon { font-size: 22px; line-height: 1; }
     .tab-item.active {
-      text-shadow: 0 0 14px rgba(0,212,255,.38);
+      color: #fff;
+      text-shadow: 0 0 16px rgba(0,212,255,.45), 0 0 28px rgba(255,92,157,.2);
     }
     :root.theme-light #app {
       background:
@@ -1610,6 +1705,11 @@
     :root.theme-light .hero-action,
     :root.theme-light .hero-metric {
       background: rgba(255,255,255,.66);
+      border-color: rgba(15,23,42,.08);
+    }
+    :root.theme-light .section-title {
+      color: #0f172a;
+      background: linear-gradient(135deg, rgba(236,72,153,.12), rgba(163,230,53,.1), rgba(14,165,233,.1));
       border-color: rgba(15,23,42,.08);
     }
     @media (hover:hover) {
@@ -1669,19 +1769,19 @@
     <!-- ═════════════════════════ HOME PAGE ═════════════════════════ -->
     <div class="page active" id="page-home">
       <section class="hero-shell premium-panel" id="heroShell">
-        <div class="hero-kicker">MARS IT MINI APP</div>
+        <div class="hero-kicker">⭐ MARS IT — sening orbitang</div>
         <div class="hero-grid">
           <div class="hero-copy">
-            <h1 class="hero-title"><strong id="heroName">Yuklanmoqda</strong> uchun yangi orbit</h1>
-            <p class="hero-sub" id="heroSubtitle">Har bir check-in, vazifa va o'yin sizni top reyting sari yaqinlashtiradi.</p>
+            <h1 class="hero-title"><strong id="heroName">Yuklanmoqda</strong>, xush kelibsiz!</h1>
+            <p class="hero-sub" id="heroSubtitle">Vazifalar, o‘yinlar va XP — hammasi bir joyda. Bugun qaysi yulduzcha bo‘lasan?</p>
             <div class="hero-actions">
               <button class="hero-action" onclick="goPage('progress')">
-                <strong>Mening natijam</strong>
-                <span>XP, daraja, streak</span>
+                <strong>⭐ XP va darajam</strong>
+                <span>Streak va yutuqlar</span>
               </button>
               <button class="hero-action" onclick="goPage('group-lb')">
-                <strong>Reytingni ochish</strong>
-                <span>Guruh ichida holatingiz</span>
+                <strong>🏆 Guruh reytingi</strong>
+                <span>Qayerda ekaningni ko‘r</span>
               </button>
             </div>
           </div>
@@ -2513,6 +2613,17 @@ if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color'); }
 const INIT_DATA = tg?.initData || '';
 const BASE_URL  = window.location.origin;
 
+/** Foydalanuvchi / API matnini HTML ga xavfsiz qo‘yish (innerHTML uchun). */
+function escHtml(s) {
+  if (s == null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── Sound System ────────────────────────────────────────────────────────────
 let _soundOn = localStorage.getItem('soundOn') !== 'false';
 let _ac = null;
@@ -2674,7 +2785,7 @@ async function loadReferral() {
     } else {
       el.innerHTML = '<div style="color:#7eb8f7;font-weight:600;margin-bottom:8px;">Taklif qilinganlar (' + list.length + '):</div>' +
         list.map(p => `<div style="background:#1e2a3a;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="color:#fff;font-weight:600;">${p.name}</div><div style="color:#666;font-size:12px;">${p.joined_at}</div></div>
+          <div><div style="color:#fff;font-weight:600;">${escHtml(p.name)}</div><div style="color:#666;font-size:12px;">${escHtml(p.joined_at)}</div></div>
           <div style="padding:4px 10px;border-radius:20px;font-size:12px;background:${p.status==='approved'?'#1b4f1b':p.status==='rejected'?'#4f1b1b':'#2a2a00'};color:${p.status==='approved'?'#4CAF50':p.status==='rejected'?'#f44336':'#ffd700'};">${p.status==='approved'?'✅ Qabul':p.status==='rejected'?'❌ Rad':'⏳ Kutilmoqda'}</div>
         </div>`).join('');
     }
@@ -2701,6 +2812,7 @@ if (_refCode) {
 function showReferralRegForm(refCode) {
   const overlay = document.createElement('div');
   overlay.id = 'refRegOverlay';
+  overlay.dataset.refCode = refCode || '';
   overlay.style.cssText = 'position:fixed;inset:0;background:#0a0f1a;z-index:9000;overflow:auto;padding:20px;';
   overlay.innerHTML = `
     <h2 style="color:#fff;text-align:center;margin-bottom:8px;">🎉 Do'stingiz taklifi</h2>
@@ -2711,11 +2823,15 @@ function showReferralRegForm(refCode) {
       <input id="refLocation" placeholder="Turar joyi (shahar/tuman)" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-sizing:border-box;font-size:15px;">
       <input id="refInterests" placeholder="Qiziqishlari (IT, matematika, ...)" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-sizing:border-box;font-size:15px;">
       <input id="refPhone" placeholder="Telefon: +998901234567" style="width:100%;background:#1e2a3a;border:1px solid #2a3a4a;color:#fff;border-radius:10px;padding:14px;margin-bottom:20px;box-sizing:border-box;font-size:15px;">
-      <button onclick="submitRefReg('${refCode}')" style="width:100%;background:linear-gradient(135deg,#4CAF50,#2196F3);color:#fff;border:none;border-radius:12px;padding:16px;font-size:17px;font-weight:700;cursor:pointer;">✅ Ro'yxatdan o'tish</button>
-      <button onclick="document.getElementById('refRegOverlay').remove()" style="width:100%;background:transparent;color:#666;border:none;padding:12px;font-size:14px;cursor:pointer;margin-top:8px;">Bekor qilish</button>
+      <button type="button" id="refRegSubmitBtn" style="width:100%;background:linear-gradient(135deg,#4CAF50,#2196F3);color:#fff;border:none;border-radius:12px;padding:16px;font-size:17px;font-weight:700;cursor:pointer;">✅ Ro'yxatdan o'tish</button>
+      <button type="button" id="refRegCancelBtn" style="width:100%;background:transparent;color:#666;border:none;padding:12px;font-size:14px;cursor:pointer;margin-top:8px;">Bekor qilish</button>
     </div>
   `;
   document.body.appendChild(overlay);
+  document.getElementById('refRegSubmitBtn')?.addEventListener('click', () => {
+    submitRefReg(overlay.dataset.refCode || '');
+  });
+  document.getElementById('refRegCancelBtn')?.addEventListener('click', () => overlay.remove());
 }
 
 async function submitRefReg(refCode) {
@@ -3204,8 +3320,8 @@ function renderClassCard(info) {
   el.innerHTML = `
     <div class="class-card">
       <div class="class-card-label">${t('class.today')}</div>
-      <div class="class-card-time">${info.class_time}</div>
-      <div class="class-card-group">📚 ${info.group_name}</div>
+      <div class="class-card-time">${escHtml(info.class_time)}</div>
+      <div class="class-card-group">📚 ${escHtml(info.group_name)}</div>
       ${statusHtml}
     </div>`;
 }
@@ -3408,12 +3524,12 @@ function renderProgress(prog, lb, glb, mlb) {
     return leaders.map(s => {
       const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
       const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
-      const grpBadge = s.group_name ? ` · <span style="color:var(--sub)">${s.group_name}</span>` : '';
+      const grpBadge = s.group_name ? ` · <span style="color:var(--sub)">${escHtml(s.group_name)}</span>` : '';
       const clickable = !s.is_me ? `onclick="openStudentProfile(${JSON.stringify(s)})"` : '';
       return `<div class="lb-item ${s.is_me ? 'is-me' : 'lb-row-clickable'}" ${clickable}>
         <div class="lb-rank ${rankCls}">${rankIcon}</div>
         <div class="lb-info">
-          <div class="lb-name">${s.full_name}${s.is_me ? ' 👈' : ''}</div>
+          <div class="lb-name">${escHtml(s.full_name)}${s.is_me ? ' 👈' : ''}</div>
           <div class="lb-sub">Lv.${s.level}${grpBadge} · 🔥${s.streak}</div>
         </div>
         <div class="lb-xp">${s.xp} XP</div>
@@ -3428,12 +3544,12 @@ function renderProgress(prog, lb, glb, mlb) {
     return leaders.map(s => {
       const rankCls  = s.rank === 1 ? 'gold' : s.rank === 2 ? 'silver' : s.rank === 3 ? 'bronze' : '';
       const rankIcon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank;
-      const grpBadge = s.group_name ? ` · <span style="color:var(--sub)">${s.group_name}</span>` : '';
+      const grpBadge = s.group_name ? ` · <span style="color:var(--sub)">${escHtml(s.group_name)}</span>` : '';
       const clickable = !s.is_me ? `onclick="openStudentProfile(${JSON.stringify(s)})"` : '';
       return `<div class="lb-item ${s.is_me ? 'is-me' : 'lb-row-clickable'}" ${clickable}>
         <div class="lb-rank ${rankCls}">${rankIcon}</div>
         <div class="lb-info">
-          <div class="lb-name">${s.full_name}${s.is_me ? ' 👈' : ''}</div>
+          <div class="lb-name">${escHtml(s.full_name)}${s.is_me ? ' 👈' : ''}</div>
           <div class="lb-sub">Lv.${s.level}${grpBadge}</div>
         </div>
         <div class="lb-xp">${s.monthly_xp || 0} XP</div>
@@ -3458,11 +3574,11 @@ function renderProgress(prog, lb, glb, mlb) {
   // Podium (top 3)
   function podiumCol(s, pcls, crown) {
     if (!s) return `<div class="podium-col ${pcls}"><div class="podium-av" style="background:rgba(255,255,255,.08)">—</div></div>`;
-    const av = s.avatar ? s.avatar : s.full_name.charAt(0).toUpperCase();
+    const avRaw = s.avatar ? String(s.avatar) : (s.full_name ? String(s.full_name).charAt(0).toUpperCase() : '?');
     return `<div class="podium-col ${pcls}">
       <div class="podium-crown">${crown}</div>
-      <div class="podium-av">${av}</div>
-      <div class="podium-name">${s.full_name}${s.is_me ? ' 👈' : ''}</div>
+      <div class="podium-av">${escHtml(avRaw)}</div>
+      <div class="podium-name">${escHtml(s.full_name)}${s.is_me ? ' 👈' : ''}</div>
       <div class="podium-xp">${s.xp} XP</div>
     </div>`;
   }
@@ -3487,7 +3603,7 @@ function renderProgress(prog, lb, glb, mlb) {
       <div class="level-card-num">${curLvl}</div>
       <div style="position:relative; z-index:1">
         <div class="level-card-label">${lvlIcon} ${curLvl}-${_lang==='ru'?'ур.':'daraja'}</div>
-        <div class="level-card-name">${lvlName}</div>
+        <div class="level-card-name">${escHtml(lvlName)}</div>
         ${curLvl === 7 ? `<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:3px">👑 ${_lang==='ru'?'МАКС УРОВЕНЬ — LEGEND!':'MAX DARAJA — LEGEND!'}</div>` : ''}
         ${xpBarHtml}
       </div>
@@ -3599,13 +3715,14 @@ async function loadGameLeaderboard(gameType) {
       const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
       const rankCls  = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
       const isMe = s.user_id === myId;
-      const av = s.avatar || (s.full_name ? s.full_name.charAt(0).toUpperCase() : '?');
+      const avRaw = s.avatar || (s.full_name ? String(s.full_name).charAt(0).toUpperCase() : '?');
+      const av = escHtml(avRaw);
       return `<div class="lb-item-game ${isMe ? 'is-me' : ''}">
         <div class="lb-rank ${rankCls}" style="min-width:28px;text-align:center;font-size:${rank<=3?'18':'14'}px;font-weight:800">${rankIcon}</div>
         <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0">${av}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.full_name}${isMe ? ' 👈' : ''}</div>
-          ${s.group_name ? `<div style="font-size:11px;color:var(--sub)">${s.group_name}</div>` : ''}
+          <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.full_name)}${isMe ? ' 👈' : ''}</div>
+          ${s.group_name ? `<div style="font-size:11px;color:var(--sub)">${escHtml(s.group_name)}</div>` : ''}
         </div>
         <div class="lb-score">${s.score} ${scoreLabel[gameType] || ''}</div>
       </div>`;
@@ -3633,7 +3750,7 @@ async function loadHistory() {
       <div class="hist-item">
         <div class="hist-icon">📚</div>
         <div class="hist-meta">
-          <div class="hist-date">${item.sent_at}</div>
+          <div class="hist-date">${escHtml(item.sent_at)}</div>
           <div class="hist-num">#${data.items.length - i} ${t('hist.item.num')}</div>
         </div>
       </div>`).join('');
@@ -4004,8 +4121,8 @@ function applyLang() {
   const hdrGroup = document.getElementById('hdrGroup');
   if (heroSubtitle && hdrGroup && hdrGroup.textContent && hdrGroup.textContent !== '—') {
     heroSubtitle.textContent = _lang === 'ru'
-      ? `Современный личный кабинет для группы ${hdrGroup.textContent}: прогресс, рейтинг и центр заданий.`
-      : `${hdrGroup.textContent} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
+      ? `Группа ${hdrGroup.textContent}: задания, игры и XP — каждый день можно стать чуть круче!`
+      : `${hdrGroup.textContent} guruhi: vazifalar, o‘yinlar va XP — har kuni ozgina yutuq!`;
   }
 }
 
@@ -4763,8 +4880,8 @@ async function multiJoinList() {
     if (!rooms.length) { list.innerHTML = '<p style="text-align:center;color:var(--sub)">Ochiq xona yo\'q</p>'; return; }
     list.innerHTML = rooms.map(r =>
       `<div class="room-card">
-        <div class="room-av">${(r.player1_name||'?')[0]}</div>
-        <div><div style="font-weight:700;font-size:13px">${r.player1_name||'?'}</div><div style="font-size:11px;color:var(--sub)">Xona #${r.id}</div></div>
+        <div class="room-av">${escHtml((r.player1_name || '?')[0])}</div>
+        <div><div style="font-weight:700;font-size:13px">${escHtml(r.player1_name || '?')}</div><div style="font-size:11px;color:var(--sub)">Xona #${r.id}</div></div>
         <button class="room-join-btn" onclick="multiJoin(${r.id})">Qo'shilish</button>
       </div>`
     ).join('');
@@ -4906,21 +5023,18 @@ async function pollChat() {
 }
 
 function renderChatMsg(m) {
+  const fn = m.full_name ? String(m.full_name) : '';
   const av = m.avatar
-    ? `<div class="chat-av">${m.avatar}</div>`
-    : `<div class="chat-av" style="font-size:13px;font-weight:800">${m.full_name.charAt(0).toUpperCase()}</div>`;
+    ? `<div class="chat-av">${escHtml(m.avatar)}</div>`
+    : `<div class="chat-av" style="font-size:13px;font-weight:800">${fn ? escHtml(fn.charAt(0).toUpperCase()) : '?'}</div>`;
   return `<div class="chat-msg${m.is_me ? ' mine' : ''}">
     ${av}
     <div class="chat-bubble">
-      <div class="chat-bubble-name">${m.full_name} <span class="chat-bubble-grp">${m.group_name}</span></div>
+      <div class="chat-bubble-name">${escHtml(m.full_name)} <span class="chat-bubble-grp">${escHtml(m.group_name)}</span></div>
       <div class="chat-bubble-text">${escHtml(m.text)}</div>
-      <div class="chat-bubble-time">${m.time}</div>
+      <div class="chat-bubble-time">${escHtml(m.time)}</div>
     </div>
   </div>`;
-}
-
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 async function sendChatMessage() {
@@ -4969,7 +5083,7 @@ async function init() {
     const heroName = document.getElementById('heroName');
     const heroSubtitle = document.getElementById('heroSubtitle');
     if (heroName) heroName.textContent = me.full_name;
-    if (heroSubtitle) heroSubtitle.textContent = `${me.group_name} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
+    if (heroSubtitle) heroSubtitle.textContent = `${me.group_name} guruhi: vazifalar, o‘yinlar va XP — har kuni ozgina yutuq!`;
     document.getElementById('statAttend').textContent = '—';
 
     if (student.phone_number) {
@@ -5073,7 +5187,7 @@ async function init() {
       showRegPage();
     } else {
       document.getElementById('hdrName').textContent  = "Xatolik";
-      classEl.innerHTML = `<div class='empty'><div class='empty-icon'>⚠️</div><div class='empty-text'>${e.message || 'Xatolik yuz berdi'}</div></div>`;
+      classEl.innerHTML = `<div class='empty'><div class='empty-icon'>⚠️</div><div class='empty-text'>${escHtml(e.message || 'Xatolik yuz berdi')}</div></div>`;
     }
   }
 }
@@ -5234,21 +5348,25 @@ async function submitDirectReg() {
   const phone       = document.getElementById('drPhone').value.trim();
 
   if (!fullName || !age || !location || !interests || !phone) {
-    showDirectRegError("Barcha majburiy maydonlarni to'ldiring"); return;
+    showDirectRegError("Barcha majburiy maydonlarni to'ldiring");
+    return;
   }
   if (!phone.match(/^\+998\d{9}$/)) {
-    showDirectRegError('Telefon format: +998901234567'); return;
+    showDirectRegError('Telefon format: +998901234567');
+    return;
   }
   if (_hasGroup) {
     const groupTime   = document.getElementById('drGroupTime').value.trim();
     const teacherName = document.getElementById('drTeacherName').value.trim();
     if (!groupTime || !_selectedDayType || !teacherName) {
-      showDirectRegError("Guruh ma'lumotlarini to'liq kiriting"); return;
+      showDirectRegError("Guruh ma'lumotlarini to'liq kiriting");
+      return;
     }
   }
 
   const btn = document.getElementById('directRegBtn');
-  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
+  btn.disabled = true;
+  btn.textContent = '⏳ Yuborilmoqda...';
   showDirectRegError('');
 
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -5272,7 +5390,12 @@ async function submitDirectReg() {
       body: JSON.stringify(body),
     });
     const d = await r.json();
-    if (!r.ok) { showDirectRegError(d.error || 'Xatolik'); btn.disabled = false; btn.textContent = '✅ Ariza topshirish'; return; }
+    if (!r.ok) {
+      showDirectRegError(d.error || 'Xatolik');
+      btn.disabled = false;
+      btn.textContent = '✅ Ariza topshirish';
+      return;
+    }
     tg?.HapticFeedback?.notificationOccurred('success');
     document.getElementById('directRegForm').style.display = 'none';
     document.getElementById('directRegPending').style.display = 'block';
@@ -5332,7 +5455,7 @@ async function loadGroupLeaderboard() {
       return `<div class="lb-item lb-item-sm ${s.is_me ? 'is-me' : ''}">
         <div class="lb-rank ${rankCls}">${rankIcon}</div>
         <div class="lb-info">
-          <div class="lb-name">${s.full_name}${sizBadge}</div>
+          <div class="lb-name">${escHtml(s.full_name)}${sizBadge}</div>
           <div class="lb-sub">Lv.${s.level} · 🔥${s.streak}</div>
         </div>
         <div class="lb-xp">${s.xp} XP</div>
@@ -5378,8 +5501,8 @@ function initPremiumUi() {
   if (heroName && hdrName && hdrName.textContent) heroName.textContent = hdrName.textContent;
   if (heroSubtitle && hdrGroup && hdrGroup.textContent) {
     heroSubtitle.textContent = _lang === 'ru'
-      ? `Современный личный кабинет для группы ${hdrGroup.textContent}: прогресс, рейтинг и центр заданий.`
-      : `${hdrGroup.textContent} guruhi uchun zamonaviy shaxsiy kabinet: progress, reyting va challenge markazi.`;
+      ? `Группа ${hdrGroup.textContent}: задания, игры и XP — каждый день можно стать чуть круче!`
+      : `${hdrGroup.textContent} guruhi: vazifalar, o‘yinlar va XP — har kuni ozgina yutuq!`;
   }
 
   // 3D Tilt effect for all interactive cards (mobile + desktop)
@@ -5521,6 +5644,8 @@ function initParticles() {
   if (canvas) return;
   canvas = document.createElement('canvas');
   canvas.id = 'particles-canvas';
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none';
   document.body.insertBefore(canvas, document.body.firstChild);
   const ctx = canvas.getContext('2d');
   let w, h, particles = [];

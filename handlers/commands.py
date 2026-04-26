@@ -45,7 +45,9 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
     deep_link = message.text.split(maxsplit=1)[1] if message.text and " " in message.text else ""
     if deep_link.startswith("ref_"):
         ref_user_id = deep_link[4:].strip()
-        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo as WAI
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+        from aiogram.types import WebAppInfo as WAI
+
         from config import WEBAPP_URL as _WA
         if _WA and ref_user_id.isdigit() and int(ref_user_id) != user_id:
             ref_url = f"{_WA.rstrip('/')}/webapp/student.html?ref={ref_user_id}"
@@ -72,7 +74,9 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
             return
 
     if deep_link == "leaderboard":
-        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo as WAI
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+        from aiogram.types import WebAppInfo as WAI
+
         from config import WEBAPP_URL as _WA
         if _WA:
             markup = InlineKeyboardMarkup(inline_keyboard=[[
@@ -107,7 +111,9 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
         return
 
     # O'quvchi — faqat Mini App tugmasi
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo as WAI
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    from aiogram.types import WebAppInfo as WAI
+
     from config import WEBAPP_URL as _WA
 
     student = await db.get_student(user_id)
@@ -396,10 +402,10 @@ async def cmd_chatid(message: Message, db: DatabaseService) -> None:
     chats = await db.get_bot_chats()
     if not chats:
         await message.answer(
-            f"📭 <b>Hali hech bir guruh saqlanmagan.</b>\n\n"
-            f"Guruh Chat ID sini olish uchun:\n"
-            f"1️⃣ Har bir guruhda <code>/chatid</code> yozing\n"
-            f"2️⃣ <b>YOKI</b> guruhdan istalgan xabarni shu botga <b>forward</b> qiling"
+            "📭 <b>Hali hech bir guruh saqlanmagan.</b>\n\n"
+            "Guruh Chat ID sini olish uchun:\n"
+            "1️⃣ Har bir guruhda <code>/chatid</code> yozing\n"
+            "2️⃣ <b>YOKI</b> guruhdan istalgan xabarni shu botga <b>forward</b> qiling"
         )
         return
 

@@ -7,18 +7,18 @@ Jadvallar:
 
 import logging
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, Integer, String, delete, select, update, DateTime, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String, UniqueConstraint, delete, select, update
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.sql import func
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.sql import func
 
 from utils import hash_secret
 
@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 
 # ─── Enumlar ──────────────────────────────────────────────────────────────────
 
-class GroupType(str, Enum):
-    ODD  = "ODD"   # Toq kunliklar  (1, 3, 5 ...)
+class GroupType(StrEnum):
+    ODD = "ODD"  # Toq kunliklar  (1, 3, 5 ...)
     EVEN = "EVEN"  # Juft kunliklar (2, 4, 6 ...)
 
 
-class AudienceType(str, Enum):
+class AudienceType(StrEnum):
     PARENT  = "PARENT"   # Ota-onalar guruhi
     STUDENT = "STUDENT"  # O'quvchilar guruhi
 
@@ -81,7 +81,7 @@ class Group(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Oxirgi yuborilgan xabar ID (o'chirish uchun)
-    last_message_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    last_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     def __repr__(self) -> str:
         return (
@@ -98,19 +98,19 @@ class Student(Base):
 
     id:                 Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
     user_id:            Mapped[int]           = mapped_column(BigInteger, unique=True, nullable=False)
-    telegram_username:  Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    telegram_username:  Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name:          Mapped[str]           = mapped_column(String(255), nullable=False)
     mars_id:            Mapped[str]           = mapped_column(String(50),  nullable=False)
     group_name:         Mapped[str]           = mapped_column(String(50),  nullable=False)
-    phone_number:       Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)
+    phone_number:       Mapped[str | None] = mapped_column(String(20),  nullable=True)
     registered_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
-    last_active:        Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_active:        Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # ── Gamification ──────────────────────────────────────────────────────────
     xp:               Mapped[int]           = mapped_column(Integer, default=0,  nullable=False, server_default="0")
     level:            Mapped[int]           = mapped_column(Integer, default=1,  nullable=False, server_default="1")
     streak_days:      Mapped[int]           = mapped_column(Integer, default=0,  nullable=False, server_default="0")
-    last_streak_date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    avatar_emoji:     Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    last_streak_date: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    avatar_emoji:     Mapped[str | None] = mapped_column(String(20), nullable=True)
     game_wins:        Mapped[int]           = mapped_column(Integer, default=0, nullable=False, server_default="0")
     xp_notice_seen:   Mapped[bool]          = mapped_column(Boolean, default=True, nullable=False, server_default="1")
 
@@ -148,7 +148,7 @@ class AttendanceRecord(Base):
     user_id:    Mapped[int]           = mapped_column(BigInteger, nullable=False)
     date_str:   Mapped[str]           = mapped_column(String(20),  nullable=False)  # "2026-03-16"
     status:     Mapped[str]           = mapped_column(String(20),  nullable=False)  # "yes"/"no"
-    reason:     Mapped[Optional[str]] = mapped_column(String(500), nullable=True)   # Kelmaslik sababi
+    reason:     Mapped[str | None] = mapped_column(String(500), nullable=True)   # Kelmaslik sababi
     created_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
 
@@ -212,7 +212,7 @@ class CuratorSession(Base):
     telegram_id:  Mapped[int]           = mapped_column(BigInteger, primary_key=True)
     curator_key:  Mapped[str]           = mapped_column(String(50),  nullable=False)
     logged_in_at: Mapped[datetime]      = mapped_column(DateTime, nullable=False)
-    last_active:  Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_active:  Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 # ─── Model: Faol kurator-o'quvchi chat ────────────────────────────────────────
@@ -236,7 +236,7 @@ class ButtonStat(Base):
 
     button_name: Mapped[str]           = mapped_column(String(100), primary_key=True)
     count:       Mapped[int]           = mapped_column(Integer, default=0, nullable=False)
-    last_used:   Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_used:   Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 # ─── Model: Qo'shimcha o'quvchi credentials ───────────────────────────────────
@@ -289,7 +289,7 @@ class ChatMessage(Base):
     user_id:    Mapped[int]           = mapped_column(BigInteger, nullable=False)
     full_name:  Mapped[str]           = mapped_column(String(255), nullable=False)
     group_name: Mapped[str]           = mapped_column(String(50),  nullable=False)
-    avatar:     Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)
+    avatar:     Mapped[str | None] = mapped_column(String(20),  nullable=True)
     text:       Mapped[str]           = mapped_column(String(1000), nullable=False)
     created_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
@@ -316,15 +316,15 @@ class GameRoom(Base):
     game_type:    Mapped[str]           = mapped_column(String(30), nullable=False)  # typing_race
     player1_id:   Mapped[int]           = mapped_column(BigInteger, nullable=False)
     player1_name: Mapped[str]           = mapped_column(String(255), nullable=False)
-    player2_id:   Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    player2_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    player2_id:   Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    player2_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status:       Mapped[str]           = mapped_column(String(20), default="waiting")  # waiting/active/finished
-    text_passage: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    text_passage: Mapped[str | None] = mapped_column(String(500), nullable=True)
     p1_progress:  Mapped[int]           = mapped_column(Integer, default=0)
     p2_progress:  Mapped[int]           = mapped_column(Integer, default=0)
     p1_finished:  Mapped[bool]          = mapped_column(Boolean, default=False)
     p2_finished:  Mapped[bool]          = mapped_column(Boolean, default=False)
-    winner_id:    Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    winner_id:    Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_at:   Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
 
@@ -340,7 +340,7 @@ class GamePlayCount(Base):
     game_type:      Mapped[str]               = mapped_column(String(30), nullable=False)
     date_str:       Mapped[str]               = mapped_column(String(20), nullable=False)  # eski mos. kaliti
     play_count:     Mapped[int]               = mapped_column(Integer, default=0)
-    last_played_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_played_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 # ─── Model: Referal o'quvchi ──────────────────────────────────────────────────
@@ -352,25 +352,26 @@ class ReferralStudent(Base):
     id:                Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
     referrer_user_id:  Mapped[int]           = mapped_column(BigInteger, nullable=False, index=True)
     # referrer_user_id=0 → to'g'ridan-to'g'ri ariza (referral yo'q)
-    telegram_user_id:  Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, unique=True)
+    telegram_user_id:  Mapped[int | None] = mapped_column(BigInteger, nullable=True, unique=True)
     full_name:         Mapped[str]           = mapped_column(String(255), nullable=False)
     age:               Mapped[str]           = mapped_column(String(10),  nullable=False)
     location:          Mapped[str]           = mapped_column(String(255), nullable=False)
     interests:         Mapped[str]           = mapped_column(String(500), nullable=False)
     phone:             Mapped[str]           = mapped_column(String(20),  nullable=False)
-    status:            Mapped[str]           = mapped_column(String(20),  default="pending")  # pending/approved/rejected
-    group_name:        Mapped[Optional[str]] = mapped_column(String(50),  nullable=True)
+    # pending / approved / rejected
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    group_name:        Mapped[str | None] = mapped_column(String(50),  nullable=True)
     xp_awarded:        Mapped[bool]          = mapped_column(Boolean, default=False)
     created_at:        Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
     # Yangi fieldlar: rad etish sababi + guruh ma'lumotlari
-    reject_reason:     Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    reject_reason:     Mapped[str | None] = mapped_column(String(500), nullable=True)
     registration_type: Mapped[str]           = mapped_column(String(20),  default="direct", server_default="direct")
     # registration_type: "referral" (taklif orqali) | "direct" (mustaqil ariza)
     has_group:         Mapped[bool]          = mapped_column(Boolean, default=False, server_default="0")
-    group_time:        Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)
-    group_day_type:    Mapped[Optional[str]] = mapped_column(String(10),  nullable=True)   # ODD/EVEN
-    teacher_name:      Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    mars_id:           Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)   # Tasdiqlangandan keyin
+    group_time:        Mapped[str | None] = mapped_column(String(20),  nullable=True)
+    group_day_type:    Mapped[str | None] = mapped_column(String(10),  nullable=True)   # ODD/EVEN
+    teacher_name:      Mapped[str | None] = mapped_column(String(100), nullable=True)
+    mars_id:           Mapped[str | None] = mapped_column(String(20),  nullable=True)   # Tasdiqlangandan keyin
 
 
 # ─── Model: Admin profili ─────────────────────────────────────────────────────
@@ -383,7 +384,7 @@ class AdminProfile(Base):
     display_name: Mapped[str]           = mapped_column(String(255), nullable=False)
     avatar_emoji: Mapped[str]           = mapped_column(String(20),  default="👨‍💼")
     created_at:   Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
-    last_active:  Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_active:  Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
@@ -399,9 +400,12 @@ LEVEL_UP_BONUS: dict[int, int] = {
 
 def _apply_xp_multiplier(level: int, amount: int) -> int:
     """Darajaga qarab XP multiplier: 6+=2x, 10+=3x, 15+=4x."""
-    if level >= 15: return amount * 4
-    if level >= 10: return amount * 3
-    if level >= 6:  return amount * 2
+    if level >= 15:
+        return amount * 4
+    if level >= 10:
+        return amount * 3
+    if level >= 6:
+        return amount * 2
     return amount
 
 
@@ -446,7 +450,7 @@ def _level_name(level: int) -> str:
     return _names.get(level, "O'quvchi")
 
 
-def _next_level_xp(current_level: int) -> Optional[int]:
+def _next_level_xp(current_level: int) -> int | None:
     """Keyingi daraja uchun kerakli minimal XP."""
     for min_xp, lvl, _ in XP_LEVELS:
         if lvl == current_level + 1:
@@ -569,7 +573,7 @@ class DatabaseService:
             result = await session.execute(
                 select(Group).where(Group.chat_id == chat_id)
             )
-            existing: Optional[Group] = result.scalar_one_or_none()
+            existing: Group | None = result.scalar_one_or_none()
 
             if existing:
                 existing.name       = name
@@ -637,7 +641,7 @@ class DatabaseService:
             )
             return list(result.scalars().all())
 
-    async def get_group_by_chat_id(self, chat_id: int) -> Optional[Group]:
+    async def get_group_by_chat_id(self, chat_id: int) -> Group | None:
         async with self.session_factory() as session:
             result = await session.execute(
                 select(Group).where(Group.chat_id == chat_id)
@@ -690,11 +694,11 @@ class DatabaseService:
     async def register_student(
         self,
         user_id: int,
-        telegram_username: Optional[str],
+        telegram_username: str | None,
         full_name: str,
         mars_id: str,
         group_name: str,
-        phone_number: Optional[str] = None,
+        phone_number: str | None = None,
     ) -> tuple["Student", bool]:
         """Yangi o'quvchi qo'shadi yoki mavjudini yangilaydi.
 
@@ -903,7 +907,7 @@ class DatabaseService:
     # ── ATTENDANCE ─────────────────────────────────────────────────────────────
 
     async def save_attendance(
-        self, user_id: int, date_str: str, status: str, reason: Optional[str] = None
+        self, user_id: int, date_str: str, status: str, reason: str | None = None
     ) -> None:
         async with self.session_factory() as session:
             existing = await session.execute(
@@ -1335,7 +1339,7 @@ class DatabaseService:
                 session.add(DailyMood(user_id=user_id, date_str=date_str, mood=mood))
             await session.commit()
 
-    async def get_mood(self, user_id: int, date_str: str) -> Optional[str]:
+    async def get_mood(self, user_id: int, date_str: str) -> str | None:
         """Berilgan kunning kayfiyatini qaytaradi."""
         async with self.session_factory() as session:
             result = await session.execute(
@@ -1458,7 +1462,7 @@ class DatabaseService:
 
     async def add_chat_message(
         self, user_id: int, full_name: str, group_name: str,
-        avatar: Optional[str], text: str,
+        avatar: str | None, text: str,
     ) -> "ChatMessage":
         """Yangi chat xabari qo'shadi."""
         async with self.session_factory() as session:
@@ -1506,7 +1510,8 @@ class DatabaseService:
 
     async def get_game_global_scores(self, game_type: str, limit: int = 10) -> list:
         """Global top score list for a game."""
-        from sqlalchemy import func as sqlfunc, desc
+        from sqlalchemy import desc
+        from sqlalchemy import func as sqlfunc
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GameScore.user_id, sqlfunc.max(GameScore.score).label("best"))
@@ -1645,9 +1650,9 @@ class DatabaseService:
     def _cooldown_seconds_left(last_played_at) -> int:
         """last_played_at dan beri 3 soatlik blok qolgan soniyalari.
         last_played_at — DB dan kelgan naive datetime (UTC sifatida saqlanadi)."""
-        import time as _time
         import calendar as _cal
         import datetime as _dt
+        import time as _time
         if last_played_at is None:
             return 0
         if not isinstance(last_played_at, _dt.datetime):
@@ -1682,7 +1687,8 @@ class DatabaseService:
     async def increment_play_in_window(self, user_id: int, game_type: str) -> dict:
         """O'yin tugaganda last_played_at ni hozirgi vaqtga yangilaydi."""
         import datetime as _dt
-        now = _dt.datetime.utcnow()
+
+        now = _dt.datetime.now(_dt.UTC).replace(tzinfo=None)
         async with self.session_factory() as session:
             result = await session.execute(
                 select(GamePlayCount).where(
@@ -1768,7 +1774,7 @@ class DatabaseService:
             await session.refresh(rs)
             return rs
 
-    async def get_referral_students(self, status: Optional[str] = None) -> list["ReferralStudent"]:
+    async def get_referral_students(self, status: str | None = None) -> list["ReferralStudent"]:
         """Referal o'quvchilarni qaytaradi (ixtiyoriy holat filteri)."""
         from sqlalchemy import desc
         async with self.session_factory() as session:
@@ -1977,7 +1983,7 @@ class DatabaseService:
 
     # ── STUDENT PROGRESS HELPER ─────────────────────────────────────────────────
 
-    async def get_student_progress(self, user_id: int) -> Optional[dict]:
+    async def get_student_progress(self, user_id: int) -> dict | None:
         """O'quvchining joriy XP va daraja ma'lumotlarini qaytaradi."""
         async with self.session_factory() as session:
             result = await session.execute(select(Student).where(Student.user_id == user_id))
@@ -2010,8 +2016,9 @@ class DatabaseService:
 
     async def get_monthly_leaderboard(self, year_month: str, limit: int = 50) -> list[dict]:
         """Oy bo'yicha o'quvchilar reytingi — o'sha oyda topilgan XP (game_scores dan)."""
-        from sqlalchemy import func as sqlfunc
         import calendar
+
+        from sqlalchemy import func as sqlfunc
         # Oyning birinchi va oxirgi kunini hisoblash
         year, month = int(year_month.split("-")[0]), int(year_month.split("-")[1])
         _, last_day = calendar.monthrange(year, month)
@@ -2110,7 +2117,7 @@ class DatabaseService:
         """Oxirgi N kun uchun davomat foizi."""
         from datetime import date, timedelta
         today = date.today()
-        students_count = len((await self.get_all_students()))
+        students_count = len(await self.get_all_students())
         result = []
         day_names = ["Yak", "Dush", "Sesh", "Chor", "Pay", "Juma", "Shan"]
         for i in range(days - 1, -1, -1):
@@ -2138,7 +2145,7 @@ class DatabaseService:
             result = await session.execute(
                 select(Student).where(
                     Student.last_streak_date != today_str,
-                    Student.user_id != None,
+                    Student.user_id.is_not(None),
                 )
             )
             return list(result.scalars().all())

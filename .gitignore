@@ -7,6 +7,11 @@ curators.json
 __pycache__/
 *.py[cod]
 *.pyo
+.ruff_cache/
+.pytest_cache/
+
+# Vaqtinchalik test papkasi (test_secrets_loader)
+tests/_tmp/
 
 # Virtual environment
 venv/

@@ -4,6 +4,7 @@ config.py — Barcha muhit o'zgaruvchilari shu yerda joylashgan.
 """
 
 import os
+
 from dotenv import load_dotenv
 
 # .env faylini yuklaymiz

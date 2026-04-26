@@ -103,7 +103,7 @@ async def student_ask_send(message: Message, state: FSMContext, db: DatabaseServ
     )
 
     # Adminga yuborish
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    from aiogram.types import InlineKeyboardButton
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
     builder = InlineKeyboardBuilder()

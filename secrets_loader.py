@@ -20,7 +20,10 @@ def load_json_mapping(
     """JSON mappingni env ichidan yoki lokal fayldan yuklaydi."""
     inline_json = os.getenv(env_json_key, "").strip()
     if inline_json:
-        payload = json.loads(inline_json)
+        try:
+            payload = json.loads(inline_json)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"{env_json_key} yaroqsiz JSON: {e}") from e
         if not isinstance(payload, dict):
             raise ValueError(f"{env_json_key} dict bo'lishi kerak")
         return payload
@@ -36,7 +39,10 @@ def load_json_mapping(
         )
         return {}
 
-    payload = json.loads(file_path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(file_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise ValueError(f"{file_path} yaroqsiz JSON: {e}") from e
     if not isinstance(payload, dict):
         raise ValueError(f"{file_path} dict bo'lishi kerak")
     return payload

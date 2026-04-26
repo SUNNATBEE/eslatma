@@ -65,6 +65,7 @@ async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot
     # Faol kuratorlarga ham bildiramiz
     try:
         from sqlalchemy import select
+
         from database import CuratorSession
         async with db.session_factory() as db_sess:
             result = await db_sess.execute(select(CuratorSession))
@@ -157,6 +158,7 @@ async def handle_absence_reason(
     # Faol kuratorlarga
     try:
         from sqlalchemy import select
+
         from database import CuratorSession
         async with db.session_factory() as session:
             result = await session.execute(select(CuratorSession))

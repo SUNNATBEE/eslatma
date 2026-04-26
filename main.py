@@ -20,20 +20,18 @@ import logging
 import os
 import sys
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 
-from aiohttp import web
+import pytz
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
-import pytz
+from aiohttp import web
 
-import secrets
-from config import ADMIN_IDS, MINI_ADMIN_IDS, MINI_ADMIN_LOGINS, BOT_TOKEN, DATABASE_URL, PORT, TIMEZONE, WEBAPP_URL
-from curator_credentials import CURATORS
-from database import DatabaseService, GroupType
+from config import ADMIN_IDS, BOT_TOKEN, DATABASE_URL, MINI_ADMIN_IDS, PORT, TIMEZONE, WEBAPP_URL
+from database import DatabaseService
 from handlers import (
     admin_extras_router,
     attendance_router,
@@ -46,7 +44,6 @@ from handlers import (
 )
 from middleware import ButtonTrackingMiddleware, CallbackAnswerMiddleware, DatabaseMiddleware, TypingMiddleware
 from scheduler import setup_scheduler
-
 
 # ─── Logging sozlash ─────────────────────────────────────────────────────────
 
@@ -133,12 +130,14 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Init-Data"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         return response
 
     # ── Level-up bildirishnoma ────────────────────────────────────────────────
     async def _notify_level_up(user_id: int, new_level: int) -> None:
         """O'quvchiga level oshganda xabar yuboradi; Lv.7 da adminni xabardor qiladi."""
-        from database import _level_name, LEVEL_UP_BONUS
+        from database import LEVEL_UP_BONUS, _level_name
         PERK_TEXT = {
             2: "💬 Chat ochildi + 🎨 Emoji avatar!",
             3: "⭐ Streak bonuslar 2x kuchaydi!",
@@ -197,7 +196,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         sess  = _mini_sessions.get(token)
         if not sess:
             return None
-        if datetime.utcnow() > sess["expires"]:
+        if datetime.now(UTC) > sess["expires"]:
             del _mini_sessions[token]
             return None
         return sess["username"]
@@ -217,10 +216,10 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
 
     # ── Route setup ──────────────────────────────────────────────────────────
 
-    from routes.student_routes import setup_student_routes
+    from routes.admin_routes import setup_admin_routes
     from routes.curator_routes import setup_curator_routes
-    from routes.admin_routes   import setup_admin_routes
-    from routes.game_routes    import setup_game_routes
+    from routes.game_routes import setup_game_routes
+    from routes.student_routes import setup_student_routes
 
     ctx = {
         "bot":             bot,
@@ -243,20 +242,31 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     setup_game_routes(app, ctx)
 
     async def options_handler(request: web.Request) -> web.Response:
-        return web.Response(status=204, headers={
-            "Access-Control-Allow-Origin":  "*",
-            "Access-Control-Allow-Headers": "Content-Type, X-Init-Data",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        })
+        return web.Response(
+            status=204,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type, X-Init-Data",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "X-Content-Type-Options": "nosniff",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+            },
+        )
 
     webapp_dir = os.path.join(os.path.dirname(__file__), "webapp")
     app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
     if os.path.isdir(webapp_dir):
         app.router.add_static("/webapp", webapp_dir, show_index=True)
+        def _html_file_handler(file_path: str):
+            async def _handler(_request: web.Request) -> web.FileResponse:
+                return web.FileResponse(file_path)
+
+            return _handler
+
         for _fname in ["student.html", "admin.html", "admin-mini.html", "curator.html", "guide.html", "games.html"]:
             _fpath = os.path.join(webapp_dir, _fname)
             if os.path.isfile(_fpath):
-                app.router.add_get(f"/{_fname}", lambda r, p=_fpath: web.FileResponse(p))
+                app.router.add_get(f"/{_fname}", _html_file_handler(_fpath))
     return app
 
 

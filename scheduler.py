@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 import pytz
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -650,7 +650,7 @@ async def check_homework_prompt(
         if quick_url:
             kb = InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text="📝 Vazifani hozir qo'shish", url=quick_url)],
+                    [InlineKeyboardButton(text="📝 Vazifani hozir qo'shish", web_app=WebAppInfo(url=quick_url))],
                 ]
             )
 

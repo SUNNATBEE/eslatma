@@ -13,8 +13,8 @@ body { background: #0a0f1a; color: #fff; font-family: -apple-system, BlinkMacSys
 .lang-btn { background: #1e2a3a; border: none; color: #aaa; border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
 .content { padding: 16px; padding-bottom: 80px; }
 /* Bottom Nav */
-.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111827; border-top: 1px solid #1e2a3a; display: flex; z-index: 100; }
-.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 4px 10px; cursor: pointer; border: none; background: none; color: #555; font-size: 9px; gap: 3px; transition: color 0.2s; position: relative; }
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111827; border-top: 1px solid #1e2a3a; display: flex; z-index: 100; overflow-x: auto; }
+.nav-item { flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; padding: 8px 4px 10px; cursor: pointer; border: none; background: none; color: #555; font-size: 9px; gap: 3px; transition: color 0.2s; position: relative; }
 .nav-item.active { color: #2196F3; }
 .nav-item .icon { font-size: 20px; }
 .nav-badge { position: absolute; top: 4px; right: calc(50% - 16px); background: #f44336; color: #fff; border-radius: 10px; font-size: 9px; padding: 1px 5px; font-weight: 700; }
@@ -181,6 +181,9 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
   <button class="nav-item" onclick="showTab('settings')" id="nav_settings">
     <span class="icon">⚙️</span><span id="nav_settings_lbl">Sozlama</span>
   </button>
+  <button class="nav-item" onclick="showTab('homework')" id="nav_homework">
+    <span class="icon">📝</span><span id="nav_homework_lbl">Vazifa</span>
+  </button>
 </div>
 
 <!-- Bottom Sheet Overlay -->
@@ -232,7 +235,7 @@ const T = {
   uz: {
     dashboard: 'Bosh sahifa', students: "O'quvchilar", groups: 'Guruhlar',
     attendance: 'Davomat', leaderboard: 'Reyting', curators: 'Kuratorlar',
-    referral: 'Arizalar', settings: 'Sozlamalar',
+    referral: 'Arizalar', settings: 'Sozlamalar', homework: 'Vazifalar',
     total_students: 'Jami o\'quvchilar', today_present: 'Bugun keldi',
     today_absent: 'Kelmadi', today_pending: 'Kutilmoqda',
     search_placeholder: 'Ism yoki Mars ID bo\'yicha qidirish...',
@@ -267,7 +270,7 @@ const T = {
   ru: {
     dashboard: 'Главная', students: 'Ученики', groups: 'Группы',
     attendance: 'Посещаемость', leaderboard: 'Рейтинг', curators: 'Кураторы',
-    referral: 'Заявки', settings: 'Настройки',
+    referral: 'Заявки', settings: 'Настройки', homework: 'Задания',
     total_students: 'Всего учеников', today_present: 'Сегодня пришли',
     today_absent: 'Не пришли', today_pending: 'Ожидается',
     search_placeholder: 'Поиск по имени или Mars ID...',
@@ -317,6 +320,7 @@ function updateNavLabels() {
   document.getElementById('nav_curators_lbl').textContent = t('curators').substring(0,7);
   document.getElementById('nav_referral_lbl').textContent = t('referral').substring(0,7);
   document.getElementById('nav_settings_lbl').textContent = t('settings').substring(0,7);
+  document.getElementById('nav_homework_lbl').textContent = t('homework').substring(0,7);
 }
 
 // ── Auth Token (parol login) ──────────────────────────────────────────────────
@@ -338,10 +342,18 @@ async function api(path, opts = {}) {
       headers: { ..._authHeaders(), ...(opts.headers || {}) },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
-    if (res.status === 401) { showLoginPage(); return {}; }
-    try { return await res.json(); } catch(e) { return { error: 'Server xatosi' }; }
+    let data = {};
+    try { data = await res.json(); } catch(e) { data = { error: 'Server xatosi' }; }
+    if (res.status === 401) {
+      showLoginPage();
+      return { ok: false, error: data.error || 'Unauthorized', code: data.code || 'unauthorized' };
+    }
+    if (!res.ok) {
+      return { ok: false, error: data.error || 'Server xatosi', code: data.code || 'http_error', status: res.status };
+    }
+    return data;
   } catch(e) {
-    return { error: 'Tarmoq xatosi' };
+    return { ok: false, error: 'Tarmoq xatosi', code: 'network_error' };
   }
 }
 
@@ -430,6 +442,7 @@ function closeSheet() {
 let _currentTab = 'dashboard';
 let _adminProfile = null;
 let _studentsData = [], _groupsData = [], _attData = {}, _lbData = [], _curatorData = [], _refData = [];
+let _hwTasks = [], _hwFilterGroup = 'all', _hwFilterStatus = 'all', _hwTodayGroups = [], _hwSelectedIds = [], _hwOnlyToday = false;
 
 function showTab(tab, force = false) {
   if (_currentTab === tab && !force) return;
@@ -453,6 +466,7 @@ async function renderTab(tab) {
       case 'curators':    await renderCurators(); break;
       case 'referral':    await renderReferral(); break;
       case 'settings':    await renderSettings(); break;
+      case 'homework':    await renderHomework(); break;
     }
   } catch(e) {
     console.error('Tab render xatosi [' + tab + ']:', e);
@@ -471,13 +485,19 @@ async function renderDashboard() {
     api('/api/admin/profile'),
     api('/api/admin/stats'),
   ]);
-  _adminProfile = profile;
-  document.getElementById('headerAvatar').textContent = profile.avatar_emoji || '👨‍💼';
-  document.getElementById('headerTitle').textContent = profile.display_name || 'Admin';
+  if (profile?.ok === false) throw new Error(profile.error || "Profilni yuklab bo'lmadi");
+  if (stats?.ok === false) throw new Error(stats.error || "Statistikani yuklab bo'lmadi");
 
-  const pct = stats.total_students > 0
-    ? Math.round((stats.today_present / stats.total_students) * 100) : 0;
-  const pendingRef = profile.referral_pending || 0;
+  _adminProfile = profile || {};
+  document.getElementById('headerAvatar').textContent = (profile && profile.avatar_emoji) || '👨‍💼';
+  document.getElementById('headerTitle').textContent = (profile && profile.display_name) || 'Admin';
+
+  const totalStudents = Number(stats?.total_students || 0);
+  const presentCount = Number(stats?.today_present || 0);
+  const absentCount = Number(stats?.today_absent || 0);
+  const pendingCount = Number(stats?.today_pending || Math.max(0, totalStudents - presentCount - absentCount));
+  const pct = totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
+  const pendingRef = Number((profile && profile.referral_pending) || 0);
   if (pendingRef > 0) {
     const badge = document.getElementById('refBadge');
     badge.textContent = pendingRef;
@@ -492,26 +512,26 @@ async function renderDashboard() {
     </div>
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-num">${stats.total_students || 0}</div>
+        <div class="stat-num">${totalStudents}</div>
         <div class="stat-label">${t('total_students')}</div>
       </div>
       <div class="stat-card" style="border-color:#1b4f1b;">
-        <div class="stat-num" style="color:#4CAF50;">${stats.today_present || 0}</div>
+        <div class="stat-num" style="color:#4CAF50;">${presentCount}</div>
         <div class="stat-label">${t('today_present')}</div>
       </div>
       <div class="stat-card" style="border-color:#4f1b1b;">
-        <div class="stat-num" style="color:#f44336;">${stats.today_absent || 0}</div>
+        <div class="stat-num" style="color:#f44336;">${absentCount}</div>
         <div class="stat-label">${t('today_absent')}</div>
       </div>
       <div class="stat-card" style="border-color:#2a2a00;">
-        <div class="stat-num" style="color:#ffd700;">${stats.today_pending || 0}</div>
+        <div class="stat-num" style="color:#ffd700;">${pendingCount}</div>
         <div class="stat-label">${t('today_pending')}</div>
       </div>
     </div>
     <div class="card">
       <div class="card-title">📈 Bugungi davomat</div>
       <div style="display:flex;justify-content:space-between;font-size:13px;color:#aaa;margin-bottom:6px;">
-        <span>${t('att_present')}: ${stats.today_present || 0}</span>
+        <span>${t('att_present')}: ${presentCount}</span>
         <span>${pct}%</span>
       </div>
       <div class="progress-bar">
@@ -532,6 +552,9 @@ async function renderDashboard() {
         </button>
         <button class="action-btn" onclick="showBroadcastSheet()">
           <span class="ab-icon">📢</span><span>Xabar yuborish</span>
+        </button>
+        <button class="action-btn" onclick="showTemplateSheet()">
+          <span class="ab-icon">📚</span><span>Shablonlar</span>
         </button>
       </div>
     </div>
@@ -1150,9 +1173,10 @@ async function confirmRejectRef(id) {
 // ── Settings ──────────────────────────────────────────────────────────────────
 let _reminderH = 20, _reminderM = 0;
 async function renderSettings() {
-  const [profile, reminder] = await Promise.all([
+  const [profile, reminder, sys] = await Promise.all([
     api('/api/admin/profile').catch(() => ({})),
     api('/api/admin/reminder-time').catch(() => ({})),
+    api('/api/admin/system-status').catch(() => ({})),
   ]);
   _reminderH = reminder?.hour ?? 20;
   _reminderM = reminder?.minute ?? 0;
@@ -1212,6 +1236,16 @@ async function renderSettings() {
       <div style="color:#aaa;font-size:13px;margin-bottom:12px;">Batafsil sozlamalar uchun Admin Panel ni oching.</div>
       <button class="btn btn-ghost" onclick="window.open('/admin.html','_blank')">🔗 Admin Panel ochish</button>
     </div>
+    <div class="card">
+      <div class="card-title">🧾 Audit log (oxirgi 20)</div>
+      <div id="auditLogsBox" style="color:#aaa;font-size:12px;">Yuklanmoqda...</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🧠 Trigger holati (scheduler)</div>
+      <div id="jobStatusBox" style="color:#aaa;font-size:12px;">
+        ${renderJobStatus(sys)}
+      </div>
+    </div>
     <!-- Guide -->
     <div class="card">
       <div class="card-title">📖 ${lang==='uz'?'Qo\'llanma':'Инструкция'}</div>
@@ -1238,6 +1272,21 @@ async function renderSettings() {
       </div>
     </div>
   `;
+  loadAuditLogs();
+}
+
+function renderJobStatus(sys) {
+  const jobs = sys?.scheduler?.jobs || {};
+  const keys = Object.keys(jobs);
+  if (!keys.length) return 'Scheduler job holati topilmadi';
+  return keys.map(k => {
+    const j = jobs[k] || {};
+    const ok = j.ok ? '✅' : '⚠️';
+    return `<div style="padding:6px 0;border-bottom:1px solid #1f2937;">
+      <b>${ok} ${k}</b><br>
+      <span style="color:#6b7280;">${j.updated_at || ''} ${j.details ? '• '+j.details : ''}</span>
+    </div>`;
+  }).join('');
 }
 async function saveAdminProfile() {
   const displayName = document.getElementById('displayNameInput')?.value.trim();
@@ -1292,6 +1341,212 @@ async function doQuickBroadcast() {
   else showToast('❌ ' + (r.error || t('error')));
 }
 
+async function showTemplateSheet() {
+  const r = await api('/api/admin/message-templates');
+  const list = r.templates || [];
+  if (!list.length) { showToast('❌ Shablon topilmadi'); return; }
+  openSheet(`
+    <div style="display:grid;gap:8px;">
+      ${list.map(x => `
+        <button class="btn btn-outline" onclick="useTemplate('${(x.text||'').replace(/'/g, "\\'")}')">
+          ${x.label}
+        </button>
+      `).join('')}
+    </div>
+  `, '📚 Tezkor shablonlar');
+}
+
+function useTemplate(text) {
+  closeSheet();
+  setTimeout(() => {
+    showBroadcastSheet();
+    setTimeout(() => {
+      const el = document.getElementById('bcText');
+      if (el) el.value = text || '';
+    }, 120);
+  }, 160);
+}
+
+async function loadAuditLogs() {
+  const box = document.getElementById('auditLogsBox');
+  if (!box) return;
+  const r = await api('/api/admin/audit-logs');
+  const logs = (r.logs || []).slice(0, 20);
+  if (!logs.length) { box.textContent = 'Loglar yo‘q'; return; }
+  box.innerHTML = logs.map(x => `
+    <div style="padding:6px 0;border-bottom:1px solid #1f2937;">
+      <b>${x.action}</b> ${x.target ? '— '+x.target : ''}<br>
+      <span style="color:#6b7280;">${x.created_at || ''} ${x.details ? '• '+x.details : ''}</span>
+    </div>
+  `).join('');
+}
+
+// ── Homework Pipeline ─────────────────────────────────────────────────────────
+async function renderHomework() {
+  const [groupsRes, tasksRes, hwScheduleRes] = await Promise.all([
+    api('/api/admin/groups').catch(() => ({ groups: [] })),
+    api('/api/admin/homework-tasks').catch(() => ({ tasks: [] })),
+    api('/api/admin/hw-schedule').catch(() => ({ groups: [] })),
+  ]);
+  const groups = groupsRes.groups || [];
+  _hwTasks = tasksRes.tasks || [];
+  _hwTodayGroups = (hwScheduleRes.groups || []).map(x => x.group_name || x.name).filter(Boolean);
+  const uniqueGroups = ['all', ...new Set(_hwTasks.map(x => x.group_name))];
+  const statuses = ['all', 'draft', 'assigned', 'reviewed', 'rework', 'done'];
+  const filtered = _hwTasks.filter(x =>
+    (_hwFilterGroup === 'all' || x.group_name === _hwFilterGroup) &&
+    (_hwFilterStatus === 'all' || x.status === _hwFilterStatus) &&
+    (!_hwOnlyToday || _hwTodayGroups.includes(x.group_name))
+  );
+  _hwSelectedIds = _hwSelectedIds.filter(id => filtered.some(x => x.id === id));
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="card">
+      <div class="card-title">📝 Homework Pipeline</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <select class="search-box" id="hwGroupFilter" onchange="_hwFilterGroup=this.value;renderHomework()" style="margin-bottom:0;">
+          ${uniqueGroups.map(g => `<option value="${g}" ${_hwFilterGroup===g?'selected':''}>${g==='all'?'Barcha guruhlar':g}</option>`).join('')}
+        </select>
+        <select class="search-box" id="hwStatusFilter" onchange="_hwFilterStatus=this.value;renderHomework()" style="margin-bottom:0;">
+          ${statuses.map(s => `<option value="${s}" ${_hwFilterStatus===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="action-grid" style="margin-top:12px;">
+        <button class="action-btn" onclick="showHomeworkCreateSheet()"><span class="ab-icon">➕</span><span>Yangi vazifa</span></button>
+        <button class="action-btn" onclick="showHomeworkRestoreSheet()"><span class="ab-icon">♻️</span><span>Qaytarish</span></button>
+        <button class="action-btn" onclick="toggleTodayHomeworkFilter()"><span class="ab-icon">📅</span><span>${_hwOnlyToday ? 'Bugungi: ON' : 'Bugungi guruhlar'}</span></button>
+        <button class="action-btn" onclick="showHomeworkBulkStatusSheet()"><span class="ab-icon">🧩</span><span>Bulk status</span></button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Jami: ${filtered.length}</div>
+      ${filtered.length ? filtered.map(x => `
+        <div class="student-card" style="display:block;cursor:default;">
+          <div style="display:flex;justify-content:space-between;gap:8px;">
+            <div>
+              <input type="checkbox" ${_hwSelectedIds.includes(x.id) ? 'checked' : ''} onchange="toggleHomeworkSelection(${x.id}, this.checked)">
+              <b>${x.group_name}</b> • #${x.id}
+            </div>
+            <span class="att-badge">${x.status}</span>
+          </div>
+          <div style="font-size:12px;color:#bbb;margin-top:6px;">${(x.text||'').slice(0,220)}</div>
+          <div style="font-size:11px;color:#666;margin-top:6px;">
+            ${x.updated_at || ''}${x.due_at ? ' • deadline: '+x.due_at : ''}
+          </div>
+          <div class="chips" style="margin-top:8px;margin-bottom:0;">
+            ${['draft','assigned','reviewed','rework','done'].map(s => `<div class="chip ${x.status===s?'active':''}" onclick="setHomeworkStatus(${x.id},'${s}')">${s}</div>`).join('')}
+          </div>
+        </div>
+      `).join('') : `<div class="empty">Vazifalar yo'q</div>`}
+    </div>
+    <div class="card">
+      <div class="card-title">Faol guruhlar</div>
+      <div style="font-size:12px;color:#aaa;">${(groups || []).map(g => g.name).join(', ')}</div>
+    </div>
+  `;
+}
+
+async function setHomeworkStatus(taskId, status) {
+  const r = await api('/api/admin/homework-task-update', { method: 'POST', body: { task_id: taskId, status } });
+  if (r.ok) { showToast('✅ Status yangilandi'); await renderHomework(); }
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+function showHomeworkCreateSheet() {
+  openSheet(`
+    <div class="inline-label">Guruh nomi</div>
+    <input class="search-box" id="hwCreateGroup" placeholder="nF-2803">
+    <div class="inline-label">Deadline (ixtiyoriy)</div>
+    <input type="datetime-local" class="search-box" id="hwCreateDueAt">
+    <div class="inline-label">Vazifa matni</div>
+    <textarea class="txt-input" id="hwCreateText" rows="6" placeholder="Uy vazifa..."></textarea>
+    <button class="btn btn-primary" onclick="createHomeworkFromSheet()">Yuborish</button>
+  `, '➕ Yangi uy vazifa');
+}
+
+async function createHomeworkFromSheet() {
+  const group_name = (document.getElementById('hwCreateGroup')?.value || '').trim();
+  const text = (document.getElementById('hwCreateText')?.value || '').trim();
+  const due_at = (document.getElementById('hwCreateDueAt')?.value || '').trim();
+  if (!group_name || !text) { showToast('❌ group_name va text kerak'); return; }
+  const r = await api('/api/admin/send-homework', { method: 'POST', body: { group_name, text, due_at } });
+  if (r.ok) {
+    showToast('✅ Uy vazifa yuborildi');
+    closeSheet();
+    await renderHomework();
+  } else showToast('❌ ' + (r.error || t('error')));
+}
+
+function showHomeworkRestoreSheet() {
+  openSheet(`
+    <div class="inline-label">Guruh nomi</div>
+    <input class="search-box" id="hwRestoreGroup" placeholder="nF-2803">
+    <div class="action-grid">
+      <button class="btn btn-danger" onclick="deleteHomeworkByGroup()">🗑 O'chirish (soft)</button>
+      <button class="btn btn-success" onclick="restoreHomeworkByGroup()">♻️ Restore</button>
+    </div>
+  `, '♻️ Soft delete / restore');
+}
+
+async function deleteHomeworkByGroup() {
+  const group_name = (document.getElementById('hwRestoreGroup')?.value || '').trim();
+  if (!group_name) { showToast('❌ group_name kerak'); return; }
+  const r = await api('/api/admin/delete-homework', { method: 'POST', body: { group_name } });
+  if (r.ok) { showToast('✅ Soft delete qilindi'); await renderHomework(); }
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+async function restoreHomeworkByGroup() {
+  const group_name = (document.getElementById('hwRestoreGroup')?.value || '').trim();
+  if (!group_name) { showToast('❌ group_name kerak'); return; }
+  const r = await api('/api/admin/restore-homework', { method: 'POST', body: { group_name } });
+  if (r.ok) { showToast('✅ Restore qilindi'); await renderHomework(); }
+  else showToast('❌ ' + (r.error || t('error')));
+}
+
+function toggleHomeworkSelection(taskId, checked) {
+  if (checked && !_hwSelectedIds.includes(taskId)) _hwSelectedIds.push(taskId);
+  if (!checked) _hwSelectedIds = _hwSelectedIds.filter(x => x !== taskId);
+}
+
+function toggleTodayHomeworkFilter() {
+  if (!_hwTodayGroups.length) {
+    showToast('⚠️ Bugungi guruhlar topilmadi');
+    return;
+  }
+  _hwOnlyToday = !_hwOnlyToday;
+  _hwSelectedIds = [];
+  showToast(_hwOnlyToday ? '📅 Bugungi guruhlar filtri yoqildi' : '📅 Bugungi guruhlar filtri o\'chirildi');
+  renderHomework();
+}
+
+function showHomeworkBulkStatusSheet() {
+  if (!_hwSelectedIds.length) {
+    showToast('⚠️ Avval tasklarni belgilang');
+    return;
+  }
+  const statuses = ['draft','assigned','reviewed','rework','done'];
+  openSheet(`
+    <div style="color:#aaa;font-size:12px;margin-bottom:12px;">Tanlangan tasklar: ${_hwSelectedIds.length}</div>
+    <div class="chips">
+      ${statuses.map(s => `<div class="chip" onclick="bulkUpdateHomeworkStatus('${s}')">${s}</div>`).join('')}
+    </div>
+  `, '🧩 Bulk status update');
+}
+
+async function bulkUpdateHomeworkStatus(status) {
+  const r = await api('/api/admin/homework-task-bulk-update', {
+    method: 'POST',
+    body: { task_ids: _hwSelectedIds, status }
+  });
+  if (r.ok) {
+    showToast(`✅ Yangilandi: ${r.updated}/${r.requested}`);
+    _hwSelectedIds = [];
+    closeSheet();
+    await renderHomework();
+  } else showToast('❌ ' + (r.error || t('error')));
+}
+
 // ── Auth check & Init ──────────────────────────────────────────────────────────
 async function init() {
   // 1. Avval mavjud token yoki initData ni tekshiramiz
@@ -1308,7 +1563,7 @@ async function init() {
   }
   hideLoginPage();
   updateNavLabels();
-  showTab('dashboard');
+  showTab('dashboard', true);
 }
 
 init();

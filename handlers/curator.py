@@ -42,8 +42,10 @@ router = Router()
 # FILTRLAR
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class _CuratorHasActiveChat(BaseFilter):
     """Faqat kurator sessiyasi + faol chati bo'lganda True."""
+
     async def __call__(self, message: Message, db: DatabaseService) -> bool:
         s = await db.get_curator_session(message.from_user.id)
         if not s:
@@ -54,14 +56,14 @@ class _CuratorHasActiveChat(BaseFilter):
 class _StudentInCuratorChat(BaseFilter):
     """Faqat o'quvchi faol kurator chatida bo'lganda True (kuratorlar bundan mustasno).
     FSM holati bo'lsa (masalan, AbsenceReasonFSM) — relay qilmaymiz, FSM handleri ishlaydi."""
-    async def __call__(self, message: Message, db: DatabaseService,
-                       state: FSMContext) -> bool:
+
+    async def __call__(self, message: Message, db: DatabaseService, state: FSMContext) -> bool:
         if await db.get_curator_session(message.from_user.id):
-            return False   # kurator — uning uchun alohida filter
+            return False  # kurator — uning uchun alohida filter
         # Agar foydalanuvchi hozir biror FSM holatida bo'lsa — relay qilmaymiz
         current_state = await state.get_state()
         if current_state is not None:
-            return False   # FSM ishlamoqda — unga yo'l beramiz
+            return False  # FSM ishlamoqda — unga yo'l beramiz
         return await db.get_active_curator_chat_by_student(message.from_user.id) is not None
 
 
@@ -69,13 +71,15 @@ class _StudentInCuratorChat(BaseFilter):
 # YORDAMCHI
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 def _cinfo(key: str) -> dict:
     return CURATORS.get(key, {})
+
 
 def _cheader(key: str) -> str:
     info = _cinfo(key)
     name = info.get("full_name", "Kurator")
-    tg   = info.get("telegram_username", "")
+    tg = info.get("telegram_username", "")
     return f"<b>Kurator {name}{' ' + tg if tg else ''}</b>"
 
 
@@ -83,8 +87,9 @@ def _cheader(key: str) -> str:
 # LOGIN FSM
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class CuratorLoginFSM(StatesGroup):
-    waiting_login    = State()
+    waiting_login = State()
     waiting_password = State()
 
 
@@ -115,13 +120,11 @@ async def curator_enter_login(message: Message, state: FSMContext) -> None:
 
 
 @router.message(StateFilter(CuratorLoginFSM.waiting_password))
-async def curator_enter_password(
-    message: Message, state: FSMContext, db: DatabaseService
-) -> None:
-    data     = await state.get_data()
-    login    = data.get("curator_login", "")
+async def curator_enter_password(message: Message, state: FSMContext, db: DatabaseService) -> None:
+    data = await state.get_data()
+    login = data.get("curator_login", "")
     password = message.text.strip() if message.text else ""
-    cred     = CURATORS.get(login, {})
+    cred = CURATORS.get(login, {})
 
     if not verify_secret(cred.get("password", ""), password):
         await message.answer("❌ Parol noto'g'ri. Qayta kiriting:")
@@ -142,6 +145,7 @@ async def curator_enter_password(
 # PANEL TUGMALARI
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data == "cur:panel")
 async def cur_panel(cb: CallbackQuery, state: FSMContext, db: DatabaseService) -> None:
     session = await db.get_curator_session(cb.from_user.id)
@@ -152,13 +156,9 @@ async def cur_panel(cb: CallbackQuery, state: FSMContext, db: DatabaseService) -
     await state.clear()
     cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
     try:
-        await cb.message.edit_text(
-            f"👋 <b>Kurator {cname}</b> — Panel:", reply_markup=kb_curator_panel()
-        )
+        await cb.message.edit_text(f"👋 <b>Kurator {cname}</b> — Panel:", reply_markup=kb_curator_panel())
     except TelegramBadRequest:
-        await cb.message.answer(
-            f"👋 <b>Kurator {cname}</b> — Panel:", reply_markup=kb_curator_panel()
-        )
+        await cb.message.answer(f"👋 <b>Kurator {cname}</b> — Panel:", reply_markup=kb_curator_panel())
     await cb.answer()
 
 
@@ -203,20 +203,19 @@ async def cur_report_issue(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> 
 # DAVOMAT MENYUSI — MANUAL START
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data == "cur:davomat_menu")
-async def cur_davomat_menu(
-    cb: CallbackQuery, db: DatabaseService, state: FSMContext
-) -> None:
+async def cur_davomat_menu(cb: CallbackQuery, db: DatabaseService, state: FSMContext) -> None:
     """Kurator paneldan manual davomat boshlash — bugungi guruhlar ro'yxati."""
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
         await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
         return
 
-    tz        = pytz.timezone(TIMEZONE)
-    now       = datetime.now(tz)
+    tz = pytz.timezone(TIMEZONE)
+    now = datetime.now(tz)
     today_str = now.strftime("%Y-%m-%d")
-    weekday   = now.weekday()
+    weekday = now.weekday()
 
     if weekday == 6:
         await cb.answer("Yakshanba — dars yo'q!", show_alert=True)
@@ -231,10 +230,12 @@ async def cur_davomat_menu(
 
     builder = InlineKeyboardBuilder()
     for group_name in sorted(schedule.keys()):
-        builder.row(InlineKeyboardButton(
-            text=f"📚 {group_name}  ({schedule[group_name]})",
-            callback_data=f"cur:davomat:{group_name}:{today_str}",
-        ))
+        builder.row(
+            InlineKeyboardButton(
+                text=f"📚 {group_name}  ({schedule[group_name]})",
+                callback_data=f"cur:davomat:{group_name}:{today_str}",
+            )
+        )
     builder.row(InlineKeyboardButton(text="◀️ Panel", callback_data="cur:panel"))
 
     day_label = "Toq" if day_type == "ODD" else "Juft"
@@ -257,6 +258,7 @@ async def cur_davomat_menu(
 # O'QUVCHILAR RO'YXATI
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data.startswith("cur:list:"))
 async def cur_list(cb: CallbackQuery, db: DatabaseService) -> None:
     session = await db.get_curator_session(cb.from_user.id)
@@ -265,7 +267,7 @@ async def cur_list(cb: CallbackQuery, db: DatabaseService) -> None:
         return
 
     active_group = cb.data.split(":", 2)[2]
-    students     = await db.get_all_students()
+    students = await db.get_all_students()
     try:
         await cb.message.edit_text(
             "👥 <b>O'quvchilar ro'yxati</b>\n\nO'quvchini tanlang:",
@@ -283,6 +285,7 @@ async def cur_list(cb: CallbackQuery, db: DatabaseService) -> None:
 # O'QUVCHI BILAN BOG'LANISH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data.startswith("cur:contact:"))
 async def cur_contact(cb: CallbackQuery, db: DatabaseService) -> None:
     session = await db.get_curator_session(cb.from_user.id)
@@ -291,7 +294,7 @@ async def cur_contact(cb: CallbackQuery, db: DatabaseService) -> None:
         return
 
     student_id = int(cb.data.split(":")[2])
-    student    = await db.get_student(student_id)
+    student = await db.get_student(student_id)
     if not student:
         await cb.answer("❌ O'quvchi topilmadi!", show_alert=True)
         return
@@ -320,10 +323,9 @@ async def cur_contact(cb: CallbackQuery, db: DatabaseService) -> None:
 # CHAT BOSHLASH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data.startswith("cur:chat_start:"))
-async def cur_chat_start(
-    cb: CallbackQuery, db: DatabaseService, bot: Bot
-) -> None:
+async def cur_chat_start(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
         await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
@@ -355,7 +357,7 @@ async def cur_chat_start(
     await db.start_curator_chat(cb.from_user.id, student_id, session.curator_key)
 
     cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
-    ctg   = _cinfo(session.curator_key).get("telegram_username", "")
+    ctg = _cinfo(session.curator_key).get("telegram_username", "")
     label = f"Kurator {cname}{' ' + ctg if ctg else ''}"
 
     # O'quvchiga kirish xabari
@@ -398,7 +400,7 @@ async def cur_chat_start(
 @router.callback_query(F.data.startswith("cur:resume:"))
 async def cur_resume(cb: CallbackQuery, db: DatabaseService) -> None:
     student_id = int(cb.data.split(":")[2])
-    student    = await db.get_student(student_id)
+    student = await db.get_student(student_id)
     if not student:
         await cb.answer()
         return
@@ -420,18 +422,17 @@ async def cur_resume(cb: CallbackQuery, db: DatabaseService) -> None:
 # (Faqat kuratorda faol chat bo'lganda ishlaydi)
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.message(_CuratorHasActiveChat(), F.chat.type == "private")
-async def curator_relay_to_student(
-    message: Message, db: DatabaseService, bot: Bot
-) -> None:
+async def curator_relay_to_student(message: Message, db: DatabaseService, bot: Bot) -> None:
     session = await db.get_curator_session(message.from_user.id)
-    chat    = await db.get_active_curator_chat_by_curator(message.from_user.id)
+    chat = await db.get_active_curator_chat_by_curator(message.from_user.id)
     student = await db.get_student(chat.student_user_id)
     if not student:
         return
 
     cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
-    ctg   = _cinfo(session.curator_key).get("telegram_username", "")
+    ctg = _cinfo(session.curator_key).get("telegram_username", "")
     label = f"Kurator {cname}{' ' + ctg if ctg else ''}"
 
     try:
@@ -461,14 +462,13 @@ async def curator_relay_to_student(
 # (Faqat o'quvchi faol kurator chatida bo'lganda ishlaydi)
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.message(_StudentInCuratorChat(), F.chat.type == "private")
-async def student_relay_to_curator(
-    message: Message, db: DatabaseService, bot: Bot
-) -> None:
-    chat    = await db.get_active_curator_chat_by_student(message.from_user.id)
+async def student_relay_to_curator(message: Message, db: DatabaseService, bot: Bot) -> None:
+    chat = await db.get_active_curator_chat_by_student(message.from_user.id)
     student = await db.get_student(message.from_user.id)
-    sname   = student.full_name if student else str(message.from_user.id)
-    sgroup  = student.group_name if student else "—"
+    sname = student.full_name if student else str(message.from_user.id)
+    sgroup = student.group_name if student else "—"
 
     try:
         await bot.send_message(
@@ -493,13 +493,12 @@ async def student_relay_to_curator(
 # O'QIDIM TUGMASI (o'quvchi bosadi)
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data.startswith("cur_read:"))
-async def student_read_curator_msg(
-    cb: CallbackQuery, db: DatabaseService, bot: Bot
-) -> None:
+async def student_read_curator_msg(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     curator_tg_id = int(cb.data.split(":")[1])
     student = await db.get_student(cb.from_user.id)
-    sname   = student.full_name if student else str(cb.from_user.id)
+    sname = student.full_name if student else str(cb.from_user.id)
 
     try:
         await cb.message.edit_reply_markup(reply_markup=None)
@@ -517,11 +516,12 @@ async def student_read_curator_msg(
 # JAVOBNI OLDIM — OGOHLANTIRISH VA TASDIQLASH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data.startswith("cur:got_answer:"))
 async def cur_got_answer_ask(cb: CallbackQuery, db: DatabaseService) -> None:
     student_id = int(cb.data.split(":")[2])
-    student    = await db.get_student(student_id)
-    sname      = student.full_name if student else str(student_id)
+    student = await db.get_student(student_id)
+    sname = student.full_name if student else str(student_id)
 
     await cb.message.answer(
         f"⚠️ <b>Diqqat!</b>\n\n"
@@ -535,18 +535,16 @@ async def cur_got_answer_ask(cb: CallbackQuery, db: DatabaseService) -> None:
 
 
 @router.callback_query(F.data.startswith("cur:end_confirm:"))
-async def cur_end_confirm(
-    cb: CallbackQuery, db: DatabaseService, bot: Bot
-) -> None:
+async def cur_end_confirm(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
         await cb.answer()
         return
 
     student_id = int(cb.data.split(":")[2])
-    student    = await db.get_student(student_id)
-    sname      = student.full_name if student else str(student_id)
-    cname      = _cinfo(session.curator_key).get("full_name", session.curator_key)
+    student = await db.get_student(student_id)
+    sname = student.full_name if student else str(student_id)
+    cname = _cinfo(session.curator_key).get("full_name", session.curator_key)
 
     await db.end_curator_chat_by_curator(cb.from_user.id)
 
@@ -562,14 +560,11 @@ async def cur_end_confirm(
 
     try:
         await cb.message.edit_text(
-            f"✅ Chat yakunlandi: <b>{sname}</b>\n\n"
-            f"O'quvchiga «Chat yakunlandi» xabari yuborildi.",
+            f"✅ Chat yakunlandi: <b>{sname}</b>\n\nO'quvchiga «Chat yakunlandi» xabari yuborildi.",
             reply_markup=kb_curator_panel(),
         )
     except TelegramBadRequest:
-        await cb.message.answer(
-            f"✅ Chat yakunlandi: <b>{sname}</b>", reply_markup=kb_curator_panel()
-        )
+        await cb.message.answer(f"✅ Chat yakunlandi: <b>{sname}</b>", reply_markup=kb_curator_panel())
     await cb.answer()
     logger.info(f"Curator chat yakunlandi: {cname} ↔ {sname}")
 
@@ -587,21 +582,19 @@ async def cur_end_cancel(cb: CallbackQuery) -> None:
 # DAVOMAT YOQLAMASI: BELGILASH VA OTA-ONA GURUHIGA YUBORISH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class DavomatFSM(StatesGroup):
-    marking         = State()  # O'quvchilarni belgilash
+    marking = State()  # O'quvchilarni belgilash
     selecting_group = State()  # Ota-ona guruhini tanlash
 
 
 def _davomat_marks_for_kb(students_data: list[dict]) -> list[dict]:
-    return [
-        {"full_name": s["full_name"], "present": s["present"], "idx": i}
-        for i, s in enumerate(students_data)
-    ]
+    return [{"full_name": s["full_name"], "present": s["present"], "idx": i} for i, s in enumerate(students_data)]
 
 
 def _davomat_header_text(group_name: str, date_str: str, students_data: list[dict]) -> str:
     present = sum(1 for s in students_data if s["present"])
-    absent  = len(students_data) - present
+    absent = len(students_data) - present
     return (
         f"📋 <b>{group_name}</b> — Davomat yoqlamasi\n"
         f"📅 Sana: {date_str}\n\n"
@@ -611,24 +604,21 @@ def _davomat_header_text(group_name: str, date_str: str, students_data: list[dic
 
 
 @router.callback_query(F.data.startswith("cur:davomat:"))
-async def start_davomat_marking(
-    cb: CallbackQuery, db: DatabaseService, state: FSMContext
-) -> None:
+async def start_davomat_marking(cb: CallbackQuery, db: DatabaseService, state: FSMContext) -> None:
     """Yoqlamani to'ldirish — dars boshlanganidan 20 daqiqa o'tgach."""
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
         await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
         return
 
-    parts      = cb.data.split(":", 3)   # ["cur", "davomat", "nF-2506", "2026-03-16"]
+    parts = cb.data.split(":", 3)  # ["cur", "davomat", "nF-2506", "2026-03-16"]
     group_name = parts[2]
-    date_str   = parts[3]
+    date_str = parts[3]
 
     # MARS_CREDENTIALS dan barcha o'quvchilarni olamiz (ro'yxatdan o'tmaganlar ham)
     from credentials import MARS_CREDENTIALS
-    cred_list = [
-        (mid, c) for mid, c in MARS_CREDENTIALS.items() if c["group"] == group_name
-    ]
+
+    cred_list = [(mid, c) for mid, c in MARS_CREDENTIALS.items() if c["group"] == group_name]
     if not cred_list:
         await cb.answer(f"❌ {group_name} guruhida o'quvchilar topilmadi!", show_alert=True)
         return
@@ -640,16 +630,16 @@ async def start_davomat_marking(
     # Bugungi davomatni pre-fill: "yes"→✅, "no"→❌, javob yo'q→✅
     students_data = []
     for mars_id, cred in sorted(cred_list, key=lambda x: x[1]["name"]):
-        reg     = reg_map.get(mars_id)
+        reg = reg_map.get(mars_id)
         user_id = reg.user_id if reg else None
-        rec     = await db.get_student_attendance(user_id, date_str) if user_id else None
+        rec = await db.get_student_attendance(user_id, date_str) if user_id else None
         present = (rec.status == "yes") if rec else True
         students_data.append({"user_id": user_id, "full_name": cred["name"], "present": present})
 
     await state.set_state(DavomatFSM.marking)
     await state.update_data(group_name=group_name, date_str=date_str, students=students_data)
 
-    text  = _davomat_header_text(group_name, date_str, students_data)
+    text = _davomat_header_text(group_name, date_str, students_data)
     marks = _davomat_marks_for_kb(students_data)
     try:
         await cb.message.edit_text(text, reply_markup=kb_davomat_mark(marks))
@@ -661,7 +651,7 @@ async def start_davomat_marking(
 @router.callback_query(F.data.startswith("cur:tog:"))
 async def toggle_student_mark(cb: CallbackQuery, state: FSMContext) -> None:
     """O'quvchi davomatini ✅↔❌ almashtiradi."""
-    data          = await state.get_data()
+    data = await state.get_data()
     students_data = data.get("students")
     if not students_data:
         await cb.answer("⚠️ Sessiya tugadi. Qayta bosing.", show_alert=True)
@@ -673,9 +663,9 @@ async def toggle_student_mark(cb: CallbackQuery, state: FSMContext) -> None:
         await state.update_data(students=students_data)
 
     group_name = data.get("group_name", "—")
-    date_str   = data.get("date_str", "—")
-    text       = _davomat_header_text(group_name, date_str, students_data)
-    marks      = _davomat_marks_for_kb(students_data)
+    date_str = data.get("date_str", "—")
+    text = _davomat_header_text(group_name, date_str, students_data)
+    marks = _davomat_marks_for_kb(students_data)
     try:
         await cb.message.edit_text(text, reply_markup=kb_davomat_mark(marks))
     except TelegramBadRequest:
@@ -684,25 +674,20 @@ async def toggle_student_mark(cb: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data == "cur:davomat_send")
-async def davomat_choose_group(
-    cb: CallbackQuery, db: DatabaseService, state: FSMContext
-) -> None:
+async def davomat_choose_group(cb: CallbackQuery, db: DatabaseService, state: FSMContext) -> None:
     """Ota-ona guruhini tanlash sahifasiga o'tish."""
     data = await state.get_data()
     if not data.get("students"):
         await cb.answer("⚠️ Sessiya tugadi. Qayta bosing.", show_alert=True)
         return
 
-    all_groups    = await db.get_all_groups()
+    all_groups = await db.get_all_groups()
     parent_groups = [g for g in all_groups if g.audience == AudienceType.PARENT and g.is_active]
 
     await state.set_state(DavomatFSM.selecting_group)
 
     group_name = data.get("group_name", "—")
-    text = (
-        f"📋 <b>{group_name}</b> — Yoqlama yuborish\n\n"
-        f"Qaysi ota-ona guruhiga yuborasiz?"
-    )
+    text = f"📋 <b>{group_name}</b> — Yoqlama yuborish\n\nQaysi ota-ona guruhiga yuborasiz?"
     try:
         await cb.message.edit_text(text, reply_markup=kb_select_parent_group(parent_groups))
     except TelegramBadRequest:
@@ -713,7 +698,7 @@ async def davomat_choose_group(
 @router.callback_query(F.data == "cur:davomat_back")
 async def davomat_back_to_marking(cb: CallbackQuery, state: FSMContext) -> None:
     """Guruh tanlashdan belgilash sahifasiga qaytish."""
-    data          = await state.get_data()
+    data = await state.get_data()
     students_data = data.get("students")
     if not students_data:
         await cb.answer("⚠️ Sessiya tugadi.", show_alert=True)
@@ -722,9 +707,9 @@ async def davomat_back_to_marking(cb: CallbackQuery, state: FSMContext) -> None:
 
     await state.set_state(DavomatFSM.marking)
     group_name = data.get("group_name", "—")
-    date_str   = data.get("date_str", "—")
-    text       = _davomat_header_text(group_name, date_str, students_data)
-    marks      = _davomat_marks_for_kb(students_data)
+    date_str = data.get("date_str", "—")
+    text = _davomat_header_text(group_name, date_str, students_data)
+    marks = _davomat_marks_for_kb(students_data)
     try:
         await cb.message.edit_text(text, reply_markup=kb_davomat_mark(marks))
     except TelegramBadRequest:
@@ -733,19 +718,17 @@ async def davomat_back_to_marking(cb: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data.startswith("cur:pgroup:"))
-async def davomat_send_to_group(
-    cb: CallbackQuery, db: DatabaseService, bot: Bot, state: FSMContext
-) -> None:
+async def davomat_send_to_group(cb: CallbackQuery, db: DatabaseService, bot: Bot, state: FSMContext) -> None:
     """Tanlangan ota-ona guruhiga davomat yoqlamasini yuboradi."""
     session = await db.get_curator_session(cb.from_user.id)
     if not session:
         await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
         return
 
-    data          = await state.get_data()
+    data = await state.get_data()
     students_data = data.get("students")
-    group_name    = data.get("group_name", "—")
-    date_str      = data.get("date_str", "—")
+    group_name = data.get("group_name", "—")
+    date_str = data.get("date_str", "—")
 
     if not students_data:
         await cb.answer("⚠️ Sessiya tugadi.", show_alert=True)
@@ -784,7 +767,8 @@ async def davomat_send_to_group(
             if s.get("user_id"):
                 try:
                     await db.save_attendance(
-                        s["user_id"], date_str,
+                        s["user_id"],
+                        date_str,
                         "yes" if s["present"] else "no",
                     )
                 except Exception as db_err:
@@ -793,7 +777,7 @@ async def davomat_send_to_group(
         await state.clear()
 
         present = sum(1 for s in students_data if s["present"])
-        absent  = len(students_data) - present
+        absent = len(students_data) - present
         try:
             await cb.message.edit_text(
                 f"✅ <b>Yoqlama yuborildi!</b>\n\n"
@@ -833,10 +817,9 @@ async def davomat_cancel(cb: CallbackQuery, state: FSMContext) -> None:
 # KECHIKKAN O'QUVCHI — DAVOMATNI O'ZGARTIRISH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data.startswith("cur:att_update:"))
-async def cur_att_update(
-    cb: CallbackQuery, db: DatabaseService, bot: Bot
-) -> None:
+async def cur_att_update(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     """
     cur:att_update:USER_ID:DATE:STATUS
     Kurator kechikkan o'quvchining davomatini o'zgartiradi.
@@ -846,9 +829,9 @@ async def cur_att_update(
         await cb.answer("❌ Avval /curator bilan kiring!", show_alert=True)
         return
 
-    parts      = cb.data.split(":", 4)  # ["cur", "att_update", uid, date, status]
-    user_id    = int(parts[2])
-    date_str   = parts[3]
+    parts = cb.data.split(":", 4)  # ["cur", "att_update", uid, date, status]
+    user_id = int(parts[2])
+    date_str = parts[3]
     new_status = parts[4]  # "yes" | "no"
 
     student = await db.get_student(user_id)
@@ -880,6 +863,7 @@ async def cur_att_update(
         from sqlalchemy import select
 
         from database import CuratorSession
+
         async with db.session_factory() as db_sess:
             result = await db_sess.execute(select(CuratorSession))
             curator_sessions = list(result.scalars().all())
@@ -893,7 +877,4 @@ async def cur_att_update(
         pass
 
     await cb.answer(f"✅ Davomat o'zgartirildi: {new_emoji}", show_alert=True)
-    logger.info(
-        f"Davomat o'zgartirildi: {student.full_name} | {date_str} | "
-        f"{old_emoji}→{new_emoji} | Kurator: {cname}"
-    )
+    logger.info(f"Davomat o'zgartirildi: {student.full_name} | {date_str} | {old_emoji}→{new_emoji} | Kurator: {cname}")

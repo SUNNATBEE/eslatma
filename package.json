@@ -1,7 +1,8 @@
 {
   "name": "otaonabot",
   "version": "1.0.0",
-  "description": "",
+  "description": "E2E tests (Playwright) for Telegram Mini App static pages",
+  "private": true,
   "main": "index.js",
   "directories": {
     "test": "tests"

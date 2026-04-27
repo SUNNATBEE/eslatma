@@ -39,6 +39,7 @@ router = Router()
 # O'QUVCHI PANELI
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data == "student:homework")
 async def student_view_homework(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     student = await db.get_student(cb.from_user.id)
@@ -53,9 +54,7 @@ async def student_view_homework(cb: CallbackQuery, db: DatabaseService, bot: Bot
 
     date_str = hw.sent_at.strftime("%d.%m.%Y %H:%M")
     await cb.message.answer(
-        f"📚 <b>Uy vazifasi — {student.group_name}</b>\n"
-        f"🕐 {date_str}\n\n"
-        f"⬇️ Vazifa:",
+        f"📚 <b>Uy vazifasi — {student.group_name}</b>\n🕐 {date_str}\n\n⬇️ Vazifa:",
     )
     try:
         await bot.copy_message(
@@ -70,6 +69,7 @@ async def student_view_homework(cb: CallbackQuery, db: DatabaseService, bot: Bot
 
 # ── O'quvchi "O'qidim" tugmasini bosdi ────────────────────────────────────────
 
+
 @router.callback_query(F.data.startswith("read_confirm:"))
 async def student_read_confirm(
     cb: CallbackQuery,
@@ -77,18 +77,16 @@ async def student_read_confirm(
     bot: Bot,
 ) -> None:
     admin_id = int(cb.data.split(":")[1])
-    student  = await db.get_student(cb.from_user.id)
-    name     = student.full_name if student else cb.from_user.full_name
-    group    = student.group_name if student else "—"
+    student = await db.get_student(cb.from_user.id)
+    name = student.full_name if student else cb.from_user.full_name
+    group = student.group_name if student else "—"
     time_str = datetime.now().strftime("%H:%M")
 
     # Adminga bildirishnoma
     try:
         await bot.send_message(
             admin_id,
-            f"👁 <b>{name}</b> xabaringizni o'qidi\n"
-            f"📚 Guruh: <b>{group}</b>\n"
-            f"🕐 {time_str}",
+            f"👁 <b>{name}</b> xabaringizni o'qidi\n📚 Guruh: <b>{group}</b>\n🕐 {time_str}",
         )
     except Exception:
         logger.warning(
@@ -111,6 +109,7 @@ async def student_read_confirm(
 # ADMIN: O'QUVCHILAR RO'YXATI
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data.startswith("admin:students:"))
 async def admin_view_students(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
@@ -118,12 +117,11 @@ async def admin_view_students(cb: CallbackQuery, db: DatabaseService) -> None:
         return
 
     active_group = cb.data.split(":", 2)[2]
-    students     = await db.get_all_students()
-    count        = len(students)
+    students = await db.get_all_students()
+    count = len(students)
 
     header = (
-        f"👥 <b>Ro'yxatdan o'tgan o'quvchilar: {count} ta</b>\n\n"
-        f"<i>Ismiga bosing — batafsil ma'lumot va amallar</i>"
+        f"👥 <b>Ro'yxatdan o'tgan o'quvchilar: {count} ta</b>\n\n<i>Ismiga bosing — batafsil ma'lumot va amallar</i>"
     )
     markup = kb_admin_students(students, MARS_GROUPS, active_group)
     try:
@@ -134,6 +132,7 @@ async def admin_view_students(cb: CallbackQuery, db: DatabaseService) -> None:
 
 
 # ── O'quvchi detail sahifasi ───────────────────────────────────────────────────
+
 
 @router.callback_query(F.data.startswith("admin:student_detail:"))
 async def admin_student_detail(cb: CallbackQuery, db: DatabaseService) -> None:
@@ -169,6 +168,7 @@ async def admin_student_detail(cb: CallbackQuery, db: DatabaseService) -> None:
 
 # ── Bot orqali o'quvchiga xabar yuborish ──────────────────────────────────────
 
+
 class MessageStudentFSM(StatesGroup):
     waiting_message = State()
 
@@ -197,9 +197,9 @@ async def admin_msg_student_send(
     bot: Bot,
     db: DatabaseService,
 ) -> None:
-    data      = await state.get_data()
+    data = await state.get_data()
     target_id = data.get("target_id")
-    student   = await db.get_student(target_id)
+    student = await db.get_student(target_id)
     await state.clear()
 
     try:
@@ -211,13 +211,12 @@ async def admin_msg_student_send(
         )
         name = student.full_name if student else str(target_id)
         await message.answer(
-            f"✅ Xabar yuborildi → <b>{name}</b>\n"
-            f"<i>O'quvchi 'O'qidim' bosganida sizga xabar keladi.</i>",
+            f"✅ Xabar yuborildi → <b>{name}</b>\n<i>O'quvchi 'O'qidim' bosganida sizga xabar keladi.</i>",
             reply_markup=kb_back_to_panel(),
         )
     except Exception as e:
         name = student.full_name if student else str(target_id)
-        err  = str(e).lower()
+        err = str(e).lower()
         if "blocked" in err or "deactivated" in err or "not found" in err or "chat not found" in err:
             reason = "O'quvchi botni bloklagan yoki o'chirgan"
         elif "forbidden" in err:
@@ -235,6 +234,7 @@ async def admin_msg_student_send(
 
 # ── O'quvchini ro'yxatdan o'chirish ───────────────────────────────────────────
 
+
 @router.callback_query(F.data.startswith("admin:remove_student:"))
 async def admin_remove_student_ask(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
@@ -243,7 +243,7 @@ async def admin_remove_student_ask(cb: CallbackQuery, db: DatabaseService) -> No
 
     user_id = int(cb.data.split(":", 2)[2])
     student = await db.get_student(user_id)
-    name    = student.full_name if student else str(user_id)
+    name = student.full_name if student else str(user_id)
 
     try:
         await cb.message.edit_text(
@@ -265,7 +265,7 @@ async def admin_remove_student_do(cb: CallbackQuery, db: DatabaseService) -> Non
 
     user_id = int(cb.data.split(":", 2)[2])
     student = await db.get_student(user_id)
-    name    = student.full_name if student else str(user_id)
+    name = student.full_name if student else str(user_id)
 
     deleted = await db.delete_student(user_id)
     if deleted:
@@ -283,12 +283,14 @@ async def admin_remove_student_do(cb: CallbackQuery, db: DatabaseService) -> Non
 # ADMIN: UY VAZIFASI YUBORISH (FSM)
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class HomeworkFSM(StatesGroup):
-    waiting_group   = State()
+    waiting_group = State()
     waiting_content = State()
 
 
 # ─── Uy vazifasi bosh menyusi ─────────────────────────────────────────────────
+
 
 @router.callback_query(F.data == "admin:hw_menu")
 async def admin_hw_menu(cb: CallbackQuery, state: FSMContext) -> None:
@@ -320,8 +322,7 @@ async def admin_hw_list(cb: CallbackQuery, db: DatabaseService) -> None:
 
     try:
         await cb.message.edit_text(
-            "📋 <b>Guruhlar bo'yicha uy vazifalari</b>\n\n"
-            "Vazifani o'zgartirish yoki o'chirish uchun tanlang:",
+            "📋 <b>Guruhlar bo'yicha uy vazifalari</b>\n\nVazifani o'zgartirish yoki o'chirish uchun tanlang:",
             reply_markup=kb_hw_manage(MARS_GROUPS, homeworks),
         )
     except TelegramBadRequest:
@@ -340,8 +341,7 @@ async def admin_hw_delete_ask(cb: CallbackQuery) -> None:
     group = cb.data.split(":", 2)[2]
     try:
         await cb.message.edit_text(
-            f"🗑 <b>{group}</b> guruhining uy vazifasini o'chirasizmi?\n\n"
-            f"Bu amal qaytarib bo'lmaydi.",
+            f"🗑 <b>{group}</b> guruhining uy vazifasini o'chirasizmi?\n\nBu amal qaytarib bo'lmaydi.",
             reply_markup=kb_hw_delete_confirm(group),
         )
     except TelegramBadRequest:
@@ -382,13 +382,12 @@ async def admin_hw_edit_start(cb: CallbackQuery, state: FSMContext) -> None:
             f"<i>Bekor qilish: /start</i>",
         )
     except TelegramBadRequest:
-        await cb.message.answer(
-            f"✏️ <b>{group}</b> uchun yangi uy vazifasini yuboring:"
-        )
+        await cb.message.answer(f"✏️ <b>{group}</b> uchun yangi uy vazifasini yuboring:")
     await cb.answer()
 
 
 # ─── Yangi uy vazifasi ────────────────────────────────────────────────────────
+
 
 @router.callback_query(F.data == "admin:send_hw")
 async def admin_send_hw_start(cb: CallbackQuery, state: FSMContext) -> None:
@@ -397,8 +396,7 @@ async def admin_send_hw_start(cb: CallbackQuery, state: FSMContext) -> None:
         return
     await state.set_state(HomeworkFSM.waiting_group)
     await cb.message.edit_text(
-        "📝 <b>Uy vazifasi yuborish</b>\n\n"
-        "Guruhni tanlang:",
+        "📝 <b>Uy vazifasi yuborish</b>\n\nGuruhni tanlang:",
         reply_markup=kb_hw_groups(MARS_GROUPS),
     )
     await cb.answer()
@@ -425,7 +423,7 @@ async def admin_hw_content(
     state: FSMContext,
     db: DatabaseService,
 ) -> None:
-    data  = await state.get_data()
+    data = await state.get_data()
     group = data.get("group", "")
 
     # Xabar ma'lumotini saqlaymiz (copy_message uchun)
@@ -448,6 +446,7 @@ async def admin_hw_content(
 # ════════════════════════════════════════════════════════════════════════════════
 # O'QUVCHI: TELEFON RAQAMNI O'ZGARTIRISH
 # ════════════════════════════════════════════════════════════════════════════════
+
 
 class ChangePhoneFSM(StatesGroup):
     waiting_phone = State()
@@ -480,9 +479,9 @@ async def student_change_phone_start(cb: CallbackQuery, state: FSMContext, db: D
 async def student_report_issue(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     """O'quvchi bot muammosi haqida admin ga xabar yuboradi."""
     student = await db.get_student(cb.from_user.id)
-    name    = student.full_name if student else cb.from_user.full_name
-    group   = student.group_name if student else "—"
-    tg      = cb.from_user.username or str(cb.from_user.id)
+    name = student.full_name if student else cb.from_user.full_name
+    group = student.group_name if student else "—"
+    tg = cb.from_user.username or str(cb.from_user.id)
 
     notify = (
         f"⚠️ <b>Bot muammosi haqida xabar</b>\n\n"
@@ -530,13 +529,13 @@ async def student_change_phone_save(
     name = student.full_name if student else str(message.from_user.id)
 
     await message.answer(
-        f"✅ <b>Telefon raqam yangilandi!</b>\n\n"
-        f"📱 Yangi raqam: <code>{phone}</code>",
+        f"✅ <b>Telefon raqam yangilandi!</b>\n\n📱 Yangi raqam: <code>{phone}</code>",
         reply_markup=kb_student_menu(),
     )
 
     # Adminga bildirishnoma
     from config import ADMIN_IDS
+
     tg = student.telegram_username if student else str(message.from_user.id)
     group = student.group_name if student else "—"
     admin_text = (

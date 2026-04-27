@@ -27,6 +27,7 @@ def _is_admin(user_id: int) -> bool:
 
 # ─── /start ───────────────────────────────────────────────────────────────────
 
+
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) -> None:
     """
@@ -37,6 +38,7 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
       /start ref_XXXX           → referal ro'yxatdan o'tish
     """
     from aiogram.fsm.context import FSMContext  # noqa — already imported via type hint
+
     await state.clear()  # Avvalgi FSM holatini tozalaymiz
 
     user_id = message.from_user.id
@@ -49,19 +51,25 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
         from aiogram.types import WebAppInfo as WAI
 
         from config import WEBAPP_URL as _WA
+
         if _WA and ref_user_id.isdigit() and int(ref_user_id) != user_id:
             ref_url = f"{_WA.rstrip('/')}/webapp/student.html?ref={ref_user_id}"
-            markup = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(
-                    text="📝 Ro'yxatdan o'tish (do'st taklifi)",
-                    web_app=WAI(url=ref_url),
-                )
-            ]])
+            markup = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="📝 Ro'yxatdan o'tish (do'st taklifi)",
+                            web_app=WAI(url=ref_url),
+                        )
+                    ]
+                ]
+            )
             referrer_student = await db.get_student(int(ref_user_id))
             referrer_name = referrer_student.full_name if referrer_student else None
             taklif_text = (
                 f"<b>{referrer_name}</b> sizi Mars IT ga taklif qildi!"
-                if referrer_name else "Do'stingiz sizi Mars IT ga taklif qildi!"
+                if referrer_name
+                else "Do'stingiz sizi Mars IT ga taklif qildi!"
             )
             await message.answer(
                 f"🎓 <b>Mars IT O'quv Markaziga xush kelibsiz!</b>\n\n"
@@ -78,13 +86,18 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
         from aiogram.types import WebAppInfo as WAI
 
         from config import WEBAPP_URL as _WA
+
         if _WA:
-            markup = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(
-                    text="🏆 Mini App — Reytingni ochish",
-                    web_app=WAI(url=f"{_WA.rstrip('/')}/webapp/student.html"),
-                )
-            ]])
+            markup = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="🏆 Mini App — Reytingni ochish",
+                            web_app=WAI(url=f"{_WA.rstrip('/')}/webapp/student.html"),
+                        )
+                    ]
+                ]
+            )
             await message.answer(
                 "🏁 <b>Reyting challenge sahifasiga xush kelibsiz!</b>\n\n"
                 "Bu yerda siz:\n"
@@ -133,12 +146,16 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
             )
 
     if _WA:
-        markup = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(
-                text="📱 Mini App — Shaxsiy kabinet",
-                web_app=WAI(url=f"{_WA.rstrip('/')}/webapp/student.html"),
-            )
-        ]])
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📱 Mini App — Shaxsiy kabinet",
+                        web_app=WAI(url=f"{_WA.rstrip('/')}/webapp/student.html"),
+                    )
+                ]
+            ]
+        )
         greet = f"Salom, <b>{student.full_name}</b>! 👋" if student else "Xush kelibsiz! 👋"
         await message.answer(
             f"{greet}\n\n"
@@ -154,12 +171,12 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
         # WEBAPP_URL sozlanmagan — eski oqim (fallback)
         if student:
             await message.answer(
-                f"👋 <b>Salom, {student.full_name}!</b>\n\n"
-                f"📚 Guruh: <b>{student.group_name}</b>",
+                f"👋 <b>Salom, {student.full_name}!</b>\n\n📚 Guruh: <b>{student.group_name}</b>",
                 reply_markup=kb_student_menu(),
             )
         else:
             from handlers.registration import start_registration
+
             await start_registration(message, state)
 
 
@@ -169,6 +186,7 @@ async def cmd_help(message: Message) -> None:
 
 
 # ─── /panel — admin panelini ko'rsatish ──────────────────────────────────────
+
 
 @router.message(Command("panel"))
 async def cmd_panel(message: Message) -> None:
@@ -182,6 +200,7 @@ async def cmd_panel(message: Message) -> None:
 
 
 # ─── /list_groups ─────────────────────────────────────────────────────────────
+
 
 @router.message(Command("list_groups"))
 async def cmd_list_groups(message: Message, db: DatabaseService) -> None:
@@ -197,8 +216,8 @@ async def cmd_list_groups(message: Message, db: DatabaseService) -> None:
         )
         return
 
-    odd   = sum(1 for g in groups if g.group_type == GroupType.ODD)
-    even  = sum(1 for g in groups if g.group_type == GroupType.EVEN)
+    odd = sum(1 for g in groups if g.group_type == GroupType.ODD)
+    even = sum(1 for g in groups if g.group_type == GroupType.EVEN)
     activ = sum(1 for g in groups if g.is_active)
 
     await message.answer(
@@ -211,6 +230,7 @@ async def cmd_list_groups(message: Message, db: DatabaseService) -> None:
 
 
 # ─── /add — qo'lda guruh qo'shish (skript/power-user uchun) ─────────────────
+
 
 @router.message(Command("add"))
 async def cmd_add(message: Message, db: DatabaseService) -> None:
@@ -237,15 +257,15 @@ async def cmd_add(message: Message, db: DatabaseService) -> None:
         await message.answer("❌ Chat ID noto'g'ri! Raqam bo'lishi kerak.")
         return
 
-    name     = parts[2]
+    name = parts[2]
     type_raw = parts[3].lower().strip()
 
     if type_raw in ("toq", "odd", "t"):
-        group_type  = GroupType.ODD
-        type_label  = "Toq kunliklar"
+        group_type = GroupType.ODD
+        type_label = "Toq kunliklar"
     elif type_raw in ("juft", "even", "j"):
-        group_type  = GroupType.EVEN
-        type_label  = "Juft kunliklar"
+        group_type = GroupType.EVEN
+        type_label = "Juft kunliklar"
     else:
         await message.answer("❌ Tur noto'g'ri! 'toq' yoki 'juft' kiriting.")
         return
@@ -265,6 +285,7 @@ async def cmd_add(message: Message, db: DatabaseService) -> None:
 
 # ─── /remove ──────────────────────────────────────────────────────────────────
 
+
 @router.message(Command("remove"))
 async def cmd_remove(message: Message, db: DatabaseService) -> None:
     if not _is_admin(message.from_user.id):
@@ -274,8 +295,7 @@ async def cmd_remove(message: Message, db: DatabaseService) -> None:
     parts = message.text.split()
     if len(parts) < 2:
         await message.answer(
-            "❌ Format: <code>/remove -100...</code>\n\n"
-            "Yoki paneldan foydalaning:",
+            "❌ Format: <code>/remove -100...</code>\n\nYoki paneldan foydalaning:",
             reply_markup=kb_admin_panel(),
         )
         return
@@ -298,6 +318,7 @@ async def cmd_remove(message: Message, db: DatabaseService) -> None:
 
 # ─── /status ──────────────────────────────────────────────────────────────────
 
+
 @router.message(Command("status"))
 async def cmd_status(message: Message, db: DatabaseService) -> None:
     if not _is_admin(message.from_user.id):
@@ -305,11 +326,11 @@ async def cmd_status(message: Message, db: DatabaseService) -> None:
         return
 
     groups = await db.get_all_groups()
-    info   = get_tomorrow_info(TIMEZONE)
+    info = get_tomorrow_info(TIMEZONE)
 
-    odd_active  = sum(1 for g in groups if g.group_type == GroupType.ODD  and g.is_active)
+    odd_active = sum(1 for g in groups if g.group_type == GroupType.ODD and g.is_active)
     even_active = sum(1 for g in groups if g.group_type == GroupType.EVEN and g.is_active)
-    next_type   = "Toq" if info.group_type == GroupType.ODD else "Juft"
+    next_type = "Toq" if info.group_type == GroupType.ODD else "Juft"
 
     await message.answer(
         f"📊 <b>Bot holati</b>\n\n"
@@ -327,24 +348,21 @@ async def cmd_status(message: Message, db: DatabaseService) -> None:
 
 # ─── /test_send ───────────────────────────────────────────────────────────────
 
+
 @router.message(Command("test_send"))
 async def cmd_test_send(message: Message, bot: Bot, db: DatabaseService) -> None:
     if not _is_admin(message.from_user.id):
         await message.answer("❌ Bu buyruq faqat adminlar uchun!")
         return
 
-    info      = get_tomorrow_info(TIMEZONE)
+    info = get_tomorrow_info(TIMEZONE)
     next_type = "Toq" if info.group_type == GroupType.ODD else "Juft"
-    sent_msg  = await message.answer(
-        f"⏳ <b>Test yuborilmoqda...</b>\n"
-        f"📅 {info.date_str} — {next_type} kun"
-    )
+    sent_msg = await message.answer(f"⏳ <b>Test yuborilmoqda...</b>\n📅 {info.date_str} — {next_type} kun")
 
     try:
         await send_daily_reminders(bot=bot, db=db, timezone_str=TIMEZONE)
         await sent_msg.edit_text(
-            f"✅ <b>Test muvaffaqiyatli!</b>\n\n"
-            f"📅 {info.date_str} — {next_type} kun uchun yuborildi.",
+            f"✅ <b>Test muvaffaqiyatli!</b>\n\n📅 {info.date_str} — {next_type} kun uchun yuborildi.",
             reply_markup=kb_back_to_panel(),
         )
     except Exception as e:
@@ -356,6 +374,7 @@ async def cmd_test_send(message: Message, bot: Bot, db: DatabaseService) -> None
 
 # ─── /chatid — guruh ichida chat ID ni ko'rsatish ────────────────────────────
 
+
 @router.message(Command("chatid"))
 async def cmd_chatid(message: Message, db: DatabaseService) -> None:
     """
@@ -363,7 +382,7 @@ async def cmd_chatid(message: Message, db: DatabaseService) -> None:
     Private chatda → saqlanган barcha guruhlar ro'yxatini ko'rsatadi.
     Private chatda forward bilan → forward qilingan guruhning ID sini ko'rsatadi.
     """
-    chat     = message.chat
+    chat = message.chat
     is_group = chat.type in ("group", "supergroup")
 
     if is_group:
@@ -380,9 +399,7 @@ async def cmd_chatid(message: Message, db: DatabaseService) -> None:
 
     # Private chat
     if not _is_admin(message.from_user.id):
-        await message.answer(
-            f"🆔 <b>Sizning ID ingiz:</b> <code>{message.from_user.id}</code>"
-        )
+        await message.answer(f"🆔 <b>Sizning ID ingiz:</b> <code>{message.from_user.id}</code>")
         return
 
     # Forward qilingan xabar — guruh ID sini aniqlaymiz
@@ -421,6 +438,7 @@ async def cmd_chatid(message: Message, db: DatabaseService) -> None:
 
 # ─── Guruhdan kelgan istalgan xabar → chat ID saqlanadi ─────────────────────
 
+
 @router.message(F.chat.type.in_({"group", "supergroup"}))
 async def auto_save_group(message: Message, db: DatabaseService) -> None:
     """Bot a'zo bo'lgan guruhdan xabar kelsa — chat ID avtomatik saqlanadi."""
@@ -428,6 +446,7 @@ async def auto_save_group(message: Message, db: DatabaseService) -> None:
 
 
 # ─── Bot guruhga qo'shilganda avtomatik chat ID yuborish ─────────────────────
+
 
 @router.my_chat_member(F.new_chat_member.status.in_({"left", "kicked", "banned"}))
 async def bot_removed_from_group(event: ChatMemberUpdated, db: DatabaseService) -> None:
@@ -447,7 +466,7 @@ async def bot_added_to_group(event: ChatMemberUpdated, bot: Bot, db: DatabaseSer
     2. Barcha adminlarga tugmali xabar yuboramiz
     Admin 2 ta click bilan guruhni ro'yxatga qo'sha oladi.
     """
-    chat     = event.chat
+    chat = event.chat
     is_group = chat.type in ("group", "supergroup")
     if not is_group:
         return

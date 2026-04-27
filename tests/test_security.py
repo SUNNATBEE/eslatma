@@ -39,6 +39,9 @@ class DatabaseCredentialTests(unittest.IsolatedAsyncioTestCase):
         except FileNotFoundError:
             pass
 
+    async def test_check_db_live_true_after_init(self) -> None:
+        self.assertTrue(await self.db.check_db_live())
+
     async def test_add_student_credential_hashes_password(self) -> None:
         await self.db.add_student_credential("1001", "Ali Valiyev", "54321", "nF-2506")
         credential = await self.db.get_student_credential("1001")

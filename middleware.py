@@ -98,9 +98,10 @@ class ButtonTrackingMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         if event.data:
-            parts  = event.data.split(":")
+            parts = event.data.split(":")
             prefix = ":".join(parts[:2]) if len(parts) > 1 else event.data
             import asyncio
+
             asyncio.create_task(self.db.track_button(prefix))
         return await handler(event, data)
 

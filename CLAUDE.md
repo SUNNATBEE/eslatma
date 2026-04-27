@@ -8,6 +8,9 @@ pip install -r requirements.txt && python main.py
 # Docker: docker build -t otaonabot . && docker run -e BOT_TOKEN=... -p 8080:8080 otaonabot
 ```
 
+**Sifat:** `pip install -r requirements-dev.txt && ruff check . && ruff format --check . && pytest tests/ -v`  
+Umumiy tavsif: repo ildizidagi `README.md`.
+
 ## Key Files
 ```
 main.py          2650 qator — 80+ API endpoint (aiohttp), aiogram routers, APScheduler
@@ -49,7 +52,7 @@ All UI text, comments, string literals → **Uzbek (O'zbek tili)**. Intentional.
 
 ## Deployment
 Render (Docker, `render.yaml`) + Railway (`railway.toml`). `WEBAPP_URL` = public HTTPS URL.
-Health: `GET /health` → `OK ✅`. Test reminders: `/test_send` (admin only).
+Health: `GET /health` → `OK ✅`. Readiness: `GET /ready` (JSON). Versiya: `GET /api/meta/version`. Test reminders: `/test_send` (admin only). CORS / `LOG_JSON` / `APP_VERSION`: `config.py` va `README.md`.
 
 ## Details
 → Batafsil arxitektura, model ro'yxati, referral flow: `CLAUDE-details.md`

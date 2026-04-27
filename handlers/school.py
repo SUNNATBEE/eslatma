@@ -1,6 +1,7 @@
 """
 handlers/school.py — Dars jadvali + Ustozga savol yuborish.
 """
+
 import logging
 
 from aiogram import Bot, F, Router
@@ -22,6 +23,7 @@ router = Router()
 # ════════════════════════════════════════════════════════════════════════════════
 # O'QUVCHI: DARS JADVALINI KO'RISH
 # ════════════════════════════════════════════════════════════════════════════════
+
 
 @router.callback_query(F.data == "student:schedule")
 async def student_view_schedule(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
@@ -51,6 +53,7 @@ async def student_view_schedule(cb: CallbackQuery, db: DatabaseService, bot: Bot
 # O'QUVCHI: USTOZGA SAVOL YUBORISH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class QuestionFSM(StatesGroup):
     waiting_question = State()
 
@@ -72,9 +75,7 @@ async def student_ask_start(cb: CallbackQuery, state: FSMContext, db: DatabaseSe
         )
     except TelegramBadRequest:
         await cb.message.answer(
-            "❓ <b>Ustozga savol</b>\n\n"
-            "Savolingizni yuboring:\n\n"
-            "<i>Bekor qilish: /start</i>",
+            "❓ <b>Ustozga savol</b>\n\nSavolingizni yuboring:\n\n<i>Bekor qilish: /start</i>",
         )
     await cb.answer()
 
@@ -97,8 +98,7 @@ async def student_ask_send(message: Message, state: FSMContext, db: DatabaseServ
     await db.update_last_active(message.from_user.id)
 
     await message.answer(
-        "✅ Savolingiz ustozga yuborildi!\n"
-        "Javob bot orqali keladi.",
+        "✅ Savolingiz ustozga yuborildi!\nJavob bot orqali keladi.",
         reply_markup=kb_student_menu(),
     )
 
@@ -107,17 +107,18 @@ async def student_ask_send(message: Message, state: FSMContext, db: DatabaseServ
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(
-        text="📩 Javob berish",
-        callback_data=f"admin:answer_q:{message.from_user.id}:{q.id}",
-    ))
+    builder.row(
+        InlineKeyboardButton(
+            text="📩 Javob berish",
+            callback_data=f"admin:answer_q:{message.from_user.id}:{q.id}",
+        )
+    )
 
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(
                 admin_id,
-                f"❓ <b>Yangi savol!</b>\n\n"
-                f"👤 {student.full_name} | 📚 {student.group_name}",
+                f"❓ <b>Yangi savol!</b>\n\n👤 {student.full_name} | 📚 {student.group_name}",
                 reply_markup=builder.as_markup(),
             )
             await bot.copy_message(
@@ -131,6 +132,7 @@ async def student_ask_send(message: Message, state: FSMContext, db: DatabaseServ
 
 # ─── Admin: savolga javob berish ──────────────────────────────────────────────
 
+
 class AnswerFSM(StatesGroup):
     waiting_answer = State()
 
@@ -140,9 +142,9 @@ async def admin_answer_start(cb: CallbackQuery, state: FSMContext) -> None:
     if cb.from_user.id not in ADMIN_IDS:
         await cb.answer("❌ Faqat admin!", show_alert=True)
         return
-    parts     = cb.data.split(":")
+    parts = cb.data.split(":")
     student_id = int(parts[2])
-    q_id       = int(parts[3])
+    q_id = int(parts[3])
     await state.update_data(student_id=student_id, q_id=q_id)
     await state.set_state(AnswerFSM.waiting_answer)
     try:
@@ -150,17 +152,16 @@ async def admin_answer_start(cb: CallbackQuery, state: FSMContext) -> None:
     except TelegramBadRequest:
         pass
     await cb.message.answer(
-        "📝 Javobingizni yuboring (matn, rasm, video — istalgan):\n\n"
-        "<i>Bekor qilish: /start</i>",
+        "📝 Javobingizni yuboring (matn, rasm, video — istalgan):\n\n<i>Bekor qilish: /start</i>",
     )
     await cb.answer()
 
 
 @router.message(StateFilter(AnswerFSM.waiting_answer))
 async def admin_answer_send(message: Message, state: FSMContext, db: DatabaseService, bot: Bot) -> None:
-    data       = await state.get_data()
+    data = await state.get_data()
     student_id = data.get("student_id")
-    q_id       = data.get("q_id")
+    q_id = data.get("q_id")
     await state.clear()
 
     try:
@@ -182,8 +183,9 @@ async def admin_answer_send(message: Message, state: FSMContext, db: DatabaseSer
 # ADMIN: DARS JADVALINI O'RNATISH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class ScheduleFSM(StatesGroup):
-    waiting_group   = State()
+    waiting_group = State()
     waiting_content = State()
 
 
@@ -216,12 +218,11 @@ async def admin_schedule_group(cb: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(StateFilter(ScheduleFSM.waiting_content))
 async def admin_schedule_content(message: Message, state: FSMContext, db: DatabaseService) -> None:
-    data  = await state.get_data()
+    data = await state.get_data()
     group = data.get("group", "")
     await db.set_schedule(group, message.chat.id, message.message_id)
     await state.clear()
     await message.answer(
-        f"✅ <b>{group}</b> guruhi uchun jadval saqlandi!\n"
-        "O'quvchilar 'Dars jadvali' tugmasidan ko'ra oladi.",
+        f"✅ <b>{group}</b> guruhi uchun jadval saqlandi!\nO'quvchilar 'Dars jadvali' tugmasidan ko'ra oladi.",
         reply_markup=kb_back_to_panel(),
     )

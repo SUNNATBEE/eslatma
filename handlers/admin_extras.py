@@ -2,6 +2,7 @@
 handlers/admin_extras.py — Statistika, Excel eksport, Broadcast,
                            O'quvchi qo'shish, Vaqt sozlash, Faollik.
 """
+
 import io
 import logging
 from datetime import datetime, timedelta
@@ -28,23 +29,25 @@ router = Router()
 # STATISTIKA
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data == "admin:stats")
 async def admin_stats(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
         await cb.answer("❌", show_alert=True)
         return
 
-    students  = await db.get_all_students()
+    students = await db.get_all_students()
     # Asia/Tashkent vaqti bo'yicha bugungi sana (server UTC da ishlasa ham to'g'ri)
     today_str = datetime.now(pytz.timezone(TIMEZONE)).strftime("%Y-%m-%d")
     att_today = await db.get_attendance_by_date(today_str)
 
-    yes_ids  = {a.user_id for a in att_today if a.status == "yes"}
-    no_ids   = {a.user_id for a in att_today if a.status == "no"}
+    yes_ids = {a.user_id for a in att_today if a.status == "yes"}
+    no_ids = {a.user_id for a in att_today if a.status == "no"}
     answered = len(yes_ids) + len(no_ids)
 
     # Per-group breakdown
     from collections import Counter
+
     group_count = Counter(s.group_name for s in students)
     group_lines = "\n".join(f"  • {g}: {group_count.get(g, 0)} ta" for g in MARS_GROUPS)
 
@@ -70,6 +73,7 @@ async def admin_stats(cb: CallbackQuery, db: DatabaseService) -> None:
 # ════════════════════════════════════════════════════════════════════════════════
 # EXCEL EKSPORT
 # ════════════════════════════════════════════════════════════════════════════════
+
 
 @router.callback_query(F.data == "admin:excel_export")
 async def admin_excel_export(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
@@ -111,9 +115,17 @@ async def admin_excel_export(cb: CallbackQuery, db: DatabaseService, bot: Bot) -
         sorted_students = sorted(students, key=lambda s: (s.group_name, s.full_name))
         for i, s in enumerate(sorted_students, 1):
             reg = s.registered_at.strftime("%d.%m.%Y") if s.registered_at else "—"
-            ws.append([i, s.full_name, s.group_name, s.mars_id,
-                       s.phone_number or "—",
-                       s.telegram_username or str(s.user_id), reg])
+            ws.append(
+                [
+                    i,
+                    s.full_name,
+                    s.group_name,
+                    s.mars_id,
+                    s.phone_number or "—",
+                    s.telegram_username or str(s.user_id),
+                    reg,
+                ]
+            )
 
         # Save to buffer
         buf = io.BytesIO()
@@ -139,8 +151,9 @@ async def admin_excel_export(cb: CallbackQuery, db: DatabaseService, bot: Bot) -
 # BROADCAST
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class BroadcastFSM(StatesGroup):
-    waiting_target  = State()
+    waiting_target = State()
     waiting_message = State()
 
 
@@ -180,7 +193,7 @@ async def admin_broadcast_target(cb: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(StateFilter(BroadcastFSM.waiting_message))
 async def admin_broadcast_send(message: Message, state: FSMContext, db: DatabaseService, bot: Bot) -> None:
-    data   = await state.get_data()
+    data = await state.get_data()
     target = data.get("target", "all")
     await state.clear()
 
@@ -210,10 +223,11 @@ async def admin_broadcast_send(message: Message, state: FSMContext, db: Database
 # YANGI O'QUVCHI QO'SHISH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class AddCredentialFSM(StatesGroup):
-    waiting_group    = State()
-    waiting_name     = State()
-    waiting_mars_id  = State()
+    waiting_group = State()
+    waiting_name = State()
+    waiting_mars_id = State()
     waiting_password = State()
 
 
@@ -241,9 +255,7 @@ async def admin_add_cred_group(cb: CallbackQuery, state: FSMContext) -> None:
     group = cb.data.split(":", 2)[2]
     await state.update_data(group=group)
     await state.set_state(AddCredentialFSM.waiting_name)
-    await cb.message.edit_text(
-        f"📚 Guruh: <b>{group}</b>\n\nO'quvchining <b>ism familyasini</b> kiriting:"
-    )
+    await cb.message.edit_text(f"📚 Guruh: <b>{group}</b>\n\nO'quvchining <b>ism familyasini</b> kiriting:")
     await cb.answer()
 
 
@@ -267,10 +279,10 @@ async def admin_add_cred_mars_id(message: Message, state: FSMContext) -> None:
 
 @router.message(StateFilter(AddCredentialFSM.waiting_password))
 async def admin_add_cred_password(message: Message, state: FSMContext, db: DatabaseService) -> None:
-    data     = await state.get_data()
-    group    = data.get("group", "")
-    name     = data.get("name", "")
-    mars_id  = data.get("mars_id", "")
+    data = await state.get_data()
+    group = data.get("group", "")
+    name = data.get("name", "")
+    mars_id = data.get("mars_id", "")
     password = message.text.strip()
     await state.clear()
 
@@ -288,6 +300,7 @@ async def admin_add_cred_password(message: Message, state: FSMContext, db: Datab
 # ════════════════════════════════════════════════════════════════════════════════
 # ESLATMA VAQTINI O'ZGARTIRISH
 # ════════════════════════════════════════════════════════════════════════════════
+
 
 class TimeFSM(StatesGroup):
     waiting_time = State()
@@ -321,7 +334,7 @@ async def admin_set_time_save(message: Message, state: FSMContext, db: DatabaseS
     text = message.text.strip()
     try:
         h_str, m_str = text.split(":")
-        hour   = int(h_str)
+        hour = int(h_str)
         minute = int(m_str)
         assert 0 <= hour <= 23 and 0 <= minute <= 59
     except Exception:
@@ -334,6 +347,7 @@ async def admin_set_time_save(message: Message, state: FSMContext, db: DatabaseS
 
     # Schedulerni qayta sozlaymiz
     from scheduler import reschedule_reminder
+
     reschedule_reminder(hour, minute)
 
     await message.answer(
@@ -347,6 +361,7 @@ async def admin_set_time_save(message: Message, state: FSMContext, db: DatabaseS
 # AVTO XABARLAR BOSHQARUVI
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 def _icon(v: str) -> str:
     return "🟢" if v == "1" else "🔴"
 
@@ -357,12 +372,13 @@ def _state(v: str) -> str:
 
 # ── Asosiy sahifa ─────────────────────────────────────────────────────────────
 
+
 async def _build_main_auto_msg(db: DatabaseService):
-    g   = await db.get_setting("AUTO_MSG_GROUPS",   "1")
-    s   = await db.get_setting("AUTO_MSG_STUDENTS", "1")
-    c   = await db.get_setting("AUTO_MSG_CURATORS", "1")
-    odd = await db.get_setting("AUTO_MSG_ODD",      "1")
-    evn = await db.get_setting("AUTO_MSG_EVEN",     "1")
+    g = await db.get_setting("AUTO_MSG_GROUPS", "1")
+    s = await db.get_setting("AUTO_MSG_STUDENTS", "1")
+    c = await db.get_setting("AUTO_MSG_CURATORS", "1")
+    odd = await db.get_setting("AUTO_MSG_ODD", "1")
+    evn = await db.get_setting("AUTO_MSG_EVEN", "1")
 
     text = (
         "🔔 <b>Avto xabarlar boshqaruvi</b>\n\n"
@@ -377,18 +393,18 @@ async def _build_main_auto_msg(db: DatabaseService):
     )
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text=f"{_icon(odd)} Toq kun",  callback_data="auto_msg:day:odd"),
+        InlineKeyboardButton(text=f"{_icon(odd)} Toq kun", callback_data="auto_msg:day:odd"),
         InlineKeyboardButton(text=f"{_icon(evn)} Juft kun", callback_data="auto_msg:day:even"),
     )
     builder.row(
-        InlineKeyboardButton(text=f"{_icon(g)} Guruhlar",    callback_data="auto_msg:toggle:groups"),
+        InlineKeyboardButton(text=f"{_icon(g)} Guruhlar", callback_data="auto_msg:toggle:groups"),
         InlineKeyboardButton(text=f"{_icon(s)} O'quvchilar", callback_data="auto_msg:toggle:students"),
     )
     builder.row(
-        InlineKeyboardButton(text=f"{_icon(c)} Kuratorlar",  callback_data="auto_msg:toggle:curators"),
+        InlineKeyboardButton(text=f"{_icon(c)} Kuratorlar", callback_data="auto_msg:toggle:curators"),
     )
     builder.row(
-        InlineKeyboardButton(text="📋 Guruhlar alohida →",  callback_data="auto_msg:groups:all"),
+        InlineKeyboardButton(text="📋 Guruhlar alohida →", callback_data="auto_msg:groups:all"),
     )
     builder.row(
         InlineKeyboardButton(text="👨‍💼 Kuratorlar alohida →", callback_data="auto_msg:curators"),
@@ -412,6 +428,7 @@ async def admin_auto_msg(cb: CallbackQuery, db: DatabaseService) -> None:
 
 # ── Umumiy toggle ─────────────────────────────────────────────────────────────
 
+
 @router.callback_query(F.data.startswith("auto_msg:toggle:"))
 async def admin_auto_msg_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
@@ -419,7 +436,7 @@ async def admin_auto_msg_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
         return
 
     target = cb.data.split(":")[2]  # groups | students | curators
-    key_map   = {"groups": "AUTO_MSG_GROUPS", "students": "AUTO_MSG_STUDENTS", "curators": "AUTO_MSG_CURATORS"}
+    key_map = {"groups": "AUTO_MSG_GROUPS", "students": "AUTO_MSG_STUDENTS", "curators": "AUTO_MSG_CURATORS"}
     label_map = {"groups": "Guruhlar", "students": "O'quvchilar", "curators": "Kuratorlar"}
     setting_key = key_map.get(target)
     if not setting_key:
@@ -439,6 +456,7 @@ async def admin_auto_msg_toggle(cb: CallbackQuery, db: DatabaseService) -> None:
 
 
 # ── Kun toggle ────────────────────────────────────────────────────────────────
+
 
 @router.callback_query(F.data.startswith("auto_msg:day:"))
 async def admin_auto_msg_day(cb: CallbackQuery, db: DatabaseService) -> None:
@@ -464,6 +482,7 @@ async def admin_auto_msg_day(cb: CallbackQuery, db: DatabaseService) -> None:
 
 # ── Guruhlar alohida ──────────────────────────────────────────────────────────
 
+
 async def _build_groups_auto_msg(db: DatabaseService, aud_filter: str):
     from database import AudienceType
 
@@ -475,9 +494,7 @@ async def _build_groups_auto_msg(db: DatabaseService, aud_filter: str):
     else:
         groups = all_groups
 
-    filter_label = {
-        "all": "Hammasi", "parent": "Ota-onalar", "student": "O'quvchilar"
-    }.get(aud_filter, "Hammasi")
+    filter_label = {"all": "Hammasi", "parent": "Ota-onalar", "student": "O'quvchilar"}.get(aud_filter, "Hammasi")
 
     text = (
         f"📋 <b>Guruhlar alohida boshqaruv</b>\n"
@@ -557,6 +574,7 @@ async def admin_auto_msg_group_toggle(cb: CallbackQuery, db: DatabaseService) ->
 
 # ── Kuratorlar alohida ────────────────────────────────────────────────────────
 
+
 async def _build_curators_auto_msg(db: DatabaseService):
     from sqlalchemy import select
 
@@ -623,6 +641,7 @@ async def admin_auto_msg_curator_toggle(cb: CallbackQuery, db: DatabaseService) 
 # FAOLLIK TEKSHIRISH
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data == "admin:check_activity")
 async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
     if cb.from_user.id not in ADMIN_IDS:
@@ -635,18 +654,14 @@ async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
     # (ular hali hech qachon kirmagan bo'lishi tabiiy — o'chirishga layoqatli emas)
     # registered_at naive datetime saqlanadi, shu sababli tzinfo olib tashlanadi
     cutoff = datetime.now(pytz.timezone(TIMEZONE)).replace(tzinfo=None) - timedelta(days=7)
-    inactive = [
-        s for s in all_inactive
-        if not (s.registered_at and s.registered_at > cutoff)
-    ]
+    inactive = [s for s in all_inactive if not (s.registered_at and s.registered_at > cutoff)]
 
     if not inactive:
         builder = InlineKeyboardBuilder()
         builder.row(InlineKeyboardButton(text="◀️ Panel", callback_data="admin:panel"))
         try:
             await cb.message.edit_text(
-                "✅ <b>Barcha o'quvchilar faol!</b>\n\n"
-                "So'nggi 7 kun ichida hamma botga kirgan.",
+                "✅ <b>Barcha o'quvchilar faol!</b>\n\nSo'nggi 7 kun ichida hamma botga kirgan.",
                 reply_markup=builder.as_markup(),
             )
         except TelegramBadRequest:
@@ -657,10 +672,12 @@ async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
     builder = InlineKeyboardBuilder()
     for s in inactive[:20]:  # max 20 ta
         last = s.last_active.strftime("%d.%m") if s.last_active else "Hech qachon"
-        builder.row(InlineKeyboardButton(
-            text=f"👤 {s.full_name} | {s.group_name} | {last}",
-            callback_data=f"admin:student_detail:{s.user_id}",
-        ))
+        builder.row(
+            InlineKeyboardButton(
+                text=f"👤 {s.full_name} | {s.group_name} | {last}",
+                callback_data=f"admin:student_detail:{s.user_id}",
+            )
+        )
     builder.row(InlineKeyboardButton(text="◀️ Panel", callback_data="admin:panel"))
 
     text = (
@@ -679,6 +696,7 @@ async def admin_check_activity(cb: CallbackQuery, db: DatabaseService) -> None:
 # O'QUVCHI: UY VAZIFASI TARIXI
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 @router.callback_query(F.data == "student:hw_history")
 async def student_hw_history(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     student = await db.get_student(cb.from_user.id)
@@ -692,9 +710,7 @@ async def student_hw_history(cb: CallbackQuery, db: DatabaseService, bot: Bot) -
         await cb.answer("📭 Hozircha uy vazifasi tarixi yo'q.", show_alert=True)
         return
 
-    await cb.message.answer(
-        f"📜 <b>{student.group_name} — Oxirgi {len(history)} ta uy vazifasi:</b>"
-    )
+    await cb.message.answer(f"📜 <b>{student.group_name} — Oxirgi {len(history)} ta uy vazifasi:</b>")
     for hw in history:
         date_str = hw.sent_at.strftime("%d.%m.%Y %H:%M")
         try:
@@ -712,6 +728,7 @@ async def student_hw_history(cb: CallbackQuery, db: DatabaseService, bot: Bot) -
 # GURUHGA UMUMIY XABAR YUBORISH (O'QUVCHILAR / OTA-ONALAR)
 # ════════════════════════════════════════════════════════════════════════════════
 
+
 class GroupMsgFSM(StatesGroup):
     waiting_content = State()
 
@@ -722,8 +739,8 @@ async def admin_grp_msg_start(cb: CallbackQuery, state: FSMContext) -> None:
         await cb.answer("❌", show_alert=True)
         return
 
-    target = cb.data.split(":")[2]   # "student" | "parent"
-    label  = "O'quvchilar guruhlariga" if target == "student" else "Ota-onalar guruhlariga"
+    target = cb.data.split(":")[2]  # "student" | "parent"
+    label = "O'quvchilar guruhlariga" if target == "student" else "Ota-onalar guruhlariga"
 
     await state.update_data(grp_target=target)
     await state.set_state(GroupMsgFSM.waiting_content)
@@ -734,23 +751,19 @@ async def admin_grp_msg_start(cb: CallbackQuery, state: FSMContext) -> None:
             f"<i>Bekor qilish: /start</i>",
         )
     except TelegramBadRequest:
-        await cb.message.answer(
-            f"📢 <b>{label}</b> — xabarni yuboring:\n<i>Bekor: /start</i>"
-        )
+        await cb.message.answer(f"📢 <b>{label}</b> — xabarni yuboring:\n<i>Bekor: /start</i>")
     await cb.answer()
 
 
 @router.message(StateFilter(GroupMsgFSM.waiting_content))
-async def admin_grp_msg_send(
-    message: Message, state: FSMContext, db: DatabaseService, bot: Bot
-) -> None:
-    data   = await state.get_data()
+async def admin_grp_msg_send(message: Message, state: FSMContext, db: DatabaseService, bot: Bot) -> None:
+    data = await state.get_data()
     target = data.get("grp_target", "student")
     await state.clear()
 
     audience = AudienceType.STUDENT if target == "student" else AudienceType.PARENT
-    groups   = await db.get_all_groups()
-    targets  = [g for g in groups if g.audience == audience and g.is_active]
+    groups = await db.get_all_groups()
+    targets = [g for g in groups if g.audience == audience and g.is_active]
 
     label = "O'quvchilar" if target == "student" else "Ota-onalar"
     ok, fail = 0, 0
@@ -778,6 +791,7 @@ async def admin_grp_msg_send(
 # ════════════════════════════════════════════════════════════════════════════════
 # XP RESET — /reset_all_xp
 # ════════════════════════════════════════════════════════════════════════════════
+
 
 @router.message(Command("reset_all_xp"))
 async def cmd_reset_all_xp(message: Message, db: DatabaseService) -> None:

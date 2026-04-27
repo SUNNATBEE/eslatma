@@ -6,7 +6,9 @@ Yuborilgan xabar ID lari bazaga saqlanadi (keyinchalik o'chirish uchun).
 """
 
 import logging
+import os
 import random
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -17,27 +19,59 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from class_schedule import CLASS_SCHEDULE
-from config import SEND_HOUR, SEND_MINUTE
+from class_schedule import CLASS_END_SCHEDULE, CLASS_SCHEDULE, DEFAULT_LESSON_DURATION_MIN
+from config import ADMIN_IDS, DATABASE_URL, SEND_HOUR, SEND_MINUTE
 from database import AudienceType, DatabaseService, GroupType
 
 # Scheduler global ref (reschedule uchun)
 _scheduler_ref: "AsyncIOScheduler | None" = None
 
 logger = logging.getLogger(__name__)
+_job_runtime: dict[str, dict[str, str | bool | int]] = {}
+
+
+def _mark_job(job_id: str, *, ok: bool, details: str = "") -> None:
+    _job_runtime[job_id] = {
+        "ok": ok,
+        "details": details[:240],
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def scheduler_health() -> dict[str, bool | str]:
+    """Rejalashtiruvchi holati (admin / ready uchun)."""
+    if _scheduler_ref is None:
+        return {"configured": False, "running": False, "state": "not_configured"}
+    try:
+        running = bool(_scheduler_ref.running)
+    except Exception:
+        running = False
+    return {
+        "configured": True,
+        "running": running,
+        "state": "running" if running else "stopped",
+        "jobs": _job_runtime,
+    }
+
 
 _WEEKDAYS_UZ = {
-    0: "Dushanba", 1: "Seshanba", 2: "Chorshanba",
-    3: "Payshanba", 4: "Juma", 5: "Shanba", 6: "Yakshanba",
+    0: "Dushanba",
+    1: "Seshanba",
+    2: "Chorshanba",
+    3: "Payshanba",
+    4: "Juma",
+    5: "Shanba",
+    6: "Yakshanba",
 }
 
 
 # ─── Ertangi kun ma'lumoti ────────────────────────────────────────────────────
 
+
 @dataclass
 class TomorrowInfo:
-    date:       datetime
-    date_str:   str
+    date: datetime
+    date_str: str
     weekday_uz: str
     day_number: int
     group_type: GroupType
@@ -45,20 +79,20 @@ class TomorrowInfo:
 
 
 def get_tomorrow_info(timezone_str: str) -> TomorrowInfo:
-    tz       = pytz.timezone(timezone_str)
+    tz = pytz.timezone(timezone_str)
     tomorrow = datetime.now(tz) + timedelta(days=1)
-    day      = tomorrow.day
+    day = tomorrow.day
     # Weekday bo'yicha: 0,2,4 = Du,Ch,J = ODD; 1,3,5 = Se,Pa,Sh = EVEN
     # Yakshanba (6) — dars yo'q, is_odd=False (EVEN) qaytariladi,
     # lekin send_daily_reminders() Yakshanba uchun yubormasligi kerak.
-    is_odd   = tomorrow.weekday() in (0, 2, 4)
+    is_odd = tomorrow.weekday() in (0, 2, 4)
     return TomorrowInfo(
-        date       = tomorrow,
-        date_str   = tomorrow.strftime("%d.%m.%Y"),
-        weekday_uz = _WEEKDAYS_UZ[tomorrow.weekday()],
-        day_number = day,
-        group_type = GroupType.ODD if is_odd else GroupType.EVEN,
-        type_label = "Toq" if is_odd else "Juft",
+        date=tomorrow,
+        date_str=tomorrow.strftime("%d.%m.%Y"),
+        weekday_uz=_WEEKDAYS_UZ[tomorrow.weekday()],
+        day_number=day,
+        group_type=GroupType.ODD if is_odd else GroupType.EVEN,
+        type_label="Toq" if is_odd else "Juft",
     )
 
 
@@ -114,7 +148,57 @@ def build_reminder_message(info: TomorrowInfo, audience: AudienceType) -> str:
         )
 
 
+def _student_mentions(students: list) -> list[str]:
+    usernames: list[str] = []
+    for s in students:
+        u = (getattr(s, "telegram_username", None) or "").strip().lstrip("@")
+        if u:
+            usernames.append(f"@{u}")
+    return sorted(set(usernames))
+
+
+async def _send_homework_group_and_dm_reminders(
+    bot: Bot,
+    db: DatabaseService,
+    group_name: str,
+    chat_id: int,
+) -> tuple[int, int]:
+    """Homework eslatmasini guruhga (mentions) va har bir o'quvchiga yuboradi."""
+    students = await db.get_students_by_group(group_name)
+    mentions = _student_mentions(students)
+    mention_lines = "".join([f"{i+1}) {u}\n" for i, u in enumerate(mentions)])
+    dm_sent = 0
+
+    group_text = (
+        f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
+        f"🏫 Guruh: <b>{group_name}</b>\n"
+        f"👥 O'quvchilar soni: <b>{len(students)}</b>\n\n"
+        f"{('<b>Belgilanganlar:</b>\n' + mention_lines) if mentions else '⚠️ Username topilmadi'}"
+    )
+    try:
+        await bot.send_message(chat_id=chat_id, text=group_text, parse_mode="HTML")
+    except Exception:
+        pass
+
+    for s in students:
+        try:
+            await bot.send_message(
+                chat_id=s.user_id,
+                text=(
+                    f"📝 <b>Uy vazifa eslatmasi</b>\n\n"
+                    f"Guruh: <b>{group_name}</b>\n"
+                    f"Uy vazifani bajarib, belgilashni unutmang."
+                ),
+                parse_mode="HTML",
+            )
+            dm_sent += 1
+        except Exception:
+            continue
+    return (len(students), dm_sent)
+
+
 # ─── Asosiy yuborish vazifasi ─────────────────────────────────────────────────
+
 
 async def send_daily_reminders(
     bot: Bot,
@@ -141,10 +225,7 @@ async def send_daily_reminders(
 
         # Ertangi kun Yakshanba bo'lsa — dars yo'q, yubormaymiz
         if info.date.weekday() == 6:
-            logger.info(
-                f"SCHEDULER: Ertangi kun Yakshanba ({info.date_str}) — "
-                f"dars yo'q, xabar yuborilmadi"
-            )
+            logger.info(f"SCHEDULER: Ertangi kun Yakshanba ({info.date_str}) — dars yo'q, xabar yuborilmadi")
             return
 
         groups = await db.get_groups_by_type(info.group_type)
@@ -152,16 +233,10 @@ async def send_daily_reminders(
         # Toq/juft kun o'chirilgan bo'lsa — to'xtatamiz
         day_setting_key = "AUTO_MSG_ODD" if info.group_type == GroupType.ODD else "AUTO_MSG_EVEN"
         if await db.get_setting(day_setting_key, "1") == "0":
-            logger.info(
-                f"SCHEDULER: {day_setting_key} o'chirilgan — "
-                f"{info.type_label} kun xabarlari yuborilmadi"
-            )
+            logger.info(f"SCHEDULER: {day_setting_key} o'chirilgan — {info.type_label} kun xabarlari yuborilmadi")
             return
 
-        logger.info(
-            f"Ertangi kun: {info.date_str} ({info.type_label}) | "
-            f"Guruhlar soni: {len(groups)}"
-        )
+        logger.info(f"Ertangi kun: {info.date_str} ({info.type_label}) | Guruhlar soni: {len(groups)}")
 
         if not groups:
             logger.warning(f"Aktiv guruhlar topilmadi ({info.type_label} kun)")
@@ -188,10 +263,7 @@ async def send_daily_reminders(
                 # Xabar ID sini saqlaymiz (keyinchalik o'chirish uchun)
                 await db.save_message_id(group.chat_id, sent.message_id)
                 ok += 1
-                logger.info(
-                    f"  ✅ [{audience_label}] '{group.name}' ({group.chat_id}) "
-                    f"→ msg_id={sent.message_id}"
-                )
+                logger.info(f"  ✅ [{audience_label}] '{group.name}' ({group.chat_id}) → msg_id={sent.message_id}")
 
                 # Uy vazifasi mavjud bo'lsa — alohida yuboramiz
                 hw = await db.get_homework(group.name)
@@ -203,19 +275,23 @@ async def send_daily_reminders(
                             message_id=hw.message_id,
                         )
                         logger.info(f"  📝 Uy vazifasi yuborildi → '{group.name}'")
+                        total_students, dm_sent = await _send_homework_group_and_dm_reminders(
+                            bot, db, group.name, group.chat_id
+                        )
+                        logger.info(
+                            "  🔔 Homework reminder yuborildi → '%s' | students=%s, dm=%s",
+                            group.name,
+                            total_students,
+                            dm_sent,
+                        )
                     except Exception as hw_err:
                         logger.warning(f"  Uy vazifasi yuborib bo'lmadi ({group.name}): {hw_err}")
 
             except Exception as e:
                 fail += 1
-                logger.error(
-                    f"  ❌ [{audience_label}] '{group.name}' ({group.chat_id}): {e}"
-                )
+                logger.error(f"  ❌ [{audience_label}] '{group.name}' ({group.chat_id}): {e}")
 
-        logger.info(
-            f"NATIJA: {ok} yuborildi, {fail} xato | "
-            f"{info.date_str} | {info.type_label} kun"
-        )
+        logger.info(f"NATIJA: {ok} yuborildi, {fail} xato | {info.date_str} | {info.type_label} kun")
         # Shaxsiy davomat so'rovlari check_class_reminders() orqali yuboriladi
 
     except Exception as e:
@@ -225,6 +301,7 @@ async def send_daily_reminders(
 
 
 # ─── Test: bitta guruhga dars eslatmasi ──────────────────────────────────────
+
 
 async def send_daily_reminder_to_group(
     bot: Bot,
@@ -243,9 +320,7 @@ async def send_daily_reminder_to_group(
 
         # Guruhni nomiga qarab topamiz
         async with db.session_factory() as session:
-            result = await session.execute(
-                select(Group).where(Group.name == group_name)
-            )
+            result = await session.execute(select(Group).where(Group.name == group_name))
             group = result.scalar_one_or_none()
 
         if not group:
@@ -260,9 +335,7 @@ async def send_daily_reminder_to_group(
         )
         # Xabar ID sini saqlaymiz (keyinchalik o'chirish uchun)
         await db.save_message_id(group.chat_id, sent.message_id)
-        logger.info(
-            f"TEST SEND: '{group_name}' ({group.chat_id}) → msg_id={sent.message_id}"
-        )
+        logger.info(f"TEST SEND: '{group_name}' ({group.chat_id}) → msg_id={sent.message_id}")
 
         # Uy vazifasi mavjud bo'lsa ham yuboramiz
         hw = await db.get_homework(group.name)
@@ -274,6 +347,10 @@ async def send_daily_reminder_to_group(
                     message_id=hw.message_id,
                 )
                 logger.info(f"TEST SEND: Uy vazifasi yuborildi → '{group_name}'")
+                total_students, dm_sent = await _send_homework_group_and_dm_reminders(
+                    bot, db, group.name, group.chat_id
+                )
+                logger.info(f"TEST SEND: Homework reminder → students={total_students}, dm={dm_sent}")
             except Exception as hw_err:
                 logger.warning(f"TEST SEND: Uy vazifasi yuborib bo'lmadi: {hw_err}")
 
@@ -288,7 +365,7 @@ async def send_daily_reminder_to_group(
 
 # 1-eslatma va 2-eslatma yuborilgan foydalanuvchilarni kuzatish
 # Key: "user_id:date_str" — restart bo'lsa reset bo'ladi (normal holat)
-_sent_first_reminder:  set[str] = set()
+_sent_first_reminder: set[str] = set()
 _sent_second_reminder: set[str] = set()
 # 1-eslatma message_id lari — 2-eslatma yuborishda o'chirish uchun
 _first_reminder_msg_ids: dict[str, int] = {}
@@ -307,7 +384,7 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
 
     from keyboards import kb_attendance
 
-    tz  = pytz.timezone(timezone_str)
+    tz = pytz.timezone(timezone_str)
     now = datetime.now(tz)
 
     # Faqat 06:00–19:30 oralig'ida ishlaydi
@@ -318,14 +395,14 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
     if weekday == 6:  # Yakshanba — dars yo'q
         return
 
-    day_type  = "ODD" if weekday in (0, 2, 4) else "EVEN"
+    day_type = "ODD" if weekday in (0, 2, 4) else "EVEN"
 
     # Toq/juft kun o'chirilgan bo'lsa — to'xtatamiz
     day_setting_key = "AUTO_MSG_ODD" if day_type == "ODD" else "AUTO_MSG_EVEN"
     if await db.get_setting(day_setting_key, "1") == "0":
         return
 
-    schedule  = CLASS_SCHEDULE.get(day_type, {})
+    schedule = CLASS_SCHEDULE.get(day_type, {})
     today_str = now.strftime("%Y-%m-%d")
 
     for group_name, class_time_str in schedule.items():
@@ -333,7 +410,7 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
         if await db.get_setting(f"AUTO_MSG_GROUP:{group_name}", "1") == "0":
             continue
         class_hour, class_min = map(int, class_time_str.split(":"))
-        class_dt       = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+        class_dt = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
         reminder_start = class_dt - timedelta(hours=3)
 
         # Umumiy oynadan tashqarida — o'tkazib yuboramiz
@@ -341,11 +418,8 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
             continue
 
         # Qaysi eslatma oynasida ekanligini aniqlaymiz
-        in_first_window  = now < reminder_start + timedelta(minutes=10)
-        in_second_window = (
-            reminder_start + timedelta(minutes=30) <= now <
-            reminder_start + timedelta(minutes=40)
-        )
+        in_first_window = now < reminder_start + timedelta(minutes=10)
+        in_second_window = reminder_start + timedelta(minutes=30) <= now < reminder_start + timedelta(minutes=40)
 
         # Hech bir oynada emasmiz — o'tkazib yuboramiz
         if not in_first_window and not in_second_window:
@@ -368,13 +442,11 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
                 if key in _sent_first_reminder:
                     continue
                 _sent_first_reminder.add(key)
-                text = (
-                    f"🎯 Bugun soat <b>{class_time_str}</b> da dars!\n"
-                    f"Tayyor bo'l, dasturchi! Kelasanmi? 💻"
-                )
+                text = f"🎯 Bugun soat <b>{class_time_str}</b> da dars!\nTayyor bo'l, dasturchi! Kelasanmi? 💻"
                 try:
                     sent = await bot.send_message(
-                        student.user_id, text,
+                        student.user_id,
+                        text,
                         reply_markup=kb_attendance(today_str),
                         parse_mode="HTML",
                     )
@@ -388,18 +460,14 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
                 # Birinchi eslatmani o'chiramiz
                 if key in _first_reminder_msg_ids:
                     try:
-                        await bot.delete_message(
-                            student.user_id, _first_reminder_msg_ids.pop(key)
-                        )
+                        await bot.delete_message(student.user_id, _first_reminder_msg_ids.pop(key))
                     except Exception:
                         _first_reminder_msg_ids.pop(key, None)
-                text = (
-                    f"⚡ Hoy! Hali javob bermading!\n"
-                    f"Dars <b>{class_time_str}</b> da — qo'ldan boy berma! 🏃"
-                )
+                text = f"⚡ Hoy! Hali javob bermading!\nDars <b>{class_time_str}</b> da — qo'ldan boy berma! 🏃"
                 try:
                     await bot.send_message(
-                        student.user_id, text,
+                        student.user_id,
+                        text,
                         reply_markup=kb_attendance(today_str),
                         parse_mode="HTML",
                     )
@@ -412,6 +480,24 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
 # ─── Kurator davomat eslatmasi: dars boshlanganidan 20 daqiqa o'tgach ────────
 
 _sent_davomat_notify: set[str] = set()  # {group_name:date_str} — qayta yubormaslik
+
+# Uy vazifasi eslatmasi: {group_name:date_str} — qayta yubormaslik
+_sent_homework_prompt: set[str] = set()
+
+
+def _group_end_time(day_type: str, group_name: str, class_time_str: str) -> str:
+    """
+    Guruhning dars tugash vaqtini qaytaradi.
+    - Avval CLASS_END_SCHEDULE dan olinadi
+    - Yo'q bo'lsa DEFAULT_LESSON_DURATION_MIN bo'yicha hisoblanadi
+    """
+    explicit = CLASS_END_SCHEDULE.get(day_type, {}).get(group_name)
+    if explicit:
+        return explicit
+    class_hour, class_min = map(int, class_time_str.split(":"))
+    start = datetime(2000, 1, 1, class_hour, class_min)
+    end = start + timedelta(minutes=DEFAULT_LESSON_DURATION_MIN)
+    return end.strftime("%H:%M")
 
 
 async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
@@ -428,7 +514,7 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
     from database import CuratorSession
     from keyboards import kb_davomat_start
 
-    tz  = pytz.timezone(timezone_str)
+    tz = pytz.timezone(timezone_str)
     now = datetime.now(tz)
 
     if not (6 * 60 <= now.hour * 60 + now.minute <= 21 * 60):
@@ -438,14 +524,14 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
     if weekday == 6:  # Yakshanba — dars yo'q
         return
 
-    day_type  = "ODD" if weekday in (0, 2, 4) else "EVEN"
+    day_type = "ODD" if weekday in (0, 2, 4) else "EVEN"
 
     # Toq/juft kun o'chirilgan bo'lsa — to'xtatamiz
     day_setting_key = "AUTO_MSG_ODD" if day_type == "ODD" else "AUTO_MSG_EVEN"
     if await db.get_setting(day_setting_key, "1") == "0":
         return
 
-    schedule  = CLASS_SCHEDULE.get(day_type, {})
+    schedule = CLASS_SCHEDULE.get(day_type, {})
     today_str = now.strftime("%Y-%m-%d")
 
     for group_name, class_time_str in schedule.items():
@@ -454,9 +540,9 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
             continue
 
         class_hour, class_min = map(int, class_time_str.split(":"))
-        class_dt     = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+        class_dt = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
         window_start = class_dt + timedelta(minutes=20)
-        window_end   = class_dt + timedelta(minutes=30)
+        window_end = class_dt + timedelta(minutes=30)
 
         if not (window_start <= now < window_end):
             continue
@@ -472,8 +558,7 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
             continue
 
         notify_text = (
-            f"📋 <b>{group_name}</b> — dars boshlangan, 20 daq o'tdi!\n\n"
-            f"⏰ Davomatni ota-ona guruhiga yuboring."
+            f"📋 <b>{group_name}</b> — dars boshlangan, 20 daq o'tdi!\n\n⏰ Davomatni ota-ona guruhiga yuboring."
         )
         for cs in curator_sessions:
             # Kurator uchun avto xabar o'chirilgan bo'lsa — o'tkazamiz
@@ -489,6 +574,230 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
                 pass
 
         logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
+
+
+async def check_homework_prompt(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Har daqiqada tekshiradi:
+    dars tugashiga 2 daqiqa qolgan guruh bo'lsa, adminga
+    "Uyga vazifa bering" eslatmasini yuboradi.
+    """
+    if await db.get_setting("AUTO_MSG_GROUPS", "1") == "0":
+        return
+
+    tz = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+    if now.weekday() == 6:  # Yakshanba
+        return
+
+    day_type = "ODD" if now.weekday() in (0, 2, 4) else "EVEN"
+    day_setting_key = "AUTO_MSG_ODD" if day_type == "ODD" else "AUTO_MSG_EVEN"
+    if await db.get_setting(day_setting_key, "1") == "0":
+        return
+
+    schedule = CLASS_SCHEDULE.get(day_type, {})
+    today_str = now.strftime("%Y-%m-%d")
+
+    for group_name, class_time_str in schedule.items():
+        if await db.get_setting(f"AUTO_MSG_GROUP:{group_name}", "1") == "0":
+            continue
+
+        end_time_str = _group_end_time(day_type, group_name, class_time_str)
+        end_hour, end_min = map(int, end_time_str.split(":"))
+        end_dt = now.replace(hour=end_hour, minute=end_min, second=0, microsecond=0)
+        prompt_dt = end_dt - timedelta(minutes=2)
+
+        key = f"{group_name}:{today_str}"
+        if key in _sent_homework_prompt:
+            continue
+        # 1 daqiqalik oynada bir marta yuboramiz
+        if not (prompt_dt <= now < prompt_dt + timedelta(minutes=1)):
+            continue
+
+        text = (
+            f"📝 <b>Uyga vazifa eslatmasi</b>\n\n"
+            f"Guruh: <b>{group_name}</b>\n"
+            f"Dars tugashi: <b>{end_time_str}</b>\n\n"
+            f"⏰ Dars tugashiga 2 daqiqa qoldi.\n"
+            f"Uyga vazifa bering va uyga vazifa qo'shing.\n\n"
+            f"Eslatma: qo'shilgan vazifa ertangi dars eslatmasiga avtomatik qo'shiladi."
+        )
+
+        sent_any = False
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, text, parse_mode="HTML")
+                sent_any = True
+            except Exception:
+                continue
+
+        if sent_any:
+            _sent_homework_prompt.add(key)
+            logger.info(f"Uy vazifasi eslatmasi yuborildi: {group_name} | {today_str} | {end_time_str}")
+    _mark_job("homework_prompt_before_end", ok=True, details="checked")
+
+
+async def send_homework_deadline_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Darsdan 4 soat oldin homework yo'q bo'lgan guruhlar uchun adminlarga deadline eslatmasi.
+    """
+    tz = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+    if now.weekday() == 6:
+        return
+    day_type = "ODD" if now.weekday() in (0, 2, 4) else "EVEN"
+    schedule = CLASS_SCHEDULE.get(day_type, {})
+    today_str = now.strftime("%Y-%m-%d")
+    sent = 0
+    for group_name, class_time_str in schedule.items():
+        class_hour, class_min = map(int, class_time_str.split(":"))
+        class_dt = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+        deadline_dt = class_dt - timedelta(hours=4)
+        key = f"hw_deadline:{group_name}:{today_str}"
+        if await db.get_setting(key, "0") == "1":
+            continue
+        if not (deadline_dt <= now < deadline_dt + timedelta(minutes=1)):
+            continue
+        hw = await db.get_homework(group_name)
+        if hw:
+            await db.set_setting(key, "1")
+            continue
+        txt = (
+            f"⏰ <b>Homework deadline</b>\n\n"
+            f"Guruh: <b>{group_name}</b>\n"
+            f"Dars: <b>{class_time_str}</b>\n\n"
+            f"Uyga vazifa hali qo'shilmagan. Iltimos, hozir qo'shing."
+        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, txt, parse_mode="HTML")
+                sent += 1
+            except Exception:
+                pass
+        await db.set_setting(key, "1")
+    _mark_job("homework_deadline_reminders", ok=True, details=f"sent={sent}")
+
+
+async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Har kuni 18:00: homework berilgan guruhdagi, lekin tasdiqlamagan o'quvchilarga private reminder.
+    """
+    tz = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+    if now.hour != 18 or now.minute > 10:  # 10 daqiqalik window
+        return
+    groups = await db.get_all_groups()
+    sent = 0
+    for g in groups:
+        if not g.is_active or g.audience != AudienceType.STUDENT:
+            continue
+        hw = await db.get_homework(g.name)
+        if not hw:
+            continue
+        date_str = hw.sent_at.strftime("%Y-%m-%d")
+        students = await db.get_students_by_group(g.name)
+        for st in students:
+            conf = await db.is_homework_confirmed(st.user_id, date_str)
+            if conf:
+                continue
+            try:
+                await bot.send_message(
+                    st.user_id,
+                    (
+                        f"📝 <b>Uy vazifa eslatmasi</b>\n\n"
+                        f"Guruh: <b>{g.name}</b>\n"
+                        f"Uy vazifani ko'rib, tasdiqlashni unutmang."
+                    ),
+                    parse_mode="HTML",
+                )
+                sent += 1
+            except Exception:
+                pass
+    _mark_job("student_homework_reminders", ok=True, details=f"sent={sent}")
+
+
+async def send_lesson_auto_summary(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Dars tugagandan keyin (5 daqiqalik window) adminlarga qisqa summary.
+    """
+    tz = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+    if now.weekday() == 6:
+        return
+    day_type = "ODD" if now.weekday() in (0, 2, 4) else "EVEN"
+    schedule = CLASS_SCHEDULE.get(day_type, {})
+    today_str = now.strftime("%Y-%m-%d")
+    for group_name, class_time_str in schedule.items():
+        end_str = _group_end_time(day_type, group_name, class_time_str)
+        h, m = map(int, end_str.split(":"))
+        end_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        if not (end_dt + timedelta(minutes=5) <= now < end_dt + timedelta(minutes=10)):
+            continue
+        key = f"lesson_summary:{group_name}:{today_str}"
+        if await db.get_setting(key, "0") == "1":
+            continue
+        students = await db.get_students_by_group(group_name)
+        if not students:
+            await db.set_setting(key, "1")
+            continue
+        present = absent = pending = 0
+        hw = await db.get_homework(group_name)
+        for st in students:
+            rec = await db.get_student_attendance(st.user_id, today_str)
+            if not rec:
+                pending += 1
+            elif rec.status == "yes":
+                present += 1
+            else:
+                absent += 1
+        txt = (
+            f"📊 <b>Dars yakuni summary</b>\n\n"
+            f"Guruh: <b>{group_name}</b>\n"
+            f"✅ Keldi: <b>{present}</b>\n"
+            f"❌ Kelmadi: <b>{absent}</b>\n"
+            f"⏳ Kutilmoqda: <b>{pending}</b>\n"
+            f"📝 Uy vazifa: <b>{'Bor' if hw else 'Yoʻq'}</b>"
+        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, txt, parse_mode="HTML")
+            except Exception:
+                pass
+        await db.set_setting(key, "1")
+    _mark_job("lesson_auto_summary", ok=True, details="checked")
+
+
+def _sqlite_path_from_url(url: str) -> str | None:
+    prefix = "sqlite+aiosqlite:///"
+    if not url.startswith(prefix):
+        return None
+    raw = url[len(prefix) :]
+    if not raw:
+        return None
+    return raw.lstrip("/")
+
+
+async def run_sqlite_backup_job(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+    """
+    Har kuni lokal SQLite backup (backups/).
+    """
+    src_rel = _sqlite_path_from_url(DATABASE_URL)
+    if not src_rel:
+        _mark_job("sqlite_backup_daily", ok=False, details="non-sqlite")
+        return
+    src = os.path.abspath(src_rel)
+    if not os.path.isfile(src):
+        _mark_job("sqlite_backup_daily", ok=False, details="db_missing")
+        return
+    out_dir = os.path.abspath("backups")
+    os.makedirs(out_dir, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dst = os.path.join(out_dir, f"bot_{stamp}.db")
+    try:
+        shutil.copy2(src, dst)
+        _mark_job("sqlite_backup_daily", ok=True, details=f"saved:{os.path.basename(dst)}")
+    except Exception as e:
+        _mark_job("sqlite_backup_daily", ok=False, details=f"err:{e}")
 
 
 # ─── Kunlik reyting (Top-10) — rejalashtiruvchida alohida ishga tushirilmaydi;
@@ -507,7 +816,7 @@ async def send_daily_leaderboard(
     Avtomatik reja: `send_leaderboard_broadcast` (haftasiga 1 marta) ishlatiladi.
     Barcha aktiv STUDENT guruhlarga yuboriladi (ota-ona guruhlari o'tkazib yuboriladi).
     """
-    tz       = pytz.timezone(timezone_str)
+    tz = pytz.timezone(timezone_str)
     date_str = datetime.now(tz).strftime("%d.%m.%Y")
 
     try:
@@ -523,9 +832,9 @@ async def send_daily_leaderboard(
     # Top-10 satrlarini qurish
     rows = []
     for i, s in enumerate(leaders[:10], start=1):
-        icon  = _RANK_ICONS.get(i, f"{i}.")
+        icon = _RANK_ICONS.get(i, f"{i}.")
         group = f" ({s.group_name})" if s.group_name else ""
-        xp    = s.xp or 0
+        xp = s.xp or 0
         rows.append(f"{icon} <b>{s.full_name}</b>{group} — <b>{xp} XP</b>")
 
     top_line = "\n".join(rows)
@@ -545,9 +854,7 @@ async def send_daily_leaderboard(
         if not group.is_active:
             continue
         if group.audience != AudienceType.STUDENT:
-            logger.debug(
-                f"DAILY LEADERBOARD: '{group.name}' — PARENT guruh, o'tkazib yuborildi"
-            )
+            logger.debug(f"DAILY LEADERBOARD: '{group.name}' — PARENT guruh, o'tkazib yuborildi")
             continue
         try:
             await bot.send_message(
@@ -578,7 +885,7 @@ async def send_leaderboard_broadcast(
     Faqat AudienceType.STUDENT guruhlarga yuboriladi (PARENT guruhlar o'tkazib yuboriladi).
     Xabarda botga o'tish tugmasi bo'ladi.
     """
-    tz       = pytz.timezone(timezone_str)
+    tz = pytz.timezone(timezone_str)
     date_str = datetime.now(tz).strftime("%d.%m.%Y")
 
     try:
@@ -594,9 +901,9 @@ async def send_leaderboard_broadcast(
     # Top-5 satrlarini qurish
     rows = []
     for i, s in enumerate(leaders[:5], start=1):
-        icon  = _RANK_ICONS.get(i, f"{i}.")
+        icon = _RANK_ICONS.get(i, f"{i}.")
         group = f" ({s.group_name})" if s.group_name else ""
-        xp    = s.xp or 0
+        xp = s.xp or 0
         rows.append(f"{icon} <b>{s.full_name}</b>{group} — <b>{xp} XP</b>")
 
     total = await db.get_students_count() if hasattr(db, "get_students_count") else len(leaders)
@@ -606,16 +913,10 @@ async def send_leaderboard_broadcast(
     runner_up_xp = leaders[1].xp if len(leaders) > 1 and leaders[1].xp is not None else 0
     gap_text = (
         f"⚔️ 1-o'rin uchun farq atigi <b>{leader_xp - runner_up_xp} XP</b>!"
-        if len(leaders) > 1 else
-        f"⚔️ Taxtda faqat <b>{leader.full_name}</b> — sen qo'rqitolasan!"
+        if len(leaders) > 1
+        else f"⚔️ Taxtda faqat <b>{leader.full_name}</b> — sen qo'rqitolasan!"
     )
-    challenge_lines = (
-        "⚡ XP formula:\n"
-        "• Har kuni kir ✅\n"
-        "• Davomat belgila 📋\n"
-        "• Vazifani bajir 📝\n"
-        "• O'yin o'yna 🎮"
-    )
+    challenge_lines = "⚡ XP formula:\n• Har kuni kir ✅\n• Davomat belgila 📋\n• Vazifani bajir 📝\n• O'yin o'yna 🎮"
 
     text = (
         f"🚀 <b>Haftalik reyting challenge</b> — {date_str}\n\n"
@@ -629,12 +930,16 @@ async def send_leaderboard_broadcast(
 
     bot_info = await bot.get_me()
     bot_url = f"https://t.me/{bot_info.username}?start=leaderboard"
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text="🤖 Botga o'tish va o'rnimni ko'rish",
-            url=bot_url,
-        )],
-    ])
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🤖 Botga o'tish va o'rnimni ko'rish",
+                    url=bot_url,
+                )
+            ],
+        ]
+    )
 
     # Faqat aktiv O'QUVCHI guruhlariga yuboramiz (ota-ona guruhlar emas)
     groups = await db.get_all_groups()
@@ -643,9 +948,7 @@ async def send_leaderboard_broadcast(
         if not group.is_active:
             continue
         if group.audience != AudienceType.STUDENT:
-            logger.debug(
-                f"LEADERBOARD BROADCAST: '{group.name}' — PARENT guruh, o'tkazib yuborildi"
-            )
+            logger.debug(f"LEADERBOARD BROADCAST: '{group.name}' — PARENT guruh, o'tkazib yuborildi")
             continue
         try:
             await bot.send_message(
@@ -663,6 +966,7 @@ async def send_leaderboard_broadcast(
 
 
 # ─── 7 kun nofaol o'quvchilarni o'chirish ────────────────────────────────────
+
 
 async def check_inactive_students(bot: Bot, db: DatabaseService, timezone_str: str = "Asia/Tashkent") -> None:
     """
@@ -700,6 +1004,7 @@ async def check_inactive_students(bot: Bot, db: DatabaseService, timezone_str: s
 
 # ─── Streak reminder: 19:00 da kirmagan o'quvchilarga ────────────────────────
 
+
 async def send_streak_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
     """
     Har kuni 19:00 da: bugun hali Mini App ga kirmagan o'quvchilarga
@@ -736,12 +1041,14 @@ async def send_streak_reminders(bot: Bot, db: DatabaseService, timezone_str: str
 
 # ─── Haftalik 7-kun streak bonusi: Dushanba 09:00 ────────────────────────────
 
+
 async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: str) -> None:
     """
     Har Dushanba 09:00 da: 7+ kun ketma-ket streak bo'lgan
     o'quvchilarga +100 XP bonus beradi.
     """
     from database import XP_WEEKLY_BONUS
+
     try:
         students = await db.get_students_with_7day_streak()
         awarded = 0
@@ -769,6 +1076,7 @@ async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: st
 
 # ─── Reschedule helper ───────────────────────────────────────────────────────
 
+
 def reschedule_reminder(hour: int, minute: int) -> None:
     """Scheduler vaqtini dinamik o'zgartiradi (admin paneldan chaqiriladi)."""
     global _scheduler_ref
@@ -783,6 +1091,7 @@ def reschedule_reminder(hour: int, minute: int) -> None:
 
 
 # ─── Scheduler setup ─────────────────────────────────────────────────────────
+
 
 def setup_scheduler(
     bot: Bot,
@@ -826,6 +1135,17 @@ def setup_scheduler(
         misfire_grace_time=60,
     )
 
+    # Uy vazifasi qo'shish eslatmasi (har 1 daqiqada)
+    scheduler.add_job(
+        func=check_homework_prompt,
+        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="homework_prompt_before_end",
+        name="Dars tugashidan 2 daqiqa oldin uy vazifasi eslatmasi",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
     # 7 kun nofaol o'quvchilarni o'chirish (har kuni 21:00)
     scheduler.add_job(
         func=check_inactive_students,
@@ -857,6 +1177,50 @@ def setup_scheduler(
         name="Streak eslatmasi (19:00)",
         replace_existing=True,
         misfire_grace_time=300,
+    )
+
+    # Homework deadline reminder (har 1 daqiqa)
+    scheduler.add_job(
+        func=send_homework_deadline_reminders,
+        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="homework_deadline_reminders",
+        name="Homework deadline reminder",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
+    # Student homework private reminder (18:00 window)
+    scheduler.add_job(
+        func=send_student_homework_reminders,
+        trigger=IntervalTrigger(minutes=10, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="student_homework_reminders",
+        name="Student homework reminders",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
+    # Lesson summary to admins
+    scheduler.add_job(
+        func=send_lesson_auto_summary,
+        trigger=IntervalTrigger(minutes=5, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="lesson_auto_summary",
+        name="Lesson auto summary",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
+    # Daily backup
+    scheduler.add_job(
+        func=run_sqlite_backup_job,
+        trigger=CronTrigger(hour=23, minute=50, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="sqlite_backup_daily",
+        name="SQLite backup daily",
+        replace_existing=True,
+        misfire_grace_time=1200,
     )
 
     # Haftalik streak bonusi (har Dushanba 09:00)

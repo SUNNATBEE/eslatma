@@ -4,6 +4,7 @@ handlers/attendance.py — Darsga boraman / kela olmayman tugmalari.
 attend:yes:DATE  → darhol "boraman" saqlanadi
 attend:no:DATE   → FSM: sabab so'raladi → admin + kurator + ota-onalar guruhiga yuboriladi
 """
+
 import logging
 from datetime import datetime
 
@@ -23,11 +24,13 @@ router = Router()
 
 # ─── FSM ──────────────────────────────────────────────────────────────────────
 
+
 class AbsenceReasonFSM(StatesGroup):
     waiting_reason = State()
 
 
 # ─── attend:yes ───────────────────────────────────────────────────────────────
+
 
 @router.callback_query(F.data.startswith("attend:yes:"))
 async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
@@ -67,6 +70,7 @@ async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot
         from sqlalchemy import select
 
         from database import CuratorSession
+
         async with db.session_factory() as db_sess:
             result = await db_sess.execute(select(CuratorSession))
             curator_sessions = list(result.scalars().all())
@@ -84,10 +88,9 @@ async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot
 
 # ─── attend:no → sabab so'rash ────────────────────────────────────────────────
 
+
 @router.callback_query(F.data.startswith("attend:no:"))
-async def handle_attendance_no(
-    cb: CallbackQuery, db: DatabaseService, state: FSMContext
-) -> None:
+async def handle_attendance_no(cb: CallbackQuery, db: DatabaseService, state: FSMContext) -> None:
     """attend:no:2026-03-17 — sabab so'raladi"""
     date_str = cb.data.split(":")[2]
 
@@ -117,14 +120,13 @@ async def handle_attendance_no(
 
 # ─── Sabab qabul qilish ────────────────────────────────────────────────────────
 
+
 @router.message(StateFilter(AbsenceReasonFSM.waiting_reason))
-async def handle_absence_reason(
-    msg: Message, db: DatabaseService, bot: Bot, state: FSMContext
-) -> None:
+async def handle_absence_reason(msg: Message, db: DatabaseService, bot: Bot, state: FSMContext) -> None:
     """O'quvchi sababini yozadi."""
-    data     = await state.get_data()
+    data = await state.get_data()
     date_str = data.get("date_str", datetime.now().strftime("%Y-%m-%d"))
-    reason   = msg.text.strip() if msg.text else "Sabab ko'rsatilmagan"
+    reason = msg.text.strip() if msg.text else "Sabab ko'rsatilmagan"
 
     student = await db.get_student(msg.from_user.id)
     if not student:
@@ -136,9 +138,7 @@ async def handle_absence_reason(
     await db.update_last_active(msg.from_user.id)
     await state.clear()
 
-    await msg.answer(
-        "✅ Sababingiz qabul qilindi. Tezroq tuzalib keling! 💪"
-    )
+    await msg.answer("✅ Sababingiz qabul qilindi. Tezroq tuzalib keling! 💪")
 
     # Bildirishnoma matni
     time_str = datetime.now().strftime("%H:%M")
@@ -160,6 +160,7 @@ async def handle_absence_reason(
         from sqlalchemy import select
 
         from database import CuratorSession
+
         async with db.session_factory() as session:
             result = await session.execute(select(CuratorSession))
             curator_sessions = list(result.scalars().all())

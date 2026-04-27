@@ -26,15 +26,16 @@ router = Router()
 
 
 class RegFSM(StatesGroup):
-    waiting_group    = State()
-    waiting_mars_id  = State()
+    waiting_group = State()
+    waiting_mars_id = State()
     waiting_password = State()
-    waiting_phone    = State()
+    waiting_phone = State()
 
 
 def _is_valid_phone(phone: str) -> bool:
     """Telefon formati: +998XXXXXXXXX (jami 13 belgi, 12 raqam)."""
     import re
+
     return bool(re.fullmatch(r"\+998\d{9}", phone))
 
 
@@ -54,6 +55,7 @@ async def start_registration(message: Message, state: FSMContext) -> None:
 
 # ── 1-qadam: guruh tanlash ─────────────────────────────────────────────────────
 
+
 @router.callback_query(F.data.startswith("reg:group:"), StateFilter(RegFSM.waiting_group))
 async def reg_select_group(cb: CallbackQuery, state: FSMContext) -> None:
     group = cb.data.split(":", 2)[2]
@@ -70,12 +72,13 @@ async def reg_select_group(cb: CallbackQuery, state: FSMContext) -> None:
 
 # ── 2-qadam: Mars ID kiritish ──────────────────────────────────────────────────
 
+
 @router.message(StateFilter(RegFSM.waiting_mars_id))
 async def reg_enter_mars_id(message: Message, state: FSMContext) -> None:
-    raw    = message.text.strip() if message.text else ""
-    upper  = raw.upper()
+    raw = message.text.strip() if message.text else ""
+    upper = raw.upper()
     is_num = raw.isdigit()
-    is_p   = upper.startswith("P") and len(upper) >= 2 and upper[1:].isdigit()
+    is_p = upper.startswith("P") and len(upper) >= 2 and upper[1:].isdigit()
     mars_id = upper if is_p else raw
 
     if not (is_num or is_p):
@@ -93,6 +96,7 @@ async def reg_enter_mars_id(message: Message, state: FSMContext) -> None:
 
 # ── 3-qadam: parol → tekshirish → ro'yxatga olish ─────────────────────────────
 
+
 @router.message(StateFilter(RegFSM.waiting_password))
 async def reg_enter_password(
     message: Message,
@@ -100,9 +104,9 @@ async def reg_enter_password(
     db: DatabaseService,
     bot: Bot,
 ) -> None:
-    password  = message.text.strip() if message.text else ""
-    data      = await state.get_data()
-    mars_id   = data.get("mars_id", "")
+    password = message.text.strip() if message.text else ""
+    data = await state.get_data()
+    mars_id = data.get("mars_id", "")
     sel_group = data.get("group", "")
 
     # Avval statik ro'yxatdan, so'ng DB dan tekshiramiz
@@ -115,16 +119,14 @@ async def reg_enter_password(
 
     if not cred:
         await message.answer(
-            "❌ <b>Bu ID topilmadi!</b>\n\n"
-            "Mars Space ID raqamingizni tekshiring va qayta kiriting:",
+            "❌ <b>Bu ID topilmadi!</b>\n\nMars Space ID raqamingizni tekshiring va qayta kiriting:",
         )
         await state.set_state(RegFSM.waiting_mars_id)
         return
 
     if not verify_secret(cred["password"], password):
         await message.answer(
-            "❌ <b>Parol noto'g'ri!</b>\n\n"
-            "Parolni tekshirib qayta kiriting:",
+            "❌ <b>Parol noto'g'ri!</b>\n\nParolni tekshirib qayta kiriting:",
         )
         return
     if db_cred and not is_hashed_secret(db_cred.password):
@@ -169,6 +171,7 @@ async def reg_enter_password(
 
 # ── 4-qadam: telefon raqam → ro'yxatga olish ──────────────────────────────────
 
+
 @router.message(StateFilter(RegFSM.waiting_phone))
 async def reg_enter_phone(
     message: Message,
@@ -187,12 +190,12 @@ async def reg_enter_phone(
         )
         return
 
-    data      = await state.get_data()
+    data = await state.get_data()
     full_name = data.get("full_name", "")
     sel_group = data.get("confirmed_group", "")
-    mars_id   = data.get("confirmed_mars_id", "")
-    user      = message.from_user
-    tg_user   = f"@{user.username}" if user.username else str(user.id)
+    mars_id = data.get("confirmed_mars_id", "")
+    user = message.from_user
+    tg_user = f"@{user.username}" if user.username else str(user.id)
 
     # register_student (student, is_new) qaytaradi
     # is_new=False bo'lsa — mavjud o'quvchi qaytadan kirdi, XP SAQLANADI

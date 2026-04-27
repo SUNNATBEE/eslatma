@@ -1004,7 +1004,12 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         )
         students = await db.get_students_by_group(group_name)
         mentions = _mentions_for_students(students)
-        mention_lines = "".join([f"{i+1}) {u}\n" for i, u in enumerate(mentions)])
+        max_mentions = 10
+        shown_mentions = mentions[:max_mentions]
+        remaining = max(0, len(mentions) - len(shown_mentions))
+        mention_lines = "".join([f"{i+1}) {u}\n" for i, u in enumerate(shown_mentions)])
+        if remaining:
+            mention_lines += f"... va yana {remaining} ta\n"
         reminder_group_text = (
             f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
             f"🏫 Guruh: <b>{group_name}</b>\n"

@@ -228,6 +228,8 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 const initData = tg?.initData || '';
+const _urlParams = new URLSearchParams(window.location.search);
+const _prefillHwGroup = (_urlParams.get('hw_group') || '').trim();
 
 // ── Language ──────────────────────────────────────────────────────────────────
 let lang = localStorage.getItem('adminLang') || 'uz';
@@ -1452,10 +1454,13 @@ async function setHomeworkStatus(taskId, status) {
   else showToast('❌ ' + (r.error || t('error')));
 }
 
-function showHomeworkCreateSheet() {
+function showHomeworkCreateSheet(prefillGroup = '') {
+  const safeGroup = (prefillGroup || '').replace(/"/g, '&quot;');
+  const isLocked = !!prefillGroup;
   openSheet(`
     <div class="inline-label">Guruh nomi</div>
-    <input class="search-box" id="hwCreateGroup" placeholder="nF-2803">
+    <input class="search-box" id="hwCreateGroup" placeholder="nF-2803" value="${safeGroup}" ${isLocked ? 'readonly' : ''}>
+    ${isLocked ? `<div style="color:#6b7280;font-size:12px;margin-bottom:8px;">Guruh eslatmadan avtomatik tanlandi.</div>` : ''}
     <div class="inline-label">Deadline (ixtiyoriy)</div>
     <input type="datetime-local" class="search-box" id="hwCreateDueAt">
     <div class="inline-label">Vazifa matni</div>
@@ -1563,6 +1568,11 @@ async function init() {
   }
   hideLoginPage();
   updateNavLabels();
+  if (_prefillHwGroup) {
+    showTab('homework', true);
+    setTimeout(() => showHomeworkCreateSheet(_prefillHwGroup), 220);
+    return;
+  }
   showTab('dashboard', true);
 }
 

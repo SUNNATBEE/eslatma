@@ -9,6 +9,7 @@ import logging
 import os
 import random
 import shutil
+import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -166,7 +167,12 @@ async def _send_homework_group_and_dm_reminders(
     """Homework eslatmasini guruhga (mentions) va har bir o'quvchiga yuboradi."""
     students = await db.get_students_by_group(group_name)
     mentions = _student_mentions(students)
-    mention_lines = "".join([f"{i+1}) {u}\n" for i, u in enumerate(mentions)])
+    max_mentions = 10
+    shown_mentions = mentions[:max_mentions]
+    remaining = max(0, len(mentions) - len(shown_mentions))
+    mention_lines = "".join([f"{i+1}) {u}\n" for i, u in enumerate(shown_mentions)])
+    if remaining:
+        mention_lines += f"... va yana {remaining} ta\n"
     dm_sent = 0
 
     group_text = (
@@ -195,6 +201,18 @@ async def _send_homework_group_and_dm_reminders(
         except Exception:
             continue
     return (len(students), dm_sent)
+
+
+def _admin_mini_hw_url(webapp_url: str, group_name: str) -> str:
+    base = (webapp_url or "").strip()
+    if not base:
+        return ""
+    if "admin-mini.html" in base:
+        root = base
+    else:
+        root = base.rstrip("/") + "/admin-mini.html"
+    sep = "&" if "?" in root else "?"
+    return f"{root}{sep}hw_group={urllib.parse.quote(group_name)}"
 
 
 # ─── Asosiy yuborish vazifasi ─────────────────────────────────────────────────
@@ -576,7 +594,12 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
         logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
 
 
-async def check_homework_prompt(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
+async def check_homework_prompt(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+    webapp_url: str = "",
+) -> None:
     """
     Har daqiqada tekshiradi:
     dars tugashiga 2 daqiqa qolgan guruh bo'lsa, adminga
@@ -622,11 +645,19 @@ async def check_homework_prompt(bot: Bot, db: DatabaseService, timezone_str: str
             f"Uyga vazifa bering va uyga vazifa qo'shing.\n\n"
             f"Eslatma: qo'shilgan vazifa ertangi dars eslatmasiga avtomatik qo'shiladi."
         )
+        quick_url = _admin_mini_hw_url(webapp_url, group_name)
+        kb = None
+        if quick_url:
+            kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="📝 Vazifani hozir qo'shish", url=quick_url)],
+                ]
+            )
 
         sent_any = False
         for admin_id in ADMIN_IDS:
             try:
-                await bot.send_message(admin_id, text, parse_mode="HTML")
+                await bot.send_message(admin_id, text, parse_mode="HTML", reply_markup=kb)
                 sent_any = True
             except Exception:
                 continue
@@ -1139,7 +1170,7 @@ def setup_scheduler(
     scheduler.add_job(
         func=check_homework_prompt,
         trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
-        args=[bot, db, timezone_str],
+        args=[bot, db, timezone_str, webapp_url],
         id="homework_prompt_before_end",
         name="Dars tugashidan 2 daqiqa oldin uy vazifasi eslatmasi",
         replace_existing=True,

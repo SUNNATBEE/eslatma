@@ -6,7 +6,7 @@ Jadvallar:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Optional
 
@@ -229,6 +229,26 @@ class DeletedHomework(Base):
     group_name: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     from_chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    deleted_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class DeletedStudent(Base):
+    """Soft-delete qilingan studentlar (rollback uchun)."""
+
+    __tablename__ = "deleted_students"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    telegram_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    mars_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    group_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    xp: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
+    level: Mapped[int] = mapped_column(Integer, default=1, nullable=False, server_default="1")
+    streak_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
+    avatar_emoji: Mapped[str | None] = mapped_column(String(20), nullable=True)
     deleted_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -820,6 +840,17 @@ class DatabaseService:
             await session.commit()
             return True
 
+    async def update_student_group(self, user_id: int, group_name: str) -> bool:
+        """O'quvchini boshqa guruhga o'tkazadi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if not s:
+                return False
+            s.group_name = group_name
+            await session.commit()
+            return True
+
     async def get_student(self, user_id: int) -> Optional["Student"]:
         async with self.session_factory() as session:
             result = await session.execute(select(Student).where(Student.user_id == user_id))
@@ -1001,6 +1032,14 @@ class DatabaseService:
             result = await session.execute(select(Homework).where(Homework.group_name == group_name))
             return result.scalar_one_or_none()
 
+    async def cleanup_expired_homeworks(self, days: int = 2) -> int:
+        """Muddati o'tgan uy vazifalarni o'chiradi."""
+        cutoff = datetime.now() - timedelta(days=days)
+        async with self.session_factory() as session:
+            result = await session.execute(delete(Homework).where(Homework.sent_at < cutoff))
+            await session.commit()
+            return result.rowcount or 0
+
     # ── DELETE STUDENT ─────────────────────────────────────────────────────────
 
     async def delete_student(self, user_id: int) -> bool:
@@ -1012,6 +1051,72 @@ class DatabaseService:
             if deleted:
                 logger.info(f"O'quvchi o'chirildi: user_id={user_id}")
             return deleted
+
+    async def soft_delete_student(self, user_id: int, deleted_by: int | None = None) -> bool:
+        """O'quvchini archive jadvaliga olib, asosiy jadvaldan o'chiradi."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            s = result.scalar_one_or_none()
+            if not s:
+                return False
+            session.add(
+                DeletedStudent(
+                    user_id=s.user_id,
+                    telegram_username=s.telegram_username,
+                    full_name=s.full_name,
+                    mars_id=s.mars_id,
+                    group_name=s.group_name,
+                    phone_number=s.phone_number,
+                    xp=s.xp or 0,
+                    level=s.level or 1,
+                    streak_days=s.streak_days or 0,
+                    avatar_emoji=s.avatar_emoji,
+                    deleted_by=deleted_by,
+                )
+            )
+            await session.execute(delete(Student).where(Student.user_id == user_id))
+            await session.commit()
+            return True
+
+    async def restore_deleted_student(self, user_id: int) -> bool:
+        """Archive dan studentni qayta tiklaydi."""
+        async with self.session_factory() as session:
+            ex = await session.execute(select(Student).where(Student.user_id == user_id))
+            if ex.scalar_one_or_none():
+                return False
+            deleted = await session.execute(
+                select(DeletedStudent)
+                .where(DeletedStudent.user_id == user_id)
+                .order_by(DeletedStudent.deleted_at.desc())
+                .limit(1)
+            )
+            ds = deleted.scalar_one_or_none()
+            if not ds:
+                return False
+            session.add(
+                Student(
+                    user_id=ds.user_id,
+                    telegram_username=ds.telegram_username,
+                    full_name=ds.full_name,
+                    mars_id=ds.mars_id,
+                    group_name=ds.group_name,
+                    phone_number=ds.phone_number,
+                    xp=ds.xp or 0,
+                    level=ds.level or 1,
+                    streak_days=ds.streak_days or 0,
+                    avatar_emoji=ds.avatar_emoji,
+                )
+            )
+            await session.execute(delete(DeletedStudent).where(DeletedStudent.id == ds.id))
+            await session.commit()
+            return True
+
+    async def get_deleted_students(self, limit: int = 100) -> list[DeletedStudent]:
+        async with self.session_factory() as session:
+            res = await session.execute(
+                select(DeletedStudent).order_by(DeletedStudent.deleted_at.desc()).limit(limit)
+            )
+            return list(res.scalars().all())
 
     async def get_groups_with_message(self) -> list[Group]:
         """last_message_id mavjud bo'lgan guruhlarni qaytaradi."""

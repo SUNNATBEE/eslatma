@@ -1741,6 +1741,142 @@
         padding: 12px 12px 20px;
       }
     }
+
+    /* ══ Premium UI Polish (all pages) ═════════════════════════════════════ */
+    :root {
+      --premium-grad-1: linear-gradient(135deg, rgba(0,212,255,.22), rgba(139,92,246,.2) 48%, rgba(255,92,157,.2));
+      --premium-grad-2: linear-gradient(135deg, rgba(196,245,56,.2), rgba(94,234,212,.18), rgba(255,203,71,.18));
+      --panel-edge: rgba(255,255,255,.12);
+    }
+
+    .content {
+      max-width: 980px;
+      width: 100%;
+      margin: 0 auto;
+      scrollbar-gutter: stable;
+    }
+    .page {
+      padding-bottom: 12px;
+      animation: pageFade .25s ease;
+    }
+    @keyframes pageFade {
+      from { opacity: .4; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-title {
+      font-size: 14px;
+      letter-spacing: .2px;
+      border: 1px solid var(--panel-edge);
+      box-shadow: 0 8px 24px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.12);
+    }
+
+    .card,
+    .menu-card,
+    .hw-box,
+    .streak-card,
+    .ach-item,
+    .perk-card,
+    .room-card,
+    .chat-msg,
+    .lb-item,
+    .history-item,
+    .ref-card,
+    .group-lb-item {
+      border: 1px solid var(--panel-edge);
+      border-radius: calc(var(--radius) + 2px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 12px 30px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .card:hover,
+    .menu-card:hover,
+    .hw-box:hover,
+    .ach-item:hover,
+    .perk-card:hover,
+    .lb-item:hover,
+    .group-lb-item:hover {
+      border-color: rgba(0,212,255,.34);
+      box-shadow: 0 16px 34px rgba(0,0,0,.32), 0 0 0 1px rgba(0,212,255,.14);
+    }
+
+    .menu-card .mc-label {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .1px;
+    }
+    .menu-card .mc-sub {
+      font-size: 11px;
+      color: color-mix(in srgb, var(--sub) 86%, white);
+    }
+
+    .hero-action,
+    .att-btn,
+    .game-btn,
+    .hw-confirm-btn,
+    .reg-btn,
+    .no-modal-submit,
+    .quiz-opt,
+    .room-join-btn {
+      border-radius: 14px;
+      border: 1px solid var(--panel-edge);
+      box-shadow: 0 8px 20px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.1);
+      font-weight: 800;
+    }
+
+    .tabbar {
+      background: linear-gradient(180deg, rgba(8,12,26,.9), rgba(12,18,38,.95));
+      border-top: 1px solid var(--panel-edge);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding-top: 2px;
+    }
+    .tab-item {
+      border-radius: 14px;
+      margin: 4px 3px 8px;
+      transition: all .2s ease;
+    }
+    .tab-item.active {
+      background: var(--premium-grad-1);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 8px 16px rgba(0,0,0,.28), 0 0 0 1px rgba(0,212,255,.16);
+    }
+    .tab-item .tab-icon {
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
+    }
+    .tab-item .tab-label {
+      font-weight: 700;
+    }
+
+    .hero-shell::before {
+      opacity: .72;
+    }
+    .hero-metric {
+      background: var(--premium-grad-2);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+
+    :root.theme-light .tabbar {
+      background: linear-gradient(180deg, rgba(247,250,255,.92), rgba(238,244,255,.94));
+    }
+    :root.theme-light .tab-item.active {
+      background: linear-gradient(135deg, rgba(14,165,233,.18), rgba(168,85,247,.16), rgba(236,72,153,.15));
+    }
+    :root.theme-light .card,
+    :root.theme-light .menu-card,
+    :root.theme-light .hw-box,
+    :root.theme-light .streak-card,
+    :root.theme-light .ach-item,
+    :root.theme-light .perk-card,
+    :root.theme-light .room-card,
+    :root.theme-light .chat-msg,
+    :root.theme-light .lb-item,
+    :root.theme-light .history-item,
+    :root.theme-light .ref-card,
+    :root.theme-light .group-lb-item {
+      box-shadow: 0 10px 24px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.55);
+    }
   </style>
 </head>
 <body>
@@ -3435,6 +3571,7 @@ async function loadHomework() {
     el.innerHTML = `
       <div class="hw-box">
         <div class="hw-date">📅 ${hw.sent_at}</div>
+        <div class="hw-date">⏳ ${hw.expires_at ? ('Auto o‘chadi: ' + hw.expires_at) : '2 kun saqlanadi'}</div>
         <div class="hw-text">📚 ${hw.group_name} ${t('hw.group.msg')}</div>
         <button class="hw-open-btn" onclick="openInBot()">📖 ${t('hw.view_bot')}</button>
         ${confirmHtml}

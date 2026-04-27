@@ -850,6 +850,73 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         except Exception as e:
             return json_err(str(e), code="internal_error", status=500)
 
+    async def api_admin_student_move(request: web.Request) -> web.Response:
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        target_user_id = body.get("user_id")
+        group_name = (body.get("group_name") or "").strip()
+        if not target_user_id or not group_name:
+            return json_err("user_id va group_name kerak", code="validation_error", status=400)
+        ok = await db.update_student_group(int(target_user_id), group_name)
+        if ok:
+            await _audit(user_id, "move_student_group", target=str(target_user_id), details=group_name)
+        return json_ok(ok=ok)
+
+    async def api_admin_student_delete(request: web.Request) -> web.Response:
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        target_user_id = body.get("user_id")
+        if not target_user_id:
+            return json_err("user_id kerak", code="validation_error", status=400)
+        ok = await db.soft_delete_student(int(target_user_id), deleted_by=user_id)
+        if ok:
+            await _audit(user_id, "delete_student_from_group", target=str(target_user_id))
+        return json_ok(ok=ok)
+
+    async def api_admin_student_restore(request: web.Request) -> web.Response:
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        target_user_id = body.get("user_id")
+        if not target_user_id:
+            return json_err("user_id kerak", code="validation_error", status=400)
+        ok = await db.restore_deleted_student(int(target_user_id))
+        if ok:
+            await _audit(user_id, "restore_student_to_group", target=str(target_user_id))
+        return json_ok(ok=ok)
+
+    async def api_admin_deleted_students(request: web.Request) -> web.Response:
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        rows = await db.get_deleted_students(limit=120)
+        return json_ok(
+            students=[
+                {
+                    "user_id": s.user_id,
+                    "full_name": s.full_name,
+                    "group_name": s.group_name,
+                    "mars_id": s.mars_id,
+                    "deleted_at": s.deleted_at.isoformat() if s.deleted_at else None,
+                }
+                for s in rows
+            ]
+        )
+
     async def api_admin_message_group(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
         if not user_id:
@@ -1050,6 +1117,41 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         )
         return web.json_response({"ok": True, "students": len(students), "dm_sent": dm_sent})
 
+    async def api_admin_update_homework(request: web.Request) -> web.Response:
+        """Mavjud uy vazifani yangilash (overwrite)."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        group_name = (body.get("group_name") or "").strip()
+        text = (body.get("text") or "").strip()
+        if not group_name or not text:
+            return json_err("group_name va text kerak", code="validation_error", status=400)
+        from sqlalchemy import select
+
+        from database import Group
+
+        async with db.session_factory() as session:
+            result = await session.execute(select(Group).where(Group.name == group_name))
+            group = result.scalar_one_or_none()
+        if not group:
+            return json_err("Guruh topilmadi", code="not_found", status=404)
+        try:
+            sent = await bot.send_message(
+                chat_id=group.chat_id,
+                text=f"✏️ <b>Uy vazifasi yangilandi</b>\n\n{text}",
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            return json_err(str(e), code="internal_error", status=500)
+        await db.set_homework(group_name=group_name, from_chat_id=sent.chat.id, message_id=sent.message_id)
+        await db.create_homework_task(group_name, text, created_by=user_id, status="reviewed")
+        await _audit(user_id, "update_homework", target=group_name)
+        return json_ok(ok=True)
+
     async def api_admin_homework_tasks(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
         if not user_id:
@@ -1234,12 +1336,17 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     app.router.add_post("/api/admin/referral-students/{id}/approve", api_admin_referral_approve)
     app.router.add_post("/api/admin/referral-students/{id}/reject", api_admin_referral_reject)
     app.router.add_post("/api/admin/message/student", api_admin_message_student)
+    app.router.add_post("/api/admin/student-move", api_admin_student_move)
+    app.router.add_post("/api/admin/student-delete", api_admin_student_delete)
+    app.router.add_post("/api/admin/student-restore", api_admin_student_restore)
+    app.router.add_get("/api/admin/deleted-students", api_admin_deleted_students)
     app.router.add_post("/api/admin/message/group", api_admin_message_group)
     app.router.add_get("/api/admin/profile", api_admin_profile_get)
     app.router.add_post("/api/admin/profile", api_admin_profile_set)
     app.router.add_post("/api/admin/attendance-update", api_admin_attendance_update)
     app.router.add_get("/api/admin/warnings", api_admin_warnings)
     app.router.add_post("/api/admin/send-homework", api_admin_send_homework)
+    app.router.add_post("/api/admin/update-homework", api_admin_update_homework)
     app.router.add_get("/api/admin/homework-tasks", api_admin_homework_tasks)
     app.router.add_post("/api/admin/homework-task-update", api_admin_homework_task_update)
     app.router.add_post("/api/admin/homework-task-bulk-update", api_admin_homework_task_bulk_update)

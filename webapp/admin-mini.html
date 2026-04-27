@@ -707,6 +707,13 @@ function renderStudentList() {
   const uniqueGroups = [...new Set(_studentsData.map(s => s.group_name))].sort();
 
   document.getElementById('mainContent').innerHTML = `
+    <div class="card">
+      <div class="action-grid">
+        <button class="action-btn" onclick="openDeletedStudentsSheet()">
+          <span class="ab-icon">♻️</span><span>Qayta tiklash</span>
+        </button>
+      </div>
+    </div>
     <input class="search-box" placeholder="${t('search_placeholder')}" value="${_studentSearch}"
       oninput="_studentSearch=this.value;renderStudentList()">
     <div class="chips">
@@ -734,6 +741,7 @@ function renderStudentList() {
 async function openStudentSheet(userId) {
   const s = _studentsData.find(x => x.user_id === userId);
   if (!s) return;
+  const groupOptions = [...new Set(_groupsData.map(g => g.name || g.group_name).filter(Boolean))].sort();
   openSheet(`
     <div style="text-align:center;margin-bottom:20px;">
       <div style="font-size:52px;">${s.avatar || '👤'}</div>
@@ -755,6 +763,16 @@ async function openStudentSheet(userId) {
         <button class="msg-send-btn" onclick="sendStudentMessage(${userId})">📤</button>
       </div>
     </div>
+    <div class="card" style="margin-bottom:12px;">
+      <div class="inline-label">Guruhni o'zgartirish</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select class="search-box" id="moveStudentGroup" style="margin-bottom:0;">
+          ${groupOptions.map(g => `<option value="${g}" ${s.group_name===g?'selected':''}>${g}</option>`).join('')}
+        </select>
+        <button class="btn btn-outline" style="width:auto;white-space:nowrap;margin-top:0;" onclick="moveStudentGroup(${userId})">O'tkazish</button>
+      </div>
+      <button class="btn btn-danger" style="margin-top:10px;" onclick="deleteStudentFromGroup(${userId},'${(s.full_name||'').replace(/'/g,"\\'")}')">🗑 Guruhdan o'chirish</button>
+    </div>
     <div class="att-badge ${s.att_today==='yes'?'att-yes':s.att_today==='no'?'att-no':'att-pending'}" style="font-size:14px;padding:8px 16px;">
       Bugun: ${s.att_today==='yes'?'✅ Keldi':s.att_today==='no'?'❌ Kelmadi':'⏳ Kutilmoqda'}
     </div>
@@ -766,6 +784,53 @@ async function sendStudentMessage(userId) {
   const r = await api('/api/admin/message/student', { method: 'POST', body: { user_id: userId, text } });
   if (r.ok) { showToast('✅ ' + t('success')); closeSheet(); }
   else showToast('❌ ' + (r.error || t('error')));
+}
+
+async function moveStudentGroup(userId) {
+  const group_name = (document.getElementById('moveStudentGroup')?.value || '').trim();
+  if (!group_name) { showToast('❌ Guruh tanlang'); return; }
+  const r = await api('/api/admin/student-move', { method: 'POST', body: { user_id: userId, group_name } });
+  if (r.ok) {
+    showToast('✅ O\'quvchi boshqa guruhga o\'tkazildi');
+    await renderStudents();
+    closeSheet();
+  } else showToast('❌ ' + (r.error || t('error')));
+}
+
+async function deleteStudentFromGroup(userId, fullName) {
+  if (!confirm(`"${fullName}" ni guruhdan o'chirasizmi?`)) return;
+  const r = await api('/api/admin/student-delete', { method: 'POST', body: { user_id: userId } });
+  if (r.ok) {
+    showToast('✅ O\'quvchi guruhdan o\'chirildi');
+    await renderStudents();
+    closeSheet();
+  } else showToast('❌ ' + (r.error || t('error')));
+}
+
+async function openDeletedStudentsSheet() {
+  const r = await api('/api/admin/deleted-students');
+  const list = r.students || [];
+  openSheet(`
+    <div style="color:#aaa;font-size:12px;margin-bottom:10px;">Soft-delete qilingan o'quvchilar</div>
+    ${list.length ? list.map(s => `
+      <div class="student-card" style="cursor:default;">
+        <div class="student-info">
+          <div class="student-name">${s.full_name}</div>
+          <div class="student-group">${s.group_name} • ${s.mars_id || ''}</div>
+        </div>
+        <button class="btn btn-success" style="width:auto;margin-top:0;padding:8px 10px;" onclick="restoreStudent(${s.user_id})">Qaytarish</button>
+      </div>
+    `).join('') : `<div class="empty">Ro'yxat bo'sh</div>`}
+  `, '♻️ O\'quvchini qayta tiklash');
+}
+
+async function restoreStudent(userId) {
+  const r = await api('/api/admin/student-restore', { method: 'POST', body: { user_id: userId } });
+  if (r.ok) {
+    showToast('✅ O\'quvchi qayta tiklandi');
+    await renderStudents();
+    closeSheet();
+  } else showToast('❌ ' + (r.error || t('error')));
 }
 
 // ── Groups ────────────────────────────────────────────────────────────────────
@@ -832,6 +897,9 @@ function openHomeworkSheet(groupName) {
       <button class="btn btn-primary" style="margin-top:12px;" onclick="sendHomework('${groupName.replace(/'/g,"\\'")}')">
         📝 ${t('hw_send')}
       </button>
+      <button class="btn btn-outline" style="margin-top:8px;" onclick="updateHomework('${groupName.replace(/'/g,"\\'")}')">
+        ✏️ Uy vazifani yangilash
+      </button>
     `, '📝 ' + t('send_homework'));
   }, 320);
 }
@@ -845,6 +913,20 @@ async function sendHomework(groupName) {
   });
   if (r.ok || r.status === 'ok') {
     showToast('✅ ' + t('hw_sent'));
+    closeSheet();
+  } else {
+    showToast('❌ ' + (r.error || t('error')));
+  }
+}
+async function updateHomework(groupName) {
+  const text = document.getElementById('hwTextInput')?.value.trim();
+  if (!text) { showToast('❌ Matn bo\'sh'); return; }
+  const r = await api('/api/admin/update-homework', {
+    method: 'POST',
+    body: { group_name: groupName, text }
+  });
+  if (r.ok || r.status === 'ok') {
+    showToast('✅ Uy vazifa yangilandi');
     closeSheet();
   } else {
     showToast('❌ ' + (r.error || t('error')));

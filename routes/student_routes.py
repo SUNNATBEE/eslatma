@@ -106,14 +106,18 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         student = await db.get_student(user_id)
         if not student:
             return json_err("Not registered", code="not_registered", status=404)
+        # 2 kundan oshgan homeworklar avtomatik tozalanadi
+        await db.cleanup_expired_homeworks(days=2)
         hw = await db.get_homework(student.group_name)
         if not hw:
             return web.json_response({"exists": False})
+        expires_at = hw.sent_at + timedelta(days=2)
         return web.json_response(
             {
                 "exists": True,
                 "group_name": hw.group_name,
                 "sent_at": hw.sent_at.strftime("%d.%m.%Y %H:%M"),
+                "expires_at": expires_at.strftime("%d.%m.%Y %H:%M"),
                 "message_id": hw.message_id,
                 "chat_id": hw.from_chat_id,
             }

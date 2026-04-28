@@ -219,6 +219,25 @@ def kb_attendance(date_str: str) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def kb_homework_check(date_str: str) -> InlineKeyboardMarkup:
+    """O'quvchidan uy vazifa holatini so'rash tugmalari."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ Ha, qildim", callback_data=f"hwflow:yes:{date_str}"),
+        InlineKeyboardButton(text="❌ Yo'q, hali qilmaganman", callback_data=f"hwflow:no:{date_str}"),
+    )
+    return builder.as_markup()
+
+
+def kb_homework_submitted(date_str: str) -> InlineKeyboardMarkup:
+    """O'quvchi vazifani botga yuborganini tasdiqlash tugmasi."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="📤 Vazifani yubordim", callback_data=f"hwflow:submitted:{date_str}"),
+    )
+    return builder.as_markup()
+
+
 # ─── Admin: uy vazifasi yuborish ─────────────────────────────────────────────
 
 

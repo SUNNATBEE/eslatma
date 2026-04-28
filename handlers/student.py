@@ -17,11 +17,12 @@ from aiogram.types import CallbackQuery, Message
 
 from config import ADMIN_IDS
 from credentials import MARS_GROUPS
-from database import DatabaseService
+from database import AudienceType, DatabaseService
 from keyboards import (
     kb_admin_students,
     kb_back_to_panel,
     kb_confirm_remove_student,
+    kb_homework_submitted,
     kb_hw_delete_confirm,
     kb_hw_groups,
     kb_hw_manage,
@@ -103,6 +104,93 @@ async def student_read_confirm(
         pass
 
     await cb.answer("✅ Tasdiqlandi!", show_alert=False)
+
+
+@router.callback_query(F.data.startswith("hwflow:yes:"))
+async def student_hwflow_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
+    date_str = cb.data.split(":")[2]
+    student = await db.get_student(cb.from_user.id)
+    if not student:
+        await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True)
+        return
+
+    await db.set_setting(f"hwflow:yes:{date_str}:{cb.from_user.id}", datetime.now().isoformat(timespec="seconds"))
+    await db.set_setting(f"hwflow:no:{date_str}:{cb.from_user.id}", "0")
+    await db.set_setting(f"hwflow:submitted:{date_str}:{cb.from_user.id}", "0")
+
+    try:
+        await cb.message.edit_reply_markup(reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    notify_text = (
+        f"✅ <b>{student.full_name}</b> uy vazifa tayyor ekanini belgiladi.\n"
+        f"📚 Guruh: <b>{student.group_name}</b>\n"
+        f"📅 Sana: <b>{date_str}</b>"
+    )
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, notify_text, parse_mode="HTML")
+        except Exception:
+            pass
+
+    try:
+        groups = await db.get_all_groups()
+        for g in groups:
+            if g.name == student.group_name and g.audience == AudienceType.PARENT and g.is_active:
+                await bot.send_message(g.chat_id, notify_text, parse_mode="HTML")
+                break
+    except Exception:
+        logger.warning("Parent guruhga hwflow notify yuborilmadi", exc_info=True)
+
+    await cb.message.answer(
+        "✅ Sizning <b>“Ha”</b> degan javobingiz ota-onangizga va o'qituvchingizga yuborildi.\n\n"
+        "📥 Vazifa qilgan bo'lsangiz, vazifani shu botga yuboring va pastdagi tugmani bosing.",
+        parse_mode="HTML",
+        reply_markup=kb_homework_submitted(date_str),
+    )
+    await cb.answer("✅ Qabul qilindi")
+
+
+@router.callback_query(F.data.startswith("hwflow:no:"))
+async def student_hwflow_no(cb: CallbackQuery, db: DatabaseService) -> None:
+    date_str = cb.data.split(":")[2]
+    student = await db.get_student(cb.from_user.id)
+    if not student:
+        await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True)
+        return
+
+    await db.set_setting(f"hwflow:no:{date_str}:{cb.from_user.id}", "1")
+
+    try:
+        await cb.message.edit_reply_markup(reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    await cb.message.answer(
+        "⚠️ Tushunarli. Iltimos, uy vazifani tezroq bajarib botga yuboring.",
+        parse_mode="HTML",
+    )
+    await cb.answer("✅ Yozib qo'yildi")
+
+
+@router.callback_query(F.data.startswith("hwflow:submitted:"))
+async def student_hwflow_submitted(cb: CallbackQuery, db: DatabaseService) -> None:
+    date_str = cb.data.split(":")[2]
+    student = await db.get_student(cb.from_user.id)
+    if not student:
+        await cb.answer("❌ Avval ro'yxatdan o'ting!", show_alert=True)
+        return
+
+    await db.set_setting(f"hwflow:submitted:{date_str}:{cb.from_user.id}", "1")
+
+    try:
+        await cb.message.edit_reply_markup(reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    await cb.message.answer("✅ Qabul qilindi. Vazifangiz ko'rib chiqiladi.", parse_mode="HTML")
+    await cb.answer("✅ Tasdiqlandi")
 
 
 # ════════════════════════════════════════════════════════════════════════════════

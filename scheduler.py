@@ -170,7 +170,7 @@ async def _send_homework_group_and_dm_reminders(
     max_mentions = 10
     shown_mentions = mentions[:max_mentions]
     remaining = max(0, len(mentions) - len(shown_mentions))
-    mention_lines = "".join([f"{i+1}) {u}\n" for i, u in enumerate(shown_mentions)])
+    mention_lines = "".join([f"{i + 1}) {u}\n" for i, u in enumerate(shown_mentions)])
     if remaining:
         mention_lines += f"... va yana {remaining} ta\n"
     dm_sent = 0

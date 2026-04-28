@@ -400,6 +400,12 @@ async function doLogin() {
     localStorage.setItem('miniAdminToken', _sessionToken);
     localStorage.setItem('miniAdminUser',  _sessionUser);
     hideLoginPage();
+    updateNavLabels();
+    if (_prefillHwGroup) {
+      showTab('homework', true);
+      setTimeout(() => showHomeworkCreateSheet(_prefillHwGroup), 220);
+      return;
+    }
     showTab('dashboard', true);
   } catch(e) {
     errEl.textContent = 'Tarmoq xatosi';

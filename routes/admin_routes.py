@@ -1074,7 +1074,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         max_mentions = 10
         shown_mentions = mentions[:max_mentions]
         remaining = max(0, len(mentions) - len(shown_mentions))
-        mention_lines = "".join([f"{i+1}) {u}\n" for i, u in enumerate(shown_mentions)])
+        mention_lines = "".join([f"{i + 1}) {u}\n" for i, u in enumerate(shown_mentions)])
         if remaining:
             mention_lines += f"... va yana {remaining} ta\n"
         reminder_group_text = (

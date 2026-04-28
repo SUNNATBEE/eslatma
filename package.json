@@ -8,7 +8,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "bash scripts/run-ci.sh",
+    "test:ci": "bash scripts/run-ci.sh",
     "test:e2e": "playwright test",
     "test:e2e:student": "playwright test e2e-tests/student.spec.js"
   },

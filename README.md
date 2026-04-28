@@ -7,7 +7,7 @@ UI copy and inline documentation are primarily in **Uzbek**; this README is in E
 ## Stack
 
 - **Python 3.12** — [aiogram](https://docs.aiogram.dev/) 3.x, [aiohttp](https://docs.aiohttp.org/) (HTTP + Mini App API), [APScheduler](https://apscheduler.readthedocs.io/), [SQLAlchemy](https://www.sqlalchemy.org/) 2 + aiosqlite
-- **Front** — static Mini App pages under `webapp/` (HTML/CSS/JS), E2E with Playwright (`npm run test:e2e`)
+- **Front** — static Mini App pages under `webapp/` (HTML/CSS/JS), E2E with Playwright (`npm run test:e2e`). Barcha CI qadamlari bir joyda: `npm run test:ci` (yoki `bash scripts/run-ci.sh`).
 
 ## Quick start
 
@@ -49,6 +49,17 @@ See `CONTRIBUTING.md` and `CHANGELOG.md`.
 
 ## Development quality gates
 
+Bitta buyruq (Python venv + `npm ci` faollashtirilgan deb hisoblanadi):
+
+```bash
+pip install -r requirements-dev.txt
+npm ci
+npx playwright install --with-deps chromium   # birinchi marta
+npm run test:ci    # = bash scripts/run-ci.sh
+```
+
+Qo‘lda qadamlar (xuddi GitHub Actions bilan):
+
 ```bash
 pip install -r requirements-dev.txt
 ruff check .
@@ -56,6 +67,7 @@ ruff format --check .
 python -m compileall -q .
 pytest tests/ -v
 python -m unittest discover -s tests -p "test_*.py" -v
+npm ci && npm run test:e2e
 ```
 
 CI (`.github/workflows/ci.yml`) runs Ruff, compileall, both test suites, and Playwright e2e.

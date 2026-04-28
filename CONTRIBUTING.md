@@ -17,6 +17,17 @@ cp .env.example .env   # BOT_TOKEN va boshqalarni to'ldiring
 
 ## Sifat tekshiruvi (majburiy)
 
+Bitta buyruq (CI bilan bir xil tartib):
+
+```bash
+npm ci
+npx playwright install --with-deps chromium   # birinchi marta
+npm run test:ci
+# yoki: bash scripts/run-ci.sh
+```
+
+Qo‘lda (alohida qadamlar):
+
 ```bash
 ruff check .
 ruff format --check .

@@ -1023,10 +1023,9 @@ class DatabaseService:
 
     async def get_admin_audit_logs(self, limit: int = 100) -> list[AdminAuditLog]:
         async with self.session_factory() as session:
-            res = await session.execute(
-                select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(limit)
-            )
+            res = await session.execute(select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(limit))
             return list(res.scalars().all())
+
     async def get_homework(self, group_name: str) -> Optional["Homework"]:
         async with self.session_factory() as session:
             result = await session.execute(select(Homework).where(Homework.group_name == group_name))
@@ -1113,9 +1112,7 @@ class DatabaseService:
 
     async def get_deleted_students(self, limit: int = 100) -> list[DeletedStudent]:
         async with self.session_factory() as session:
-            res = await session.execute(
-                select(DeletedStudent).order_by(DeletedStudent.deleted_at.desc()).limit(limit)
-            )
+            res = await session.execute(select(DeletedStudent).order_by(DeletedStudent.deleted_at.desc()).limit(limit))
             return list(res.scalars().all())
 
     async def get_groups_with_message(self) -> list[Group]:

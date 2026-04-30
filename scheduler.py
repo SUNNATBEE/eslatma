@@ -732,6 +732,9 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
     schedule = CLASS_SCHEDULE.get(day_type, {})
     today_str = now.strftime("%Y-%m-%d")
     yday_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Kechagi kun turi (ODD/EVEN) alohida hisoblanadi — retry uchun to'g'ri jadval kerak
+    yday_type = "ODD" if (now - timedelta(days=1)).weekday() in (0, 2, 4) else "EVEN"
+    yday_schedule = CLASS_SCHEDULE.get(yday_type, {})
     all_groups = await db.get_all_groups()
     student_groups = {g.name: g for g in all_groups if g.is_active and g.audience == AudienceType.STUDENT}
     parent_groups = {g.name: g for g in all_groups if g.is_active and g.audience == AudienceType.PARENT}
@@ -753,8 +756,8 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
         end_h, end_m = map(int, end_time_str.split(":"))
         end_dt = now.replace(hour=end_h, minute=end_m, second=0, microsecond=0)
         ask_dt = end_dt + timedelta(hours=3)
-        ask_window = ask_dt <= now < ask_dt + timedelta(minutes=1)
-        retry_window = now.hour == 20 and now.minute < 10
+        # 5 daqiqalik oyna — 1 daqiqalik oyna scheduler kechikishida miss bo'lardi
+        ask_window = ask_dt <= now < ask_dt + timedelta(minutes=5)
 
         students = await db.get_students_by_group(group_name)
         for st in students:
@@ -783,34 +786,6 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
                 except Exception:
                     pass
                 continue
-
-            # 2) Ertasi kuni 20:00 da javob bermagan bo'lsa qayta so'raymiz
-            if retry_window:
-                y_ask_key = f"hwflow:ask:{yday_str}:{st.user_id}"
-                y_yes_key = f"hwflow:yes:{yday_str}:{st.user_id}"
-                y_no_key = f"hwflow:no:{yday_str}:{st.user_id}"
-                y_retry_key = f"hwflow:retry_ask:{yday_str}:{st.user_id}"
-                if (
-                    await db.get_setting(y_ask_key, "0") == "1"
-                    and not await db.get_setting(y_yes_key, "")
-                    and await db.get_setting(y_no_key, "0") != "1"
-                    and await db.get_setting(y_retry_key, "0") != "1"
-                ):
-                    try:
-                        await bot.send_message(
-                            st.user_id,
-                            (
-                                "⏰ <b>Uy vazifa bo'yicha qayta so'rov</b>\n\n"
-                                "Kecha yuborilgan savolga javob bermagansiz.\n"
-                                "Uyga vazifa qildingmi?"
-                            ),
-                            parse_mode="HTML",
-                            reply_markup=kb_homework_check(yday_str),
-                        )
-                        await db.set_setting(y_retry_key, "1")
-                        sent_retry += 1
-                    except Exception:
-                        pass
 
             yes_ts_raw = await db.get_setting(yes_key, "")
             if not yes_ts_raw:
@@ -852,7 +827,6 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
                     f"Sana: <b>{today_str}</b>\n\n"
                     "Status: <b>Uy vazifa qilmadi</b>"
                 )
-                # O'quvchining o'ziga ham final ogohlantirish
                 try:
                     await bot.send_message(
                         st.user_id,
@@ -864,14 +838,12 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
                 except Exception:
                     pass
 
-                # Ustoz/Adminlar
                 for admin_id in ADMIN_IDS:
                     try:
                         await bot.send_message(admin_id, warn_text, parse_mode="HTML")
                     except Exception:
                         pass
 
-                # Ota-onalar guruhiga (xuddi shu group_name)
                 pg = parent_groups.get(group_name)
                 if pg:
                     try:
@@ -881,6 +853,40 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
 
                 await db.set_setting(fail_key, "1")
                 sent_fail += 1
+
+    # Kecha javob bermagan o'quvchilarga bugun 20:00 da qayta so'rov.
+    # MUHIM: kechagi kun turi (yday_schedule) ishlatiladi — bugungi emas.
+    if now.hour == 20 and now.minute < 10:
+        for group_name_y in yday_schedule:
+            if await db.get_setting(f"AUTO_MSG_GROUP:{group_name_y}", "1") == "0":
+                continue
+            students_y = await db.get_students_by_group(group_name_y)
+            for st in students_y:
+                y_ask_key = f"hwflow:ask:{yday_str}:{st.user_id}"
+                y_yes_key = f"hwflow:yes:{yday_str}:{st.user_id}"
+                y_no_key = f"hwflow:no:{yday_str}:{st.user_id}"
+                y_retry_key = f"hwflow:retry_ask:{yday_str}:{st.user_id}"
+                if (
+                    await db.get_setting(y_ask_key, "0") == "1"
+                    and not await db.get_setting(y_yes_key, "")
+                    and await db.get_setting(y_no_key, "0") != "1"
+                    and await db.get_setting(y_retry_key, "0") != "1"
+                ):
+                    try:
+                        await bot.send_message(
+                            st.user_id,
+                            (
+                                "⏰ <b>Uy vazifa bo'yicha qayta so'rov</b>\n\n"
+                                "Kecha yuborilgan savolga javob bermagansiz.\n"
+                                "Uyga vazifa qildingmi?"
+                            ),
+                            parse_mode="HTML",
+                            reply_markup=kb_homework_check(yday_str),
+                        )
+                        await db.set_setting(y_retry_key, "1")
+                        sent_retry += 1
+                    except Exception:
+                        pass
 
     _mark_job(
         "student_homework_reminders",

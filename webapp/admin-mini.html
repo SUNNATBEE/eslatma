@@ -879,6 +879,7 @@ async function openGroupSheet(chatId) {
         <div><div style="color:#666;font-size:12px;">O'quvchilar</div><div>${g.student_count||0}</div></div>
         <div><div style="color:#666;font-size:12px;">Dars vaqti</div><div>${g.class_time||'—'}</div></div>
         <div><div style="color:#666;font-size:12px;">Uy vazifasi</div><div>${g.has_homework?'✅ Bor':'❌ Yo\'q'}</div></div>
+        <div style="grid-column:1/-1;"><div style="color:#666;font-size:12px;">Chat ID</div><div style="font-family:monospace;font-size:12px;">${g.chat_id}</div></div>
       </div>
     </div>
     <div style="margin-bottom:12px;">
@@ -891,7 +892,28 @@ async function openGroupSheet(chatId) {
     <button class="btn btn-outline" style="margin-top:4px;" onclick="openHomeworkSheet('${g.name.replace(/'/g,"\\'")}')">
       📝 ${t('send_homework')}
     </button>
+    <button class="btn btn-outline" style="margin-top:8px;" onclick="refreshGroupChat('${g.name.replace(/'/g,"\\'")}')">
+      🔄 Chat ID ni yangilash
+    </button>
   `, g.name);
+}
+
+async function refreshGroupChat(groupName) {
+  if (!confirm(`'${groupName}' guruhi chat ID ni avtomatik yangilash?\n\nBu jarayon Telegram'dan joriy chat ID ni tekshiradi va eskirgan bo'lsa BotChat dan yangisini topadi.`)) return;
+  showToast('🔄 Tekshirilmoqda...');
+  const r = await api('/api/admin/refresh-group-chat', { method: 'POST', body: { group_name: groupName } });
+  if (r.ok && r.changed) {
+    showToast(`✅ Yangilandi: ${r.old_chat_id} → ${r.new_chat_id}`);
+    closeSheet();
+    setTimeout(() => renderGroups(), 400);
+  } else if (r.ok && !r.changed) {
+    showToast('✅ ' + (r.message || 'Chat ID yaroqli'));
+  } else if (r.ambiguous && r.candidates) {
+    const list = r.candidates.map((c, i) => `${i + 1}) ${c.title} — ${c.chat_id}`).join('\n');
+    alert(`⚠️ ${r.candidates.length} ta kandidat topildi:\n\n${list}\n\nQo'lda tanlash uchun guruhni o'chirib, qaytadan qo'shing.`);
+  } else {
+    showToast('❌ ' + (r.error || 'Xato'));
+  }
 }
 
 function openHomeworkSheet(groupName) {
@@ -1307,6 +1329,11 @@ async function renderSettings() {
       </div>
       <div id="schedJobsBox">${renderScheduledJobs(_scheduledJobs)}</div>
     </div>
+    <!-- Barcha avtohabarlar (master + ro'yxat) -->
+    <div class="card">
+      <div class="card-title">📋 Barcha avtohabarlar</div>
+      <div id="autoMsgOverviewBox" style="color:#aaa;font-size:12px;">Yuklanmoqda...</div>
+    </div>
     <!-- Broadcast -->
     <div class="card">
       <div class="card-title">📢 ${t('broadcast')}</div>
@@ -1369,6 +1396,133 @@ async function renderSettings() {
     </div>
   `;
   loadAuditLogs();
+  loadAutoMessagesOverview();
+}
+
+const _AUDIENCE_ICONS = {
+  'guruhlar': '👥',
+  "o'quvchilar": '🎓',
+  'kuratorlar': '👩‍💼',
+  'adminlar': '👨‍💼',
+  'tizim': '⚙️',
+};
+
+async function loadAutoMessagesOverview() {
+  const box = document.getElementById('autoMsgOverviewBox');
+  if (!box) return;
+  const r = await api('/api/admin/auto-messages-overview').catch(() => null);
+  if (!r || !r.items) {
+    box.innerHTML = '<div style="color:#f44336;">Yuklab bo\'lmadi</div>';
+    return;
+  }
+  box.innerHTML = renderAutoMessagesOverview(r);
+}
+
+function renderAutoMessagesOverview(data) {
+  const master = data.master_enabled;
+  const items = data.items || [];
+  const cron = items.filter(i => i.trigger_type === 'cron');
+  const interval = items.filter(i => i.trigger_type === 'interval');
+
+  const masterCard = `
+    <div style="background:${master?'#0f2437':'#3a1818'};border:1px solid ${master?'#1f4068':'#7a2020'};border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-weight:700;font-size:15px;color:#fff;">${master?'🟢':'🔴'} Master switch</div>
+          <div style="color:#aaa;font-size:12px;margin-top:4px;">${master?'Barcha avtohabarlar yoqilgan':'BARCHA AVTOHABARLAR O\'CHIRILGAN'}</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${master?'checked':''} onchange="toggleMasterAutoMsg(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>`;
+
+  const summary = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+      <div style="background:#1a1f2e;border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:20px;font-weight:700;color:#7eb8f7;">${items.length}</div>
+        <div style="font-size:10px;color:#888;">Jami avtohabar</div>
+      </div>
+      <div style="background:#1a1f2e;border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:20px;font-weight:700;color:#fbbf24;">${cron.length}</div>
+        <div style="font-size:10px;color:#888;">Cron (kunlik/haftalik)</div>
+      </div>
+      <div style="background:#1a1f2e;border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:20px;font-weight:700;color:#10b981;">${interval.length}</div>
+        <div style="font-size:10px;color:#888;">Interval</div>
+      </div>
+    </div>`;
+
+  const renderItem = (j) => {
+    const icon = _AUDIENCE_ICONS[j.audience] || '📨';
+    const togglable = !!j.toggle_key;
+    const dimmed = togglable && !j.toggle_enabled;
+    const editableNote = j.editable
+      ? `<span style="color:#10b981;font-size:10px;">✏️ Vaqt o'zgartirsa bo'ladi</span>`
+      : `<span style="color:#6b7280;font-size:10px;">🔒 Qattiq vaqt</span>`;
+    const toggleEl = togglable
+      ? `<label class="toggle-switch" style="transform:scale(0.85);">
+           <input type="checkbox" ${j.toggle_enabled?'checked':''} onchange="toggleAutoMsg('${j.toggle_key}',this.checked)">
+           <span class="toggle-slider"></span>
+         </label>`
+      : `<span style="color:#6b7280;font-size:10px;">always-on</span>`;
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid #1f2937;${dimmed?'opacity:0.5;':''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:13px;color:#fff;">
+              ${icon} ${j.name}
+              ${togglable && !j.toggle_enabled ? '<span style="color:#f44336;font-size:10px;margin-left:4px;">🔴 o\'chirilgan</span>' : ''}
+            </div>
+            <div style="color:#9ca3af;font-size:11px;margin-top:2px;line-height:1.4;">${j.what}</div>
+            <div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;">
+              <span style="background:#1f2937;color:#7eb8f7;padding:2px 6px;border-radius:6px;font-size:10px;">⏰ ${j.schedule_human}</span>
+              <span style="background:#1f2937;color:#fbbf24;padding:2px 6px;border-radius:6px;font-size:10px;">🔁 ${j.frequency_per_day}</span>
+              <span style="background:#1f2937;color:#a78bfa;padding:2px 6px;border-radius:6px;font-size:10px;">🎯 ${j.audience}</span>
+            </div>
+            <div style="margin-top:4px;">${editableNote}</div>
+          </div>
+          <div style="flex-shrink:0;">${toggleEl}</div>
+        </div>
+      </div>`;
+  };
+
+  const sectionCron = cron.length ? `
+    <div style="margin-top:14px;">
+      <div style="color:#fbbf24;font-size:12px;font-weight:700;margin-bottom:6px;">⏰ Cron (belgilangan vaqtda)</div>
+      ${cron.map(renderItem).join('')}
+    </div>` : '';
+
+  const sectionInterval = interval.length ? `
+    <div style="margin-top:14px;">
+      <div style="color:#10b981;font-size:12px;font-weight:700;margin-bottom:6px;">🔁 Interval (davriy)</div>
+      ${interval.map(renderItem).join('')}
+    </div>` : '';
+
+  return masterCard + summary + sectionCron + sectionInterval;
+}
+
+async function toggleMasterAutoMsg(enabled) {
+  const r = await api('/api/admin/auto-messages/master-toggle', { method: 'POST', body: { enabled } });
+  if (r.ok) {
+    showToast(enabled ? '🟢 Barcha avtohabarlar yoqildi' : '🔴 Barcha avtohabarlar o\'chirildi');
+    loadAutoMessagesOverview();
+  } else {
+    showToast('❌ ' + (r.error || t('error')));
+    loadAutoMessagesOverview();
+  }
+}
+
+async function toggleAutoMsg(toggleKey, enabled) {
+  const r = await api('/api/admin/auto-messages/toggle', { method: 'POST', body: { toggle_key: toggleKey, enabled } });
+  if (r.ok) {
+    showToast(enabled ? `✅ ${toggleKey} yoqildi` : `🔴 ${toggleKey} o'chirildi`);
+    loadAutoMessagesOverview();
+  } else {
+    showToast('❌ ' + (r.error || t('error')));
+    loadAutoMessagesOverview();
+  }
 }
 
 function renderJobStatus(sys) {
@@ -1434,6 +1588,7 @@ async function saveScheduledJob(jobId, isWeekly) {
   _scheduledJobs = refreshed.jobs || _scheduledJobs;
   const box = document.getElementById('schedJobsBox');
   if (box) box.innerHTML = renderScheduledJobs(_scheduledJobs);
+  loadAutoMessagesOverview();
 }
 
 async function resetScheduledJob(jobId) {
@@ -1444,6 +1599,7 @@ async function resetScheduledJob(jobId) {
   _scheduledJobs = refreshed.jobs || _scheduledJobs;
   const box = document.getElementById('schedJobsBox');
   if (box) box.innerHTML = renderScheduledJobs(_scheduledJobs);
+  loadAutoMessagesOverview();
 }
 async function saveAdminProfile() {
   const displayName = document.getElementById('displayNameInput')?.value.trim();

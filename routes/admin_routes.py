@@ -4,10 +4,12 @@ Endpointlar: /api/admin/*, /api/mini-admin/*
 """
 
 import asyncio
+import html
 import secrets
 import time
 from datetime import UTC, datetime, timedelta
 
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiohttp import web
 
 from config import (
@@ -22,6 +24,26 @@ from config import (
 from rate_limit import client_ip
 from routes.api_json import json_err, json_ok
 from utils import verify_secret
+
+
+_WEEKDAY_UZ_FOR_META = {
+    "mon": "Dushanba",
+    "tue": "Seshanba",
+    "wed": "Chorshanba",
+    "thu": "Payshanba",
+    "fri": "Juma",
+    "sat": "Shanba",
+    "sun": "Yakshanba",
+}
+
+
+def _overview_cron_schedule_human(hour: int, minute: int, dow: str, *, is_weekly: bool) -> str:
+    """Avtohabarlar overview: DB dan olingan cron vaqtini ko'rsatish."""
+    hm = f"{int(hour):02d}:{int(minute):02d}"
+    d = (dow or "").strip().lower()
+    if is_weekly and d in _WEEKDAY_UZ_FOR_META:
+        return f"{_WEEKDAY_UZ_FOR_META[d]} {hm}"
+    return f"Har kuni {hm}"
 
 
 def _merge_known_credentials(static_credentials: dict[str, dict], db_credentials: list) -> dict[str, dict]:
@@ -50,12 +72,28 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             pass
 
     def _mentions_for_students(students: list) -> list[str]:
-        usernames: list[str] = []
+        """Guruh xabarida o'quvchilarni belgilash uchun mention ro'yxati.
+
+        Telegram username bo'lsa — `@username`. Aks holda — HTML inline mention
+        `<a href="tg://user?id=ID">Ism</a>` (parse_mode=HTML kerak), shunda
+        username'siz a'zolar ham push-notification oladi.
+        """
+        out: list[str] = []
+        seen: set[str] = set()
         for s in students:
             u = (getattr(s, "telegram_username", None) or "").strip().lstrip("@")
             if u:
-                usernames.append(f"@{u}")
-        return sorted(set(usernames))
+                mention = f"@{u}"
+            else:
+                uid = getattr(s, "user_id", None)
+                name = (getattr(s, "full_name", None) or "").strip() or "O'quvchi"
+                if not uid:
+                    continue
+                mention = f'<a href="tg://user?id={uid}">{html.escape(name)}</a>'
+            if mention not in seen:
+                seen.add(mention)
+                out.append(mention)
+        return out
 
     # ── Mini Admin Session ────────────────────────────────────────────────────
 
@@ -1067,6 +1105,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         # bog'laymiz (copy_message uchun). Aks holda — guruhsiz rejimda DM va student panelda
         # ko'rsatish uchun Homework ni admin chatiga bog'laymiz.
         warning = None
+        chat_sent = False
         if group:
             try:
                 sent = await bot.send_message(
@@ -1074,32 +1113,49 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
                     text=f"📝 <b>Uy vazifasi</b>\n\n{text}",
                     parse_mode="HTML",
                 )
+                chat_sent = True
+            except (TelegramBadRequest, TelegramForbiddenError) as e:
+                # Bot guruhdan chiqarilgan / chat_id eskirgan / bot bloklangan —
+                # vazifani admin chatga saqlaymiz va DM yuborishda davom etamiz
+                sent = None
+                warning = (
+                    f"'{group_name}' Telegram guruhiga yuborib bo'lmadi ({e}). "
+                    f"Vazifa saqlandi va o'quvchilarga DM yuborildi."
+                )
             except Exception as e:
                 return json_err(str(e), code="internal_error", status=500)
-            await db.set_homework(
-                group_name=group_name,
-                from_chat_id=sent.chat.id,
-                message_id=sent.message_id,
-            )
-            mentions = _mentions_for_students(students)
-            max_mentions = 10
-            shown_mentions = mentions[:max_mentions]
-            remaining = max(0, len(mentions) - len(shown_mentions))
-            mention_lines = "".join([f"{i + 1}) {u}\n" for i, u in enumerate(shown_mentions)])
-            if remaining:
-                mention_lines += f"... va yana {remaining} ta\n"
-            reminder_group_text = (
-                f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
-                f"🏫 Guruh: <b>{group_name}</b>\n"
-                f"👥 O'quvchilar soni: <b>{len(students)}</b>\n\n"
-                f"{('<b>Belgilanganlar:</b>\n' + mention_lines) if mentions else '⚠️ Username topilmadi'}"
-            )
-            try:
-                await bot.send_message(chat_id=group.chat_id, text=reminder_group_text, parse_mode="HTML")
-            except Exception:
-                pass
-        else:
-            # Telegram chat ro'yxatdan o'tmagan — admin bilan bog'liq xabarga saqlaymiz
+
+            if chat_sent and sent is not None:
+                await db.set_homework(
+                    group_name=group_name,
+                    from_chat_id=sent.chat.id,
+                    message_id=sent.message_id,
+                )
+                mentions = _mentions_for_students(students)
+                max_mentions = 10
+                shown_mentions = mentions[:max_mentions]
+                remaining = max(0, len(mentions) - len(shown_mentions))
+                mention_lines = "".join([f"{i + 1}) {u}\n" for i, u in enumerate(shown_mentions)])
+                if remaining:
+                    mention_lines += f"... va yana {remaining} ta\n"
+                _no_mentions_warn = "⚠️ Belgilanadigan foydalanuvchi topilmadi"
+                mentions_block = (
+                    ("<b>Belgilanganlar:</b>" + chr(10) + mention_lines) if mentions else _no_mentions_warn
+                )
+                reminder_group_text = (
+                    f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
+                    f"🏫 Guruh: <b>{group_name}</b>\n"
+                    f"👥 O'quvchilar soni: <b>{len(students)}</b>\n\n"
+                    f"{mentions_block}"
+                )
+                try:
+                    await bot.send_message(chat_id=group.chat_id, text=reminder_group_text, parse_mode="HTML")
+                except (TelegramBadRequest, TelegramForbiddenError):
+                    pass
+
+        if not chat_sent:
+            # Telegram chat ro'yxatdan o'tmagan yoki bot guruhga yuborolmadi —
+            # vazifa admin DM ga saqlanadi
             try:
                 sent = await bot.send_message(
                     chat_id=user_id,
@@ -1111,10 +1167,11 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
                     from_chat_id=sent.chat.id,
                     message_id=sent.message_id,
                 )
-                warning = (
-                    f"'{group_name}' uchun Telegram chat ro'yxatdan o'tmagan — "
-                    f"vazifa saqlandi va o'quvchilarga DM yuborildi"
-                )
+                if warning is None:
+                    warning = (
+                        f"'{group_name}' uchun Telegram chat ro'yxatdan o'tmagan — "
+                        f"vazifa saqlandi va o'quvchilarga DM yuborildi"
+                    )
             except Exception as e:
                 return json_err(f"Vazifani saqlab bo'lmadi: {e}", code="internal_error", status=500)
 
@@ -1144,14 +1201,14 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             user_id,
             "send_homework",
             target=group_name,
-            details=f"task_id={task.id},students={len(students)},dm={dm_sent},chat={'yes' if group else 'no'}",
+            details=f"task_id={task.id},students={len(students)},dm={dm_sent},chat={'yes' if chat_sent else 'no'}",
         )
         return web.json_response(
             {
                 "ok": True,
                 "students": len(students),
                 "dm_sent": dm_sent,
-                "chat_sent": bool(group),
+                "chat_sent": chat_sent,
                 "warning": warning,
             }
         )
@@ -1182,26 +1239,40 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             return json_err("Guruh topilmadi va o'quvchi yo'q", code="not_found", status=404)
 
         warning = None
-        try:
-            if group:
+        chat_sent = False
+        sent = None
+        if group:
+            try:
                 sent = await bot.send_message(
                     chat_id=group.chat_id,
                     text=f"✏️ <b>Uy vazifasi yangilandi</b>\n\n{text}",
                     parse_mode="HTML",
                 )
-            else:
+                chat_sent = True
+            except (TelegramBadRequest, TelegramForbiddenError) as e:
+                warning = (
+                    f"'{group_name}' Telegram guruhiga yuborib bo'lmadi ({e}). "
+                    f"Vazifa admin chatga saqlandi."
+                )
+            except Exception as e:
+                return json_err(str(e), code="internal_error", status=500)
+
+        if not chat_sent:
+            try:
                 sent = await bot.send_message(
                     chat_id=user_id,
                     text=f"✏️ <b>Uy vazifasi yangilandi (saqlandi)</b>\n\nGuruh: <b>{group_name}</b>\n\n{text}",
                     parse_mode="HTML",
                 )
-                warning = f"'{group_name}' uchun Telegram chat ro'yxatdan o'tmagan — vazifa saqlandi"
-        except Exception as e:
-            return json_err(str(e), code="internal_error", status=500)
+                if warning is None:
+                    warning = f"'{group_name}' uchun Telegram chat ro'yxatdan o'tmagan — vazifa saqlandi"
+            except Exception as e:
+                return json_err(f"Vazifani saqlab bo'lmadi: {e}", code="internal_error", status=500)
+
         await db.set_homework(group_name=group_name, from_chat_id=sent.chat.id, message_id=sent.message_id)
         await db.create_homework_task(group_name, text, created_by=user_id, status="reviewed")
         await _audit(user_id, "update_homework", target=group_name)
-        return web.json_response({"ok": True, "chat_sent": bool(group), "warning": warning})
+        return web.json_response({"ok": True, "chat_sent": chat_sent, "warning": warning})
 
     async def api_admin_homework_tasks(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
@@ -1296,6 +1367,128 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if ok:
             await _audit(user_id, "delete_homework", target=group_name, details="soft_delete")
         return json_ok(ok=ok)
+
+    async def api_admin_refresh_group_chat(request: web.Request) -> web.Response:
+        """Guruhning chat_id sini avtomatik yangilaydi.
+
+        Avval `bot.get_chat(group.chat_id)` orqali tekshiradi. Agar chat_id yaroqsiz bo'lsa
+        (supergroup konvertatsiya, eski chat va h.k.), `BotChat` jadvalidan title bo'yicha
+        mos keladigan yangi chat_id qidiradi va Group.chat_id ni yangilaydi.
+        """
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        group_name = (body.get("group_name") or "").strip()
+        if not group_name:
+            return json_err("group_name kerak", code="validation_error", status=400)
+
+        from sqlalchemy import select
+
+        from database import Group
+
+        async with db.session_factory() as session:
+            result = await session.execute(select(Group).where(Group.name == group_name))
+            group = result.scalar_one_or_none()
+        if not group:
+            return json_err("Guruh topilmadi", code="not_found", status=404)
+
+        old_chat_id = group.chat_id
+
+        # 1) Joriy chat_id ishlayotganini tekshiramiz
+        try:
+            await bot.get_chat(old_chat_id)
+            return web.json_response(
+                {
+                    "ok": True,
+                    "changed": False,
+                    "chat_id": old_chat_id,
+                    "message": "Guruh chat_id allaqachon yaroqli",
+                }
+            )
+        except (TelegramBadRequest, TelegramForbiddenError):
+            pass
+        except Exception as e:
+            return json_err(f"Telegram xatosi: {e}", code="internal_error", status=500)
+
+        # 2) BotChat dan nomi bo'yicha kandidat qidiramiz (case-insensitive)
+        bot_chats = await db.get_bot_chats()
+        target_lower = group_name.strip().lower()
+        candidates = [
+            c
+            for c in bot_chats
+            if c.chat_id != old_chat_id
+            and (c.title.strip().lower() == target_lower or target_lower in c.title.strip().lower())
+        ]
+
+        if not candidates:
+            return json_err(
+                f"Mos guruh topilmadi. Botni '{group_name}' guruhiga qo'shing yoki guruhga "
+                f"istalgan xabar yuboring (bot chat_id ni avtomatik saqlaydi).",
+                code="not_found",
+                status=404,
+            )
+
+        # 3) Har bir kandidatni tekshiramiz
+        verified: list[tuple[int, str]] = []
+        for c in candidates:
+            try:
+                chat = await bot.get_chat(c.chat_id)
+                title = chat.title or c.title
+                verified.append((c.chat_id, title))
+            except (TelegramBadRequest, TelegramForbiddenError):
+                continue
+            except Exception:
+                continue
+
+        if not verified:
+            return json_err(
+                "Mos kandidatlar bor, lekin ularning hech biri yaroqli emas. "
+                "Botni guruhga qaytadan qo'shing.",
+                code="not_found",
+                status=404,
+            )
+
+        if len(verified) > 1:
+            return web.json_response(
+                {
+                    "ok": False,
+                    "changed": False,
+                    "ambiguous": True,
+                    "candidates": [{"chat_id": cid, "title": ttl} for cid, ttl in verified],
+                    "message": f"{len(verified)} ta yaroqli kandidat topildi — qaysi birini tanlash kerak?",
+                },
+                status=409,
+            )
+
+        new_chat_id, new_title = verified[0]
+        ok = await db.update_group_chat_id(old_chat_id, new_chat_id)
+        if not ok:
+            return json_err(
+                "chat_id yangilanmadi (ehtimol yangi chat_id allaqachon mavjud)",
+                code="conflict",
+                status=409,
+            )
+
+        await _audit(
+            user_id,
+            "refresh_group_chat",
+            target=group_name,
+            details=f"old={old_chat_id},new={new_chat_id}",
+        )
+        return web.json_response(
+            {
+                "ok": True,
+                "changed": True,
+                "old_chat_id": old_chat_id,
+                "new_chat_id": new_chat_id,
+                "title": new_title,
+                "message": f"Chat ID yangilandi: {old_chat_id} → {new_chat_id}",
+            }
+        )
 
     async def api_admin_message_templates(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
@@ -1435,6 +1628,108 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             await db.set_setting("SEND_MINUTE", str(m))
         return web.json_response({"ok": True, "job_id": job_id, "hour": h, "minute": m, "day_of_week": dow})
 
+    async def api_admin_auto_messages_overview(request: web.Request) -> web.Response:
+        """Barcha avtohabarlar (13 ta) — vaqti, chastotasi, mazmuni, on/off holati."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        from scheduler import ALL_AUTO_JOBS_META, SCHEDULED_JOBS_REGISTRY, get_job_schedule
+
+        master_enabled = (await db.get_setting("AUTO_MSG_MASTER", "1")) == "1"
+        items = []
+        for job_id, meta in ALL_AUTO_JOBS_META.items():
+            current_h = current_m = None
+            current_dow = ""
+            is_weekly = False
+            default_h = default_m = None
+            default_dow = ""
+            if job_id in SCHEDULED_JOBS_REGISTRY:
+                cfg = SCHEDULED_JOBS_REGISTRY[job_id]
+                current_h, current_m, current_dow = await get_job_schedule(db, job_id)
+                default_h = cfg["default_hour"]
+                default_m = cfg["default_minute"]
+                default_dow = cfg.get("default_dow", "") or ""
+                is_weekly = bool(cfg.get("default_dow"))
+            toggle_key = meta.get("toggle_key")
+            toggle_enabled = True
+            if toggle_key:
+                toggle_enabled = (await db.get_setting(toggle_key, "1")) == "1"
+            schedule_human = str(meta["schedule_human"])
+            if job_id in SCHEDULED_JOBS_REGISTRY and current_h is not None and current_m is not None:
+                schedule_human = _overview_cron_schedule_human(
+                    current_h, current_m, current_dow, is_weekly=is_weekly
+                )
+            items.append(
+                {
+                    "job_id": job_id,
+                    "name": meta["name"],
+                    "what": meta["what"],
+                    "schedule_human": schedule_human,
+                    "frequency_per_day": meta["frequency_per_day"],
+                    "trigger_type": meta["trigger_type"],
+                    "audience": meta["audience"],
+                    "editable": meta["editable"],
+                    "toggle_key": toggle_key,
+                    "toggle_enabled": toggle_enabled,
+                    "current_hour": current_h,
+                    "current_minute": current_m,
+                    "current_dow": current_dow,
+                    "default_hour": default_h,
+                    "default_minute": default_m,
+                    "default_dow": default_dow,
+                    "is_weekly": is_weekly,
+                }
+            )
+        return web.json_response(
+            {
+                "master_enabled": master_enabled,
+                "total": len(items),
+                "items": items,
+            }
+        )
+
+    async def api_admin_auto_messages_master_toggle(request: web.Request) -> web.Response:
+        """Master toggle: barcha avtohabarlarni bir bosishda yoqish/o'chirish."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        enabled = bool(body.get("enabled"))
+        await db.set_setting("AUTO_MSG_MASTER", "1" if enabled else "0")
+        await _audit(
+            user_id,
+            "auto_messages_master_toggle",
+            target="AUTO_MSG_MASTER",
+            details=f"enabled={enabled}",
+        )
+        return web.json_response({"ok": True, "master_enabled": enabled})
+
+    async def api_admin_auto_messages_toggle(request: web.Request) -> web.Response:
+        """Bitta toggle_key (AUTO_MSG_GROUPS / STUDENTS / CURATORS) ni yoqish/o'chirish."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        toggle_key = (body.get("toggle_key") or "").strip()
+        allowed_keys = {"AUTO_MSG_GROUPS", "AUTO_MSG_STUDENTS", "AUTO_MSG_CURATORS"}
+        if toggle_key not in allowed_keys:
+            return json_err("Noto'g'ri toggle_key", code="validation_error", status=400)
+        enabled = bool(body.get("enabled"))
+        await db.set_setting(toggle_key, "1" if enabled else "0")
+        await _audit(
+            user_id,
+            "auto_message_toggle",
+            target=toggle_key,
+            details=f"enabled={enabled}",
+        )
+        return web.json_response({"ok": True, "toggle_key": toggle_key, "enabled": enabled})
+
     async def api_admin_system_status(request: web.Request) -> web.Response:
         """Mini-admin: DB, scheduler, versiya (monitoring)."""
         user_id = _mini_admin_auth(request)
@@ -1476,6 +1771,9 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     app.router.add_get("/api/admin/scheduled-jobs", api_admin_scheduled_jobs_get)
     app.router.add_post("/api/admin/scheduled-jobs", api_admin_scheduled_jobs_set)
     app.router.add_post("/api/admin/scheduled-jobs/reset", api_admin_scheduled_jobs_reset)
+    app.router.add_get("/api/admin/auto-messages-overview", api_admin_auto_messages_overview)
+    app.router.add_post("/api/admin/auto-messages/master-toggle", api_admin_auto_messages_master_toggle)
+    app.router.add_post("/api/admin/auto-messages/toggle", api_admin_auto_messages_toggle)
     app.router.add_get("/api/admin/auto-msg", api_admin_auto_msg_get)
     app.router.add_post("/api/admin/auto-msg", api_admin_auto_msg_set)
     app.router.add_get("/api/admin/auto-msg-preview", api_admin_auto_msg_preview)
@@ -1506,6 +1804,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     app.router.add_post("/api/admin/homework-task-bulk-update", api_admin_homework_task_bulk_update)
     app.router.add_post("/api/admin/restore-homework", api_admin_restore_homework)
     app.router.add_post("/api/admin/delete-homework", api_admin_delete_homework)
+    app.router.add_post("/api/admin/refresh-group-chat", api_admin_refresh_group_chat)
     app.router.add_get("/api/admin/message-templates", api_admin_message_templates)
     app.router.add_get("/api/admin/audit-logs", api_admin_audit_logs)
     app.router.add_get("/api/admin/weekly-stats", api_admin_weekly_stats)

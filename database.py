@@ -1153,6 +1153,22 @@ class DatabaseService:
                 logger.info(f"Guruh o'chirildi: chat_id={chat_id}")
             return deleted
 
+    async def update_group_chat_id(self, old_chat_id: int, new_chat_id: int) -> bool:
+        """Guruhning chat_id sini yangilaydi (supergroup konvertatsiyadan keyin)."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(Group).where(Group.chat_id == old_chat_id))
+            group = result.scalar_one_or_none()
+            if not group:
+                return False
+            existing = await session.execute(select(Group).where(Group.chat_id == new_chat_id))
+            if existing.scalar_one_or_none():
+                return False
+            group.chat_id = new_chat_id
+            group.last_message_id = None
+            await session.commit()
+            logger.info(f"Guruh chat_id yangilandi: {old_chat_id} → {new_chat_id} ('{group.name}')")
+            return True
+
     # ── TOGGLE ─────────────────────────────────────────────────────────────────
 
     async def set_group_active(self, chat_id: int, is_active: bool) -> bool:

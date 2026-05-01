@@ -5,6 +5,7 @@ Ota-onalar va o'quvchilar uchun ALOHIDA xabar matnlari.
 Yuborilgan xabar ID lari bazaga saqlanadi (keyinchalik o'chirish uchun).
 """
 
+import html
 import logging
 import os
 import random
@@ -149,13 +150,32 @@ def build_reminder_message(info: TomorrowInfo, audience: AudienceType) -> str:
         )
 
 
+_NO_MENTIONS_WARN = "⚠️ Belgilanadigan a'zolar topilmadi"
+
+
 def _student_mentions(students: list) -> list[str]:
-    usernames: list[str] = []
+    """Guruh xabarida o'quvchilarni belgilash uchun mention ro'yxatini qaytaradi.
+
+    Telegram username bo'lsa — `@username` ishlatiladi.
+    Aks holda — HTML inline mention `<a href="tg://user?id=ID">Ism</a>` (parse_mode=HTML kerak).
+    Bu format username'siz a'zolarni ham guruhda push-notification bilan ping qiladi.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
     for s in students:
         u = (getattr(s, "telegram_username", None) or "").strip().lstrip("@")
         if u:
-            usernames.append(f"@{u}")
-    return sorted(set(usernames))
+            mention = f"@{u}"
+        else:
+            uid = getattr(s, "user_id", None)
+            name = (getattr(s, "full_name", None) or "").strip() or "O'quvchi"
+            if not uid:
+                continue
+            mention = f'<a href="tg://user?id={uid}">{html.escape(name)}</a>'
+        if mention not in seen:
+            seen.add(mention)
+            out.append(mention)
+    return out
 
 
 async def _send_homework_group_and_dm_reminders(
@@ -179,7 +199,7 @@ async def _send_homework_group_and_dm_reminders(
         f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
         f"🏫 Guruh: <b>{group_name}</b>\n"
         f"👥 O'quvchilar soni: <b>{len(students)}</b>\n\n"
-        f"{('<b>Belgilanganlar:</b>\n' + mention_lines) if mentions else '⚠️ Username topilmadi'}"
+        f"{('<b>Belgilanganlar:</b>' + chr(10) + mention_lines) if mentions else _NO_MENTIONS_WARN}"
     )
     try:
         await bot.send_message(chat_id=chat_id, text=group_text, parse_mode="HTML")
@@ -215,6 +235,14 @@ def _admin_mini_hw_url(webapp_url: str, group_name: str) -> str:
     return f"{root}{sep}hw_group={urllib.parse.quote(group_name)}"
 
 
+# ─── Master toggle helper ────────────────────────────────────────────────────
+
+
+async def is_auto_messages_disabled(db: DatabaseService) -> bool:
+    """Master toggle: barcha avtohabarlarni o'chirish."""
+    return (await db.get_setting("AUTO_MSG_MASTER", "1")) == "0"
+
+
 # ─── Asosiy yuborish vazifasi ─────────────────────────────────────────────────
 
 
@@ -229,6 +257,9 @@ async def send_daily_reminders(
     - O'quvchilarga alohida xabar
     - Yuborilgan message_id lar bazaga saqlanadi
     """
+    if await is_auto_messages_disabled(db):
+        logger.info("SCHEDULER: AUTO_MSG_MASTER o'chirilgan — barcha avtohabarlar to'xtatildi")
+        return
     # Avto xabar o'chirilgan bo'lsa — to'xtatamiz
     if await db.get_setting("AUTO_MSG_GROUPS", "1") == "0":
         logger.info("SCHEDULER: AUTO_MSG_GROUPS o'chirilgan — guruh xabarlari yuborilmadi")
@@ -396,6 +427,8 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
       1-eslatma: reminder_start dan 10 daqiqa ichida
       2-eslatma: reminder_start + 30 daqiqadan keyin (10 daqiqa oyna)
     """
+    if await is_auto_messages_disabled(db):
+        return
     # Avto xabar o'chirilgan bo'lsa — to'xtatamiz
     if await db.get_setting("AUTO_MSG_STUDENTS", "1") == "0":
         return
@@ -526,6 +559,8 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
     Har 10 daqiqada tekshiradi: dars boshlanganidan 20-30 daqiqa o'tgan
     guruhlar uchun kuratorlarga davomat yuborish eslatmasi ketadi.
     """
+    if await is_auto_messages_disabled(db):
+        return
     # Avto xabar o'chirilgan bo'lsa — to'xtatamiz
     if await db.get_setting("AUTO_MSG_CURATORS", "1") == "0":
         return
@@ -608,6 +643,8 @@ async def check_homework_prompt(
     dars tugashiga 2 daqiqa qolgan guruh bo'lsa, adminga
     "Uyga vazifa bering" eslatmasini yuboradi.
     """
+    if await is_auto_messages_disabled(db):
+        return
     if await db.get_setting("AUTO_MSG_GROUPS", "1") == "0":
         return
 
@@ -684,6 +721,8 @@ async def expire_homeworks_at_class_start(
     Uy vazifasi `sent_at` < bugungi dars boshlanish vaqti bo'lsa — eski deb belgilanadi.
     Shu darsda admin yangi vazifa qo'shgan bo'lsa, u o'chirilmaydi.
     """
+    if await is_auto_messages_disabled(db):
+        return
     if await db.get_setting("AUTO_MSG_GROUPS", "1") == "0":
         return
 
@@ -749,6 +788,8 @@ async def send_homework_deadline_reminders(bot: Bot, db: DatabaseService, timezo
     """
     Darsdan 4 soat oldin homework yo'q bo'lgan guruhlar uchun adminlarga deadline eslatmasi.
     """
+    if await is_auto_messages_disabled(db):
+        return
     tz = pytz.timezone(timezone_str)
     now = datetime.now(tz)
     if now.weekday() == 6:
@@ -794,6 +835,8 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
     3) O'quvchi "Ha" bosib, 2 soat ichida "Vazifani yubordim" demasa: eslatma
     4) Eslatmadan keyin 30 daqiqa ichida ham yubormasa: qilmadi deb ota-ona/ustozga xabar
     """
+    if await is_auto_messages_disabled(db):
+        return
     from keyboards import kb_homework_check
 
     tz = pytz.timezone(timezone_str)
@@ -976,6 +1019,8 @@ async def send_lesson_auto_summary(bot: Bot, db: DatabaseService, timezone_str: 
     """
     Dars tugagandan keyin (5 daqiqalik window) adminlarga qisqa summary.
     """
+    if await is_auto_messages_disabled(db):
+        return
     tz = pytz.timezone(timezone_str)
     now = datetime.now(tz)
     if now.weekday() == 6:
@@ -1141,6 +1186,8 @@ async def send_leaderboard_broadcast(
     Faqat AudienceType.STUDENT guruhlarga yuboriladi (PARENT guruhlar o'tkazib yuboriladi).
     Xabarda botga o'tish tugmasi bo'ladi.
     """
+    if await is_auto_messages_disabled(db):
+        return
     tz = pytz.timezone(timezone_str)
     date_str = datetime.now(tz).strftime("%d.%m.%Y")
 
@@ -1266,6 +1313,8 @@ async def send_streak_reminders(bot: Bot, db: DatabaseService, timezone_str: str
     Har kuni 19:00 da: bugun hali Mini App ga kirmagan o'quvchilarga
     streak yo'qolishi haqida ogohlantirish yuboradi.
     """
+    if await is_auto_messages_disabled(db):
+        return
     tz = pytz.timezone(timezone_str)
     today_str = datetime.now(tz).strftime("%Y-%m-%d")
 
@@ -1303,6 +1352,8 @@ async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: st
     Har Dushanba 09:00 da: 7+ kun ketma-ket streak bo'lgan
     o'quvchilarga +100 XP bonus beradi.
     """
+    if await is_auto_messages_disabled(db):
+        return
     from database import XP_WEEKLY_BONUS
 
     try:
@@ -1375,6 +1426,143 @@ SCHEDULED_JOBS_REGISTRY: dict[str, dict[str, object]] = {
 }
 
 _VALID_DOWS = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+
+
+# Barcha 13 avtohabar — to'liq metadata. Admin panel uchun.
+# `editable=True` bo'lsa, vaqtni o'zgartirish mumkin (faqat cron jobs).
+# `toggle_key` mavjud bo'lsa, alohida o'chirib qo'yish mumkin.
+ALL_AUTO_JOBS_META: dict[str, dict[str, object]] = {
+    "daily_lesson_reminder": {
+        "name": "Kunlik dars eslatmasi",
+        "what": "Ota-ona va o'quvchi guruhlariga kunlik dars eslatma xabari",
+        "schedule_human": f"Har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d}",
+        "frequency_per_day": "1 marta (kuniga)",
+        "trigger_type": "cron",
+        "editable": True,
+        "toggle_key": "AUTO_MSG_GROUPS",
+        "audience": "guruhlar",
+    },
+    "class_attendance_reminder": {
+        "name": "Dars davomat eslatmasi",
+        "what": "Dars vaqti yaqinlashganda o'quvchilarga davomat tugmasi DM",
+        "schedule_human": "Har 10 daqiqada (06:00–19:30)",
+        "frequency_per_day": "~80 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": "AUTO_MSG_STUDENTS",
+        "audience": "o'quvchilar",
+    },
+    "davomat_curator_notify": {
+        "name": "Kurator davomat eslatmasi",
+        "what": "Dars boshlanganidan 20–30 daqiqa o'tgach kuratorga DM",
+        "schedule_human": "Har 10 daqiqada",
+        "frequency_per_day": "~144 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": "AUTO_MSG_CURATORS",
+        "audience": "kuratorlar",
+    },
+    "homework_prompt_before_end": {
+        "name": "Uy vazifa eslatmasi (admin)",
+        "what": "Dars tugashidan 2 daqiqa oldin adminga 'Uy vazifa bering' DM",
+        "schedule_human": "Har 1 daqiqada",
+        "frequency_per_day": "~1440 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": "AUTO_MSG_GROUPS",
+        "audience": "adminlar",
+    },
+    "homework_expire_at_class_start": {
+        "name": "Eski uy vazifani o'chirish",
+        "what": "Yangi dars boshlanganda eski uy vazifani arxivga ko'chiradi",
+        "schedule_human": "Har 1 daqiqada",
+        "frequency_per_day": "~1440 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": "AUTO_MSG_GROUPS",
+        "audience": "tizim",
+    },
+    "inactive_students_cleanup": {
+        "name": "Nofaol o'quvchilarni o'chirish",
+        "what": "7+ kun faol bo'lmagan o'quvchilarni avtomatik o'chirish",
+        "schedule_human": "Har kuni 21:00",
+        "frequency_per_day": "1 marta (kuniga)",
+        "trigger_type": "cron",
+        "editable": True,
+        "toggle_key": None,
+        "audience": "tizim",
+    },
+    "weekly_leaderboard_broadcast": {
+        "name": "Haftalik global reyting",
+        "what": "Barcha aktiv o'quvchi guruhlariga TOP-5 reyting xabari",
+        "schedule_human": "Dushanba 21:05",
+        "frequency_per_day": "Haftada 1 marta",
+        "trigger_type": "cron",
+        "editable": True,
+        "toggle_key": None,
+        "audience": "guruhlar",
+    },
+    "streak_reminder": {
+        "name": "Streak eslatmasi",
+        "what": "Bugun Mini Appga kirmagan o'quvchilarga streak yo'qolish ogohlantirishi",
+        "schedule_human": "Har kuni 19:00",
+        "frequency_per_day": "1 marta (kuniga)",
+        "trigger_type": "cron",
+        "editable": True,
+        "toggle_key": None,
+        "audience": "o'quvchilar",
+    },
+    "homework_deadline_reminders": {
+        "name": "Uy vazifa deadline eslatmasi",
+        "what": "Darsdan 4 soat oldin uy vazifa yo'q bo'lsa adminga DM",
+        "schedule_human": "Har 1 daqiqada",
+        "frequency_per_day": "~1440 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": None,
+        "audience": "adminlar",
+    },
+    "student_homework_reminders": {
+        "name": "Student uy vazifa nazorat oqimi",
+        "what": "O'quvchilarga 'Uy vazifa qildingmi?' va eslatma flow",
+        "schedule_human": "Har 1 daqiqada",
+        "frequency_per_day": "~1440 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": None,
+        "audience": "o'quvchilar",
+    },
+    "lesson_auto_summary": {
+        "name": "Dars summary (admin)",
+        "what": "Dars tugagach adminlarga qisqa statistika",
+        "schedule_human": "Har 5 daqiqada",
+        "frequency_per_day": "~288 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": None,
+        "audience": "adminlar",
+    },
+    "sqlite_backup_daily": {
+        "name": "SQLite kunlik backup",
+        "what": "DB faylni avtomatik backup qilish",
+        "schedule_human": "Har kuni 23:50",
+        "frequency_per_day": "1 marta (kuniga)",
+        "trigger_type": "cron",
+        "editable": True,
+        "toggle_key": None,
+        "audience": "tizim",
+    },
+    "weekly_streak_bonus": {
+        "name": "Haftalik 7-kun streak bonusi",
+        "what": "7+ kun streak bo'lgan o'quvchilarga +100 XP bonus",
+        "schedule_human": "Dushanba 09:00",
+        "frequency_per_day": "Haftada 1 marta",
+        "trigger_type": "cron",
+        "editable": True,
+        "toggle_key": None,
+        "audience": "o'quvchilar",
+    },
+}
 
 
 async def get_job_schedule(db: DatabaseService, job_id: str) -> tuple[int, int, str]:

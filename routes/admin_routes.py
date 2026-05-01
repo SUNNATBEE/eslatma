@@ -308,7 +308,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         return web.json_response({"ok": True})
 
     async def api_admin_hw_schedule(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
+        user_id = _mini_admin_auth(request)
         if not user_id:
             return json_err("Unauthorized", code="unauthorized", status=401)
         from class_schedule import CLASS_SCHEDULE

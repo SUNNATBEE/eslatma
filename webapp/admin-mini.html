@@ -564,6 +564,9 @@ async function renderDashboard() {
         <button class="action-btn" onclick="showTemplateSheet()">
           <span class="ab-icon">📚</span><span>Shablonlar</span>
         </button>
+        <button class="action-btn" onclick="showTab('homework')">
+          <span class="ab-icon">📝</span><span>Uyga vazifa</span>
+        </button>
       </div>
     </div>
     <div id="dashWarnings"><div class="loading" style="padding:16px;font-size:13px;">⚠️ ${t('warnings')}...</div></div>
@@ -1348,6 +1351,7 @@ async function renderSettings() {
           <b>🏆 Reyting:</b> Top o'quvchilar va o'yin reytingi<br>
           <b>👩‍💼 Kuratorlar:</b> Faol sessiyalar<br>
           <b>🔗 Referal:</b> Yangi o'quvchilarni tasdiqlash<br>
+          <b>📝 Vazifa:</b> Guruhga uy vazifa yuborish va boshqarish<br>
           <b>⚙️ Sozlama:</b> Profil, eslatma vaqti, xabar yuborish
         ` : `
           <b>📊 Главная:</b> Дневная статистика<br>
@@ -1357,6 +1361,7 @@ async function renderSettings() {
           <b>🏆 Рейтинг:</b> Топ учеников и игровой рейтинг<br>
           <b>👩‍💼 Кураторы:</b> Активные сессии<br>
           <b>🔗 Реферал:</b> Подтверждение новых учеников<br>
+          <b>📝 Задания:</b> Отправка и управление домашними заданиями<br>
           <b>⚙️ Настройки:</b> Профиль, время напоминания, рассылка
         `}
       </div>
@@ -1471,7 +1476,10 @@ async function loadAuditLogs() {
   `).join('');
 }
 
-// ── Homework Pipeline ─────────────────────────────────────────────────────────
+// ── Homework (Uyga vazifa) ─────────────────────────────────────────────────────
+// _hwScheduleData: guruhlar haqida to'liq ma'lumot (hw-schedule dan)
+let _hwScheduleData = [];
+
 async function renderHomework() {
   const [groupsRes, tasksRes, hwScheduleRes] = await Promise.all([
     api('/api/admin/groups').catch(() => ({ groups: [] })),
@@ -1480,7 +1488,9 @@ async function renderHomework() {
   ]);
   const groups = groupsRes.groups || [];
   _hwTasks = tasksRes.tasks || [];
-  _hwTodayGroups = (hwScheduleRes.groups || []).map(x => x.group_name || x.name).filter(Boolean);
+  _hwScheduleData = hwScheduleRes.groups || [];
+  _hwTodayGroups = _hwScheduleData.map(x => x.group_name || x.name).filter(Boolean);
+
   const uniqueGroups = ['all', ...new Set(_hwTasks.map(x => x.group_name))];
   const statuses = ['all', 'draft', 'assigned', 'reviewed', 'rework', 'done'];
   const filtered = _hwTasks.filter(x =>
@@ -1490,50 +1500,168 @@ async function renderHomework() {
   );
   _hwSelectedIds = _hwSelectedIds.filter(id => filtered.some(x => x.id === id));
 
+  // Guruhlarni uy vazifasi holati bilan ko'rsatish
+  const allGroupNames = [...new Set([
+    ...groups.map(g => g.name).filter(Boolean),
+    ..._hwScheduleData.map(x => x.group_name || x.name).filter(Boolean),
+  ])].sort();
+
+  // hw-schedule dan guruh haqida ma'lumot olish
+  const hwMap = {};
+  _hwScheduleData.forEach(x => {
+    const gn = x.group_name || x.name;
+    if (gn) hwMap[gn] = x;
+  });
+
   document.getElementById('mainContent').innerHTML = `
+    <!-- Yangi uy vazifa qo'shish -->
     <div class="card">
-      <div class="card-title">📝 Homework Pipeline</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <select class="search-box" id="hwGroupFilter" onchange="_hwFilterGroup=this.value;renderHomework()" style="margin-bottom:0;">
+      <div class="card-title">📚 Uyga vazifa yuborish</div>
+      <div class="inline-label">Guruhni tanlang</div>
+      <select class="search-box" id="hwSendGroup">
+        <option value="">— Guruh tanlang —</option>
+        ${allGroupNames.map(g => {
+          const info = hwMap[g];
+          const hasSent = info && info.has_homework;
+          const sentAt = info && info.hw_sent_at ? ' (' + info.hw_sent_at + ')' : '';
+          return `<option value="${g}">${g}${hasSent ? ' ✅' + sentAt : ''}</option>`;
+        }).join('')}
+      </select>
+      <div class="inline-label" style="margin-top:10px;">Vazifa matni</div>
+      <textarea class="txt-input" id="hwSendText" rows="5"
+        placeholder="${t('hw_text_placeholder')}"></textarea>
+      <div class="inline-label" style="margin-top:10px;">Deadline (ixtiyoriy)</div>
+      <input type="datetime-local" class="search-box" id="hwSendDueAt">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary" onclick="doSendHomeworkFromTab()">📤 ${t('hw_send')}</button>
+        <button class="btn btn-outline" onclick="doUpdateHomeworkFromTab()">✏️ Yangilash</button>
+      </div>
+    </div>
+
+    <!-- Guruhlar holati -->
+    <div class="card">
+      <div class="card-title">🏫 Guruhlar uy vazifasi holati</div>
+      ${allGroupNames.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
+        allGroupNames.map(g => {
+          const info = hwMap[g];
+          const hasSent = info && info.has_homework;
+          const sentAt = info && info.hw_sent_at ? info.hw_sent_at : '';
+          const dayType = info && info.day_type ? (info.day_type === 'ODD' ? 'Toq' : 'Juft') : '';
+          const classTime = info && info.class_time ? info.class_time : '';
+          const cnt = info && info.student_count ? info.student_count : 0;
+          return `
+          <div class="student-card" style="cursor:pointer;" onclick="hwQuickSelect('${g.replace(/'/g,"\\'")}')">
+            <div class="student-avatar" style="font-size:20px;">${hasSent ? '✅' : '📭'}</div>
+            <div class="student-info">
+              <div class="student-name">${g}</div>
+              <div class="student-group">
+                ${dayType ? dayType + ' • ' : ''}${classTime ? '⏰ ' + classTime + ' • ' : ''}${cnt} o'quvchi
+                ${hasSent ? `<br><span style="color:#4CAF50;font-size:11px;">Yuborilgan: ${sentAt}</span>` : '<br><span style="color:#f44336;font-size:11px;">Vazifa yo\'q</span>'}
+              </div>
+            </div>
+            <button class="btn btn-ghost" style="width:auto;margin-top:0;padding:6px 10px;font-size:12px;"
+              onclick="event.stopPropagation();hwQuickSelect('${g.replace(/'/g,"\\'")}')">Tanlash</button>
+          </div>`;
+        }).join('')
+      }
+    </div>
+
+    <!-- Vazifa tarixi (pipeline) -->
+    <div class="card">
+      <div class="card-title">📋 Vazifa tarixi (pipeline)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <select class="search-box" id="hwGroupFilter" onchange="_hwFilterGroup=this.value;renderHomeworkPipeline()" style="margin-bottom:0;">
           ${uniqueGroups.map(g => `<option value="${g}" ${_hwFilterGroup===g?'selected':''}>${g==='all'?'Barcha guruhlar':g}</option>`).join('')}
         </select>
-        <select class="search-box" id="hwStatusFilter" onchange="_hwFilterStatus=this.value;renderHomework()" style="margin-bottom:0;">
-          ${statuses.map(s => `<option value="${s}" ${_hwFilterStatus===s?'selected':''}>${s}</option>`).join('')}
+        <select class="search-box" id="hwStatusFilter" onchange="_hwFilterStatus=this.value;renderHomeworkPipeline()" style="margin-bottom:0;">
+          ${statuses.map(s => `<option value="${s}" ${_hwFilterStatus===s?'selected':''}>${s==='all'?'Barcha status':s}</option>`).join('')}
         </select>
       </div>
-      <div class="action-grid" style="margin-top:12px;">
-        <button class="action-btn" onclick="showHomeworkCreateSheet()"><span class="ab-icon">➕</span><span>Yangi vazifa</span></button>
-        <button class="action-btn" onclick="showHomeworkRestoreSheet()"><span class="ab-icon">♻️</span><span>Qaytarish</span></button>
-        <button class="action-btn" onclick="toggleTodayHomeworkFilter()"><span class="ab-icon">📅</span><span>${_hwOnlyToday ? 'Bugungi: ON' : 'Bugungi guruhlar'}</span></button>
-        <button class="action-btn" onclick="showHomeworkBulkStatusSheet()"><span class="ab-icon">🧩</span><span>Bulk status</span></button>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" style="width:auto;padding:8px 12px;font-size:12px;"
+          onclick="toggleTodayHomeworkFilter()">📅 ${_hwOnlyToday ? 'Bugungi: ON' : 'Bugungi guruhlar'}</button>
+        <button class="btn btn-ghost" style="width:auto;padding:8px 12px;font-size:12px;"
+          onclick="showHomeworkBulkStatusSheet()">🧩 Bulk status</button>
+        <button class="btn btn-ghost" style="width:auto;padding:8px 12px;font-size:12px;"
+          onclick="showHomeworkRestoreSheet()">♻️ Restore</button>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Jami: ${filtered.length}</div>
-      ${filtered.length ? filtered.map(x => `
-        <div class="student-card" style="display:block;cursor:default;">
-          <div style="display:flex;justify-content:space-between;gap:8px;">
-            <div>
-              <input type="checkbox" ${_hwSelectedIds.includes(x.id) ? 'checked' : ''} onchange="toggleHomeworkSelection(${x.id}, this.checked)">
-              <b>${x.group_name}</b> • #${x.id}
-            </div>
-            <span class="att-badge">${x.status}</span>
-          </div>
-          <div style="font-size:12px;color:#bbb;margin-top:6px;">${(x.text||'').slice(0,220)}</div>
-          <div style="font-size:11px;color:#666;margin-top:6px;">
-            ${x.updated_at || ''}${x.due_at ? ' • deadline: '+x.due_at : ''}
-          </div>
-          <div class="chips" style="margin-top:8px;margin-bottom:0;">
-            ${['draft','assigned','reviewed','rework','done'].map(s => `<div class="chip ${x.status===s?'active':''}" onclick="setHomeworkStatus(${x.id},'${s}')">${s}</div>`).join('')}
-          </div>
-        </div>
-      `).join('') : `<div class="empty">Vazifalar yo'q</div>`}
-    </div>
-    <div class="card">
-      <div class="card-title">Faol guruhlar</div>
-      <div style="font-size:12px;color:#aaa;">${(groups || []).map(g => g.name).join(', ')}</div>
+      <div id="hwPipelineList"></div>
     </div>
   `;
+
+  renderHomeworkPipeline();
+}
+
+function hwQuickSelect(groupName) {
+  const el = document.getElementById('hwSendGroup');
+  if (el) { el.value = groupName; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+}
+
+function renderHomeworkPipeline() {
+  const statuses = ['all', 'draft', 'assigned', 'reviewed', 'rework', 'done'];
+  const filtered = _hwTasks.filter(x =>
+    (_hwFilterGroup === 'all' || x.group_name === _hwFilterGroup) &&
+    (_hwFilterStatus === 'all' || x.status === _hwFilterStatus) &&
+    (!_hwOnlyToday || _hwTodayGroups.includes(x.group_name))
+  );
+  _hwSelectedIds = _hwSelectedIds.filter(id => filtered.some(x => x.id === id));
+  const box = document.getElementById('hwPipelineList');
+  if (!box) return;
+  box.innerHTML = filtered.length ? filtered.map(x => `
+    <div class="student-card" style="display:block;cursor:default;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" ${_hwSelectedIds.includes(x.id) ? 'checked' : ''} onchange="toggleHomeworkSelection(${x.id}, this.checked)">
+          <b>${x.group_name}</b> <span style="color:#666;font-size:12px;">#${x.id}</span>
+        </div>
+        <span class="att-badge" style="background:${x.status==='done'?'#1b4f1b':x.status==='rework'?'#4f1b1b':'#1e2a3a'};color:${x.status==='done'?'#4CAF50':x.status==='rework'?'#f44336':'#aaa'};">${x.status}</span>
+      </div>
+      <div style="font-size:13px;color:#ccc;margin-top:8px;line-height:1.5;">${(x.text||'').slice(0,200)}${(x.text||'').length>200?'...':''}</div>
+      <div style="font-size:11px;color:#555;margin-top:6px;">
+        ${x.updated_at ? '🕐 ' + x.updated_at : ''}${x.due_at ? ' • ⏳ deadline: ' + x.due_at : ''}
+      </div>
+      <div class="chips" style="margin-top:10px;margin-bottom:0;">
+        ${['draft','assigned','reviewed','rework','done'].map(s =>
+          `<div class="chip ${x.status===s?'active':''}" onclick="setHomeworkStatus(${x.id},'${s}')">${s}</div>`
+        ).join('')}
+      </div>
+    </div>
+  `).join('') : `<div class="empty" style="padding:20px;">${t('no_data')}</div>`;
+}
+
+async function doSendHomeworkFromTab() {
+  const group_name = (document.getElementById('hwSendGroup')?.value || '').trim();
+  const text = (document.getElementById('hwSendText')?.value || '').trim();
+  const due_at = (document.getElementById('hwSendDueAt')?.value || '').trim();
+  if (!group_name) { showToast('❌ Guruhni tanlang'); return; }
+  if (!text) { showToast('❌ Vazifa matnini yozing'); return; }
+  const btn = document.querySelector('[onclick="doSendHomeworkFromTab()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...'; }
+  const r = await api('/api/admin/send-homework', { method: 'POST', body: { group_name, text, due_at: due_at || undefined } });
+  if (btn) { btn.disabled = false; btn.textContent = '📤 ' + t('hw_send'); }
+  if (r.ok) {
+    showToast(`✅ ${t('hw_sent')} (${r.dm_sent || 0} ta DM)`);
+    document.getElementById('hwSendText').value = '';
+    document.getElementById('hwSendDueAt').value = '';
+    await renderHomework();
+  } else {
+    showToast('❌ ' + (r.error || t('error')));
+  }
+}
+
+async function doUpdateHomeworkFromTab() {
+  const group_name = (document.getElementById('hwSendGroup')?.value || '').trim();
+  const text = (document.getElementById('hwSendText')?.value || '').trim();
+  if (!group_name) { showToast('❌ Guruhni tanlang'); return; }
+  if (!text) { showToast('❌ Vazifa matnini yozing'); return; }
+  const r = await api('/api/admin/update-homework', { method: 'POST', body: { group_name, text } });
+  if (r.ok) {
+    showToast('✅ Uy vazifa yangilandi');
+    document.getElementById('hwSendText').value = '';
+    await renderHomework();
+  } else {
+    showToast('❌ ' + (r.error || t('error')));
+  }
 }
 
 async function setHomeworkStatus(taskId, status) {
@@ -1543,17 +1671,32 @@ async function setHomeworkStatus(taskId, status) {
 }
 
 function showHomeworkCreateSheet(prefillGroup = '') {
+  // Yangi vazifa sheet — guruh dropdown bilan
+  const allGroupNames = [...new Set([
+    ..._hwScheduleData.map(x => x.group_name || x.name).filter(Boolean),
+    ..._hwTasks.map(x => x.group_name).filter(Boolean),
+  ])].sort();
   const safeGroup = (prefillGroup || '').replace(/"/g, '&quot;');
   const isLocked = !!prefillGroup;
   openSheet(`
-    <div class="inline-label">Guruh nomi</div>
-    <input class="search-box" id="hwCreateGroup" placeholder="nF-2803" value="${safeGroup}" ${isLocked ? 'readonly' : ''}>
-    ${isLocked ? `<div style="color:#6b7280;font-size:12px;margin-bottom:8px;">Guruh eslatmadan avtomatik tanlandi.</div>` : ''}
-    <div class="inline-label">Deadline (ixtiyoriy)</div>
+    <div class="inline-label">Guruhni tanlang</div>
+    ${isLocked
+      ? `<input class="search-box" id="hwCreateGroup" value="${safeGroup}" readonly>
+         <div style="color:#6b7280;font-size:12px;margin-bottom:8px;">Guruh eslatmadan avtomatik tanlandi.</div>`
+      : `<select class="search-box" id="hwCreateGroup">
+           <option value="">— Guruh tanlang —</option>
+           ${allGroupNames.map(g => {
+             const info = _hwScheduleData.find(x => (x.group_name || x.name) === g);
+             const hasSent = info && info.has_homework;
+             return `<option value="${g}">${g}${hasSent ? ' ✅' : ''}</option>`;
+           }).join('')}
+         </select>`
+    }
+    <div class="inline-label" style="margin-top:10px;">Deadline (ixtiyoriy)</div>
     <input type="datetime-local" class="search-box" id="hwCreateDueAt">
-    <div class="inline-label">Vazifa matni</div>
-    <textarea class="txt-input" id="hwCreateText" rows="6" placeholder="Uy vazifa..."></textarea>
-    <button class="btn btn-primary" onclick="createHomeworkFromSheet()">Yuborish</button>
+    <div class="inline-label" style="margin-top:10px;">Vazifa matni</div>
+    <textarea class="txt-input" id="hwCreateText" rows="6" placeholder="${t('hw_text_placeholder')}"></textarea>
+    <button class="btn btn-primary" style="margin-top:12px;" onclick="createHomeworkFromSheet()">📤 ${t('hw_send')}</button>
   `, '➕ Yangi uy vazifa');
 }
 
@@ -1561,10 +1704,11 @@ async function createHomeworkFromSheet() {
   const group_name = (document.getElementById('hwCreateGroup')?.value || '').trim();
   const text = (document.getElementById('hwCreateText')?.value || '').trim();
   const due_at = (document.getElementById('hwCreateDueAt')?.value || '').trim();
-  if (!group_name || !text) { showToast('❌ group_name va text kerak'); return; }
-  const r = await api('/api/admin/send-homework', { method: 'POST', body: { group_name, text, due_at } });
+  if (!group_name) { showToast('❌ Guruhni tanlang'); return; }
+  if (!text) { showToast('❌ Vazifa matnini yozing'); return; }
+  const r = await api('/api/admin/send-homework', { method: 'POST', body: { group_name, text, due_at: due_at || undefined } });
   if (r.ok) {
-    showToast('✅ Uy vazifa yuborildi');
+    showToast(`✅ ${t('hw_sent')} (${r.dm_sent || 0} ta DM)`);
     closeSheet();
     await renderHomework();
   } else showToast('❌ ' + (r.error || t('error')));

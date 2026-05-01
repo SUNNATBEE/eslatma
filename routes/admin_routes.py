@@ -1054,39 +1054,70 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         async with db.session_factory() as session:
             result = await session.execute(select(Group).where(Group.name == group_name))
             group = result.scalar_one_or_none()
-        if not group:
-            return json_err("Guruh topilmadi", code="not_found", status=404)
-        try:
-            sent = await bot.send_message(
-                chat_id=group.chat_id,
-                text=f"📝 <b>Uy vazifasi</b>\n\n{text}",
-                parse_mode="HTML",
-            )
-        except Exception as e:
-            return json_err(str(e), code="internal_error", status=500)
-        await db.set_homework(
-            group_name=group_name,
-            from_chat_id=sent.chat.id,
-            message_id=sent.message_id,
-        )
+
         students = await db.get_students_by_group(group_name)
-        mentions = _mentions_for_students(students)
-        max_mentions = 10
-        shown_mentions = mentions[:max_mentions]
-        remaining = max(0, len(mentions) - len(shown_mentions))
-        mention_lines = "".join([f"{i + 1}) {u}\n" for i, u in enumerate(shown_mentions)])
-        if remaining:
-            mention_lines += f"... va yana {remaining} ta\n"
-        reminder_group_text = (
-            f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
-            f"🏫 Guruh: <b>{group_name}</b>\n"
-            f"👥 O'quvchilar soni: <b>{len(students)}</b>\n\n"
-            f"{('<b>Belgilanganlar:</b>\n' + mention_lines) if mentions else '⚠️ Username topilmadi'}"
-        )
-        try:
-            await bot.send_message(chat_id=group.chat_id, text=reminder_group_text, parse_mode="HTML")
-        except Exception:
-            pass
+        if not group and not students:
+            return json_err(
+                "Guruh topilmadi va o'quvchi yo'q",
+                code="not_found",
+                status=404,
+            )
+
+        # Group chat mavjud bo'lsa — chatga yuboramiz va Homework yozuvini chatdagi xabarga
+        # bog'laymiz (copy_message uchun). Aks holda — guruhsiz rejimda DM va student panelda
+        # ko'rsatish uchun Homework ni admin chatiga bog'laymiz.
+        warning = None
+        if group:
+            try:
+                sent = await bot.send_message(
+                    chat_id=group.chat_id,
+                    text=f"📝 <b>Uy vazifasi</b>\n\n{text}",
+                    parse_mode="HTML",
+                )
+            except Exception as e:
+                return json_err(str(e), code="internal_error", status=500)
+            await db.set_homework(
+                group_name=group_name,
+                from_chat_id=sent.chat.id,
+                message_id=sent.message_id,
+            )
+            mentions = _mentions_for_students(students)
+            max_mentions = 10
+            shown_mentions = mentions[:max_mentions]
+            remaining = max(0, len(mentions) - len(shown_mentions))
+            mention_lines = "".join([f"{i + 1}) {u}\n" for i, u in enumerate(shown_mentions)])
+            if remaining:
+                mention_lines += f"... va yana {remaining} ta\n"
+            reminder_group_text = (
+                f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
+                f"🏫 Guruh: <b>{group_name}</b>\n"
+                f"👥 O'quvchilar soni: <b>{len(students)}</b>\n\n"
+                f"{('<b>Belgilanganlar:</b>\n' + mention_lines) if mentions else '⚠️ Username topilmadi'}"
+            )
+            try:
+                await bot.send_message(chat_id=group.chat_id, text=reminder_group_text, parse_mode="HTML")
+            except Exception:
+                pass
+        else:
+            # Telegram chat ro'yxatdan o'tmagan — admin bilan bog'liq xabarga saqlaymiz
+            try:
+                sent = await bot.send_message(
+                    chat_id=user_id,
+                    text=f"📝 <b>Uy vazifasi (saqlandi)</b>\n\nGuruh: <b>{group_name}</b>\n\n{text}",
+                    parse_mode="HTML",
+                )
+                await db.set_homework(
+                    group_name=group_name,
+                    from_chat_id=sent.chat.id,
+                    message_id=sent.message_id,
+                )
+                warning = (
+                    f"'{group_name}' uchun Telegram chat ro'yxatdan o'tmagan — "
+                    f"vazifa saqlandi va o'quvchilarga DM yuborildi"
+                )
+            except Exception as e:
+                return json_err(f"Vazifani saqlab bo'lmadi: {e}", code="internal_error", status=500)
+
         dm_sent = 0
         for s in students:
             try:
@@ -1113,9 +1144,17 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             user_id,
             "send_homework",
             target=group_name,
-            details=f"task_id={task.id},students={len(students)},dm={dm_sent}",
+            details=f"task_id={task.id},students={len(students)},dm={dm_sent},chat={'yes' if group else 'no'}",
         )
-        return web.json_response({"ok": True, "students": len(students), "dm_sent": dm_sent})
+        return web.json_response(
+            {
+                "ok": True,
+                "students": len(students),
+                "dm_sent": dm_sent,
+                "chat_sent": bool(group),
+                "warning": warning,
+            }
+        )
 
     async def api_admin_update_homework(request: web.Request) -> web.Response:
         """Mavjud uy vazifani yangilash (overwrite)."""
@@ -1137,20 +1176,32 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         async with db.session_factory() as session:
             result = await session.execute(select(Group).where(Group.name == group_name))
             group = result.scalar_one_or_none()
-        if not group:
-            return json_err("Guruh topilmadi", code="not_found", status=404)
+
+        students = await db.get_students_by_group(group_name)
+        if not group and not students:
+            return json_err("Guruh topilmadi va o'quvchi yo'q", code="not_found", status=404)
+
+        warning = None
         try:
-            sent = await bot.send_message(
-                chat_id=group.chat_id,
-                text=f"✏️ <b>Uy vazifasi yangilandi</b>\n\n{text}",
-                parse_mode="HTML",
-            )
+            if group:
+                sent = await bot.send_message(
+                    chat_id=group.chat_id,
+                    text=f"✏️ <b>Uy vazifasi yangilandi</b>\n\n{text}",
+                    parse_mode="HTML",
+                )
+            else:
+                sent = await bot.send_message(
+                    chat_id=user_id,
+                    text=f"✏️ <b>Uy vazifasi yangilandi (saqlandi)</b>\n\nGuruh: <b>{group_name}</b>\n\n{text}",
+                    parse_mode="HTML",
+                )
+                warning = f"'{group_name}' uchun Telegram chat ro'yxatdan o'tmagan — vazifa saqlandi"
         except Exception as e:
             return json_err(str(e), code="internal_error", status=500)
         await db.set_homework(group_name=group_name, from_chat_id=sent.chat.id, message_id=sent.message_id)
         await db.create_homework_task(group_name, text, created_by=user_id, status="reviewed")
         await _audit(user_id, "update_homework", target=group_name)
-        return json_ok(ok=True)
+        return web.json_response({"ok": True, "chat_sent": bool(group), "warning": warning})
 
     async def api_admin_homework_tasks(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
@@ -1284,6 +1335,106 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         stats = await db.get_weekly_attendance_stats(days=7)
         return web.json_response({"days": stats})
 
+    async def api_admin_scheduled_jobs_get(request: web.Request) -> web.Response:
+        """Cron-jadvalli ishlar ro'yxati va ularning hozirgi vaqtlari."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        from scheduler import SCHEDULED_JOBS_REGISTRY, get_job_schedule
+
+        items = []
+        for job_id, cfg in SCHEDULED_JOBS_REGISTRY.items():
+            h, m, dow = await get_job_schedule(db, job_id)
+            items.append(
+                {
+                    "job_id": job_id,
+                    "name": cfg["name"],
+                    "hour": h,
+                    "minute": m,
+                    "day_of_week": dow,
+                    "default_hour": cfg["default_hour"],
+                    "default_minute": cfg["default_minute"],
+                    "default_day_of_week": cfg.get("default_dow", ""),
+                    "is_weekly": bool(cfg.get("default_dow")),
+                }
+            )
+        return web.json_response({"jobs": items})
+
+    async def api_admin_scheduled_jobs_set(request: web.Request) -> web.Response:
+        """Bitta scheduled job vaqtini o'zgartiradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        from scheduler import _VALID_DOWS, SCHEDULED_JOBS_REGISTRY, reschedule_job_by_id
+
+        job_id = (body.get("job_id") or "").strip()
+        if job_id not in SCHEDULED_JOBS_REGISTRY:
+            return json_err("Noma'lum job_id", code="validation_error", status=400)
+        try:
+            hour = int(body.get("hour"))
+            minute = int(body.get("minute"))
+        except (ValueError, TypeError):
+            return json_err("Noto'g'ri vaqt formati", code="validation_error", status=400)
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            return json_err("Vaqt 0..23:0..59 oralig'ida bo'lishi kerak", code="validation_error", status=400)
+        dow = (body.get("day_of_week") or "").strip().lower()
+        cfg = SCHEDULED_JOBS_REGISTRY[job_id]
+        is_weekly = bool(cfg.get("default_dow"))
+        if is_weekly:
+            if dow not in _VALID_DOWS:
+                return json_err("day_of_week kerak (mon..sun)", code="validation_error", status=400)
+        else:
+            dow = ""
+        await db.set_setting(f"SCHED:{job_id}:HOUR", str(hour))
+        await db.set_setting(f"SCHED:{job_id}:MINUTE", str(minute))
+        await db.set_setting(f"SCHED:{job_id}:DOW", dow)
+        ok = reschedule_job_by_id(job_id, hour, minute, dow)
+        await _audit(
+            user_id,
+            "reschedule_job",
+            target=job_id,
+            details=f"{dow + ' ' if dow else ''}{hour:02d}:{minute:02d}",
+        )
+        # Eski API bilan moslik: daily_lesson_reminder uchun SEND_HOUR/MINUTE ni ham yangilaymiz
+        if job_id == "daily_lesson_reminder":
+            await db.set_setting("SEND_HOUR", str(hour))
+            await db.set_setting("SEND_MINUTE", str(minute))
+        return web.json_response(
+            {"ok": ok, "job_id": job_id, "hour": hour, "minute": minute, "day_of_week": dow}
+        )
+
+    async def api_admin_scheduled_jobs_reset(request: web.Request) -> web.Response:
+        """Bitta scheduled job vaqtini default qiymatga qaytaradi."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        try:
+            body = await request.json()
+        except Exception:
+            return json_err("Bad JSON", code="bad_json", status=400)
+        from scheduler import SCHEDULED_JOBS_REGISTRY, reschedule_job_by_id
+
+        job_id = (body.get("job_id") or "").strip()
+        cfg = SCHEDULED_JOBS_REGISTRY.get(job_id)
+        if not cfg:
+            return json_err("Noma'lum job_id", code="validation_error", status=400)
+        h = int(cfg["default_hour"])
+        m = int(cfg["default_minute"])
+        dow = str(cfg.get("default_dow", "") or "")
+        await db.set_setting(f"SCHED:{job_id}:HOUR", str(h))
+        await db.set_setting(f"SCHED:{job_id}:MINUTE", str(m))
+        await db.set_setting(f"SCHED:{job_id}:DOW", dow)
+        reschedule_job_by_id(job_id, h, m, dow)
+        await _audit(user_id, "reset_job_schedule", target=job_id)
+        if job_id == "daily_lesson_reminder":
+            await db.set_setting("SEND_HOUR", str(h))
+            await db.set_setting("SEND_MINUTE", str(m))
+        return web.json_response({"ok": True, "job_id": job_id, "hour": h, "minute": m, "day_of_week": dow})
+
     async def api_admin_system_status(request: web.Request) -> web.Response:
         """Mini-admin: DB, scheduler, versiya (monitoring)."""
         user_id = _mini_admin_auth(request)
@@ -1322,6 +1473,9 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     app.router.add_post("/api/admin/broadcast", api_admin_broadcast)
     app.router.add_get("/api/admin/reminder-time", api_admin_reminder_get)
     app.router.add_post("/api/admin/reminder-time", api_admin_reminder_set)
+    app.router.add_get("/api/admin/scheduled-jobs", api_admin_scheduled_jobs_get)
+    app.router.add_post("/api/admin/scheduled-jobs", api_admin_scheduled_jobs_set)
+    app.router.add_post("/api/admin/scheduled-jobs/reset", api_admin_scheduled_jobs_reset)
     app.router.add_get("/api/admin/auto-msg", api_admin_auto_msg_get)
     app.router.add_post("/api/admin/auto-msg", api_admin_auto_msg_set)
     app.router.add_get("/api/admin/auto-msg-preview", api_admin_auto_msg_preview)

@@ -1039,6 +1039,27 @@ class DatabaseService:
             await session.commit()
             return result.rowcount or 0
 
+    async def expire_homework_if_old(self, group_name: str, cutoff: datetime) -> bool:
+        """Agar guruhning uy vazifasi `cutoff` dan oldin qo'shilgan bo'lsa,
+        soft-delete qiladi (DeletedHomework ga ko'chiradi). Yangi dars boshlanganda
+        eski vazifani o'chirish uchun ishlatiladi."""
+        async with self.session_factory() as session:
+            res = await session.execute(select(Homework).where(Homework.group_name == group_name))
+            hw = res.scalar_one_or_none()
+            if not hw or hw.sent_at >= cutoff:
+                return False
+            session.add(
+                DeletedHomework(
+                    group_name=hw.group_name,
+                    from_chat_id=hw.from_chat_id,
+                    message_id=hw.message_id,
+                    deleted_by=None,
+                )
+            )
+            await session.execute(delete(Homework).where(Homework.group_name == group_name))
+            await session.commit()
+            return True
+
     # ── DELETE STUDENT ─────────────────────────────────────────────────────────
 
     async def delete_student(self, user_id: int) -> bool:

@@ -502,6 +502,9 @@ _sent_davomat_notify: set[str] = set()  # {group_name:date_str} — qayta yuborm
 # Uy vazifasi eslatmasi: {group_name:date_str} — qayta yubormaslik
 _sent_homework_prompt: set[str] = set()
 
+# Uy vazifasi expire (dars boshlanganda): {group_name:date_str} — qayta yubormaslik
+_homework_expired_today: set[str] = set()
+
 
 def _group_end_time(day_type: str, group_name: str, class_time_str: str) -> str:
     """
@@ -666,6 +669,80 @@ async def check_homework_prompt(
             _sent_homework_prompt.add(key)
             logger.info(f"Uy vazifasi eslatmasi yuborildi: {group_name} | {today_str} | {end_time_str}")
     _mark_job("homework_prompt_before_end", ok=True, details="checked")
+
+
+async def expire_homeworks_at_class_start(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+    webapp_url: str = "",
+) -> None:
+    """
+    Yangi dars boshlangan momentda eski uy vazifasini o'chiradi va adminga
+    "yangi vazifa qo'shing" eslatmasini yuboradi.
+
+    Uy vazifasi `sent_at` < bugungi dars boshlanish vaqti bo'lsa — eski deb belgilanadi.
+    Shu darsda admin yangi vazifa qo'shgan bo'lsa, u o'chirilmaydi.
+    """
+    if await db.get_setting("AUTO_MSG_GROUPS", "1") == "0":
+        return
+
+    tz = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+    if now.weekday() == 6:
+        return
+
+    day_type = "ODD" if now.weekday() in (0, 2, 4) else "EVEN"
+    schedule = CLASS_SCHEDULE.get(day_type, {})
+    today_str = now.strftime("%Y-%m-%d")
+
+    expired_total = 0
+    for group_name, class_time_str in schedule.items():
+        key = f"{group_name}:{today_str}"
+        if key in _homework_expired_today:
+            continue
+
+        class_hour, class_min = map(int, class_time_str.split(":"))
+        class_dt = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+
+        # Faqat dars boshlanganda 2 daqiqalik oynada ishlaymiz
+        if not (class_dt <= now < class_dt + timedelta(minutes=2)):
+            continue
+
+        # sent_at — naive datetime (database.py da datetime.now() ishlatilgan),
+        # shuning uchun cutoff ni ham naive qilamiz.
+        cutoff = class_dt.replace(tzinfo=None)
+        expired = await db.expire_homework_if_old(group_name, cutoff)
+        _homework_expired_today.add(key)
+
+        if not expired:
+            continue
+        expired_total += 1
+        logger.info(f"Eski uy vazifasi o'chirildi: {group_name} | {today_str}")
+
+        # Adminlarga eslatma — yangi vazifa qo'shing
+        text = (
+            f"🔄 <b>Yangi uyga vazifa qo'shing</b>\n\n"
+            f"Guruh: <b>{group_name}</b>\n"
+            f"Dars vaqti: <b>{class_time_str}</b>\n\n"
+            f"✅ Eski uy vazifa avtomatik o'chirildi.\n"
+            f"📝 Endi yangi uyga vazifa qo'shing — keyingi darsgacha amal qiladi."
+        )
+        quick_url = _admin_mini_hw_url(webapp_url, group_name)
+        kb = None
+        if quick_url:
+            kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="📝 Yangi vazifa qo'shish", web_app=WebAppInfo(url=quick_url))],
+                ]
+            )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, text, parse_mode="HTML", reply_markup=kb)
+            except Exception:
+                continue
+
+    _mark_job("homework_expire_at_class_start", ok=True, details=f"expired={expired_total}")
 
 
 async def send_homework_deadline_reminders(bot: Bot, db: DatabaseService, timezone_str: str) -> None:
@@ -1256,17 +1333,100 @@ async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: st
 # ─── Reschedule helper ───────────────────────────────────────────────────────
 
 
-def reschedule_reminder(hour: int, minute: int) -> None:
-    """Scheduler vaqtini dinamik o'zgartiradi (admin paneldan chaqiriladi)."""
+# Admin tomonidan vaqtini boshqarish mumkin bo'lgan cron-jadvalli ishlar.
+# Settings keys: SCHED:{job_id}:HOUR, SCHED:{job_id}:MINUTE, SCHED:{job_id}:DOW
+SCHEDULED_JOBS_REGISTRY: dict[str, dict[str, object]] = {
+    "daily_lesson_reminder": {
+        "name": "Kunlik dars eslatmasi (ota-ona/o'quvchi guruhlar)",
+        "default_hour": SEND_HOUR,
+        "default_minute": SEND_MINUTE,
+        "default_dow": "",  # bo'sh = har kuni
+    },
+    "streak_reminder": {
+        "name": "Streak eslatmasi (kirmaganlarga)",
+        "default_hour": 19,
+        "default_minute": 0,
+        "default_dow": "",
+    },
+    "inactive_students_cleanup": {
+        "name": "Nofaol o'quvchilarni o'chirish",
+        "default_hour": 21,
+        "default_minute": 0,
+        "default_dow": "",
+    },
+    "weekly_leaderboard_broadcast": {
+        "name": "Haftalik global reyting (TOP-5)",
+        "default_hour": 21,
+        "default_minute": 5,
+        "default_dow": "mon",
+    },
+    "weekly_streak_bonus": {
+        "name": "Haftalik 7-kun streak bonusi",
+        "default_hour": 9,
+        "default_minute": 0,
+        "default_dow": "mon",
+    },
+    "sqlite_backup_daily": {
+        "name": "SQLite kunlik backup",
+        "default_hour": 23,
+        "default_minute": 50,
+        "default_dow": "",
+    },
+}
+
+_VALID_DOWS = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+
+
+async def get_job_schedule(db: DatabaseService, job_id: str) -> tuple[int, int, str]:
+    """Berilgan job uchun (hour, minute, dow) qaytaradi (DB sozlamasini, yo'q bo'lsa default)."""
+    cfg = SCHEDULED_JOBS_REGISTRY.get(job_id)
+    if not cfg:
+        raise KeyError(f"Unknown job_id: {job_id}")
+    h = int(await db.get_setting(f"SCHED:{job_id}:HOUR", str(cfg["default_hour"])))
+    m = int(await db.get_setting(f"SCHED:{job_id}:MINUTE", str(cfg["default_minute"])))
+    dow = await db.get_setting(f"SCHED:{job_id}:DOW", str(cfg.get("default_dow", "")))
+    return h, m, (dow or "")
+
+
+def reschedule_job_by_id(job_id: str, hour: int, minute: int, dow: str = "") -> bool:
+    """Cron-jadvalli scheduled jobni dinamik qayta sozlaydi."""
     global _scheduler_ref
     if _scheduler_ref is None:
-        logger.warning("reschedule_reminder: scheduler hali sozlanmagan!")
-        return
-    _scheduler_ref.reschedule_job(
-        job_id="daily_lesson_reminder",
-        trigger=CronTrigger(hour=hour, minute=minute),
-    )
-    logger.info(f"Scheduler qayta sozlandi: {hour:02d}:{minute:02d}")
+        logger.warning("reschedule_job_by_id: scheduler hali sozlanmagan!")
+        return False
+    if dow:
+        trigger = CronTrigger(day_of_week=dow, hour=hour, minute=minute)
+    else:
+        trigger = CronTrigger(hour=hour, minute=minute)
+    try:
+        _scheduler_ref.reschedule_job(job_id=job_id, trigger=trigger)
+        logger.info(f"Scheduler qayta sozlandi: {job_id} → {dow + ' ' if dow else ''}{hour:02d}:{minute:02d}")
+        return True
+    except Exception as e:
+        logger.warning(f"reschedule_job_by_id({job_id}) xato: {e}")
+        return False
+
+
+async def apply_db_schedule_overrides(db: DatabaseService) -> None:
+    """Setup-dan keyin DB-dagi user-set vaqtlarni barcha registryda registratsiyadan o'tkaziladi."""
+    for job_id in SCHEDULED_JOBS_REGISTRY:
+        try:
+            h, m, dow = await get_job_schedule(db, job_id)
+            cfg = SCHEDULED_JOBS_REGISTRY[job_id]
+            # Default qiymatlardan farq bo'lsa qayta sozlaymiz
+            if (
+                h != cfg["default_hour"]
+                or m != cfg["default_minute"]
+                or (dow or "") != (cfg.get("default_dow", "") or "")
+            ):
+                reschedule_job_by_id(job_id, h, m, dow)
+        except Exception as e:
+            logger.warning(f"apply_db_schedule_overrides({job_id}) xato: {e}")
+
+
+def reschedule_reminder(hour: int, minute: int) -> None:
+    """Eski API: kunlik dars eslatmasi vaqtini o'zgartiradi (legacy chaqiruvlar uchun)."""
+    reschedule_job_by_id("daily_lesson_reminder", hour, minute, "")
 
 
 # ─── Scheduler setup ─────────────────────────────────────────────────────────
@@ -1321,6 +1481,17 @@ def setup_scheduler(
         args=[bot, db, timezone_str, webapp_url],
         id="homework_prompt_before_end",
         name="Dars tugashidan 2 daqiqa oldin uy vazifasi eslatmasi",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
+    # Yangi dars boshlanganda eski uy vazifasini o'chirish (har 1 daqiqada)
+    scheduler.add_job(
+        func=expire_homeworks_at_class_start,
+        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
+        args=[bot, db, timezone_str, webapp_url],
+        id="homework_expire_at_class_start",
+        name="Dars boshlanganda eski uy vazifasini o'chirish",
         replace_existing=True,
         misfire_grace_time=60,
     )

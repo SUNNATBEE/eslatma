@@ -1265,14 +1265,17 @@ async function confirmRejectRef(id) {
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 let _reminderH = 20, _reminderM = 0;
+let _scheduledJobs = [];
 async function renderSettings() {
-  const [profile, reminder, sys] = await Promise.all([
+  const [profile, reminder, sys, schedJobs] = await Promise.all([
     api('/api/admin/profile').catch(() => ({})),
     api('/api/admin/reminder-time').catch(() => ({})),
     api('/api/admin/system-status').catch(() => ({})),
+    api('/api/admin/scheduled-jobs').catch(() => ({jobs: []})),
   ]);
   _reminderH = reminder?.hour ?? 20;
   _reminderM = reminder?.minute ?? 0;
+  _scheduledJobs = schedJobs?.jobs || [];
   document.getElementById('mainContent').innerHTML = `
     <!-- Session info + Logout -->
     ${_sessionUser ? `
@@ -1296,15 +1299,13 @@ async function renderSettings() {
       </div>
       <button class="btn btn-primary" onclick="saveAdminProfile()">${t('save')}</button>
     </div>
-    <!-- Reminder Time -->
+    <!-- Avtomatik xabar vaqtlari -->
     <div class="card">
-      <div class="card-title">⏰ ${t('reminder_time')}</div>
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
-        <input type="number" class="search-box" id="reminderH" value="${_reminderH}" min="0" max="23" style="width:80px;text-align:center;">
-        <span style="font-size:24px;font-weight:700;">:</span>
-        <input type="number" class="search-box" id="reminderM" value="${_reminderM}" min="0" max="59" style="width:80px;text-align:center;">
+      <div class="card-title">⏰ Avtomatik xabar vaqtlari</div>
+      <div style="color:#aaa;font-size:12px;margin-bottom:14px;">
+        Har bir avtomatik xabar/topshiriqning ishga tushish vaqtini boshqarish.
       </div>
-      <button class="btn btn-primary" onclick="saveReminderTime()">${t('save')}</button>
+      <div id="schedJobsBox">${renderScheduledJobs(_scheduledJobs)}</div>
     </div>
     <!-- Broadcast -->
     <div class="card">
@@ -1382,6 +1383,67 @@ function renderJobStatus(sys) {
       <span style="color:#6b7280;">${j.updated_at || ''} ${j.details ? '• '+j.details : ''}</span>
     </div>`;
   }).join('');
+}
+
+const _DOW_LABELS = {mon:'Du',tue:'Se',wed:'Ch',thu:'Pa',fri:'Ju',sat:'Sh',sun:'Ya'};
+function renderScheduledJobs(jobs) {
+  if (!jobs || !jobs.length) return '<div style="color:#6b7280;font-size:12px;">Yuklanmoqda...</div>';
+  return jobs.map(j => {
+    const isModified = (j.hour !== j.default_hour) || (j.minute !== j.default_minute) || ((j.day_of_week||'') !== (j.default_day_of_week||''));
+    const dowOptions = j.is_weekly
+      ? Object.entries(_DOW_LABELS).map(([v,lbl]) => `<option value="${v}" ${v===j.day_of_week?'selected':''}>${lbl}</option>`).join('')
+      : '';
+    const dowSelect = j.is_weekly
+      ? `<select class="search-box" id="schedDow_${j.job_id}" style="width:80px;">${dowOptions}</select>`
+      : '';
+    const defaultLabel = j.is_weekly
+      ? `${_DOW_LABELS[j.default_day_of_week]||j.default_day_of_week} ${String(j.default_hour).padStart(2,'0')}:${String(j.default_minute).padStart(2,'0')}`
+      : `${String(j.default_hour).padStart(2,'0')}:${String(j.default_minute).padStart(2,'0')}`;
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid #1f2937;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px;">
+          ${j.name}
+          ${isModified ? '<span style="color:#fbbf24;font-size:11px;margin-left:6px;">●&nbsp;yangilangan</span>' : ''}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          ${dowSelect}
+          <input type="number" class="search-box" id="schedH_${j.job_id}" value="${j.hour}" min="0" max="23" style="width:64px;text-align:center;">
+          <span style="font-weight:700;">:</span>
+          <input type="number" class="search-box" id="schedM_${j.job_id}" value="${j.minute}" min="0" max="59" style="width:64px;text-align:center;">
+          <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="saveScheduledJob('${j.job_id}', ${j.is_weekly?'true':'false'})">💾</button>
+          ${isModified ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetScheduledJob('${j.job_id}')" title="Default: ${defaultLabel}">↺</button>` : ''}
+        </div>
+        <div style="color:#6b7280;font-size:11px;margin-top:4px;">Default: ${defaultLabel}</div>
+      </div>`;
+  }).join('');
+}
+
+async function saveScheduledJob(jobId, isWeekly) {
+  const h = parseInt(document.getElementById('schedH_'+jobId)?.value);
+  const m = parseInt(document.getElementById('schedM_'+jobId)?.value);
+  if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+    showToast('❌ Noto\'g\'ri vaqt'); return;
+  }
+  const body = {job_id: jobId, hour: h, minute: m};
+  if (isWeekly) body.day_of_week = document.getElementById('schedDow_'+jobId)?.value || 'mon';
+  const r = await api('/api/admin/scheduled-jobs', {method:'POST', body});
+  if (r.ok === false) { showToast('❌ ' + (r.error||t('error'))); return; }
+  showToast(`✅ Saqlandi: ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+  // Reload jobs to refresh "modified" indicator
+  const refreshed = await api('/api/admin/scheduled-jobs').catch(() => ({jobs: _scheduledJobs}));
+  _scheduledJobs = refreshed.jobs || _scheduledJobs;
+  const box = document.getElementById('schedJobsBox');
+  if (box) box.innerHTML = renderScheduledJobs(_scheduledJobs);
+}
+
+async function resetScheduledJob(jobId) {
+  const r = await api('/api/admin/scheduled-jobs/reset', {method:'POST', body:{job_id: jobId}});
+  if (r.ok === false) { showToast('❌ ' + (r.error||t('error'))); return; }
+  showToast('↺ Default qaytarildi');
+  const refreshed = await api('/api/admin/scheduled-jobs').catch(() => ({jobs: _scheduledJobs}));
+  _scheduledJobs = refreshed.jobs || _scheduledJobs;
+  const box = document.getElementById('schedJobsBox');
+  if (box) box.innerHTML = renderScheduledJobs(_scheduledJobs);
 }
 async function saveAdminProfile() {
   const displayName = document.getElementById('displayNameInput')?.value.trim();
@@ -1640,7 +1702,8 @@ async function doSendHomeworkFromTab() {
   const r = await api('/api/admin/send-homework', { method: 'POST', body: { group_name, text, due_at: due_at || undefined } });
   if (btn) { btn.disabled = false; btn.textContent = '📤 ' + t('hw_send'); }
   if (r.ok) {
-    showToast(`✅ ${t('hw_sent')} (${r.dm_sent || 0} ta DM)`);
+    if (r.warning) showToast(`⚠️ ${r.warning}`);
+    showToast(`✅ ${t('hw_sent')} (${r.dm_sent || 0} ta DM${r.chat_sent ? ', chat: ✅' : ', chat: ⚠️'})`);
     document.getElementById('hwSendText').value = '';
     document.getElementById('hwSendDueAt').value = '';
     await renderHomework();
@@ -1708,7 +1771,8 @@ async function createHomeworkFromSheet() {
   if (!text) { showToast('❌ Vazifa matnini yozing'); return; }
   const r = await api('/api/admin/send-homework', { method: 'POST', body: { group_name, text, due_at: due_at || undefined } });
   if (r.ok) {
-    showToast(`✅ ${t('hw_sent')} (${r.dm_sent || 0} ta DM)`);
+    if (r.warning) showToast(`⚠️ ${r.warning}`);
+    showToast(`✅ ${t('hw_sent')} (${r.dm_sent || 0} ta DM${r.chat_sent ? ', chat: ✅' : ', chat: ⚠️'})`);
     closeSheet();
     await renderHomework();
   } else showToast('❌ ' + (r.error || t('error')));

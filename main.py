@@ -442,6 +442,10 @@ async def main() -> None:
     # 5. Schedulerni sozlash va ishga tushirish
     scheduler = setup_scheduler(bot=bot, db=db, timezone_str=TIMEZONE, webapp_url=WEBAPP_URL)
     scheduler.start()
+    # DB-dagi admin tomonidan o'zgartirilgan vaqtlarni qo'llash
+    from scheduler import apply_db_schedule_overrides
+
+    await apply_db_schedule_overrides(db)
 
     # 6. Healthcheck serverni to'xtatib, to'liq API serverni ishga tushirish
     await early_runner.cleanup()

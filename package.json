@@ -11,7 +11,13 @@
     "test": "bash scripts/run-ci.sh",
     "test:ci": "bash scripts/run-ci.sh",
     "test:e2e": "playwright test",
-    "test:e2e:student": "playwright test e2e-tests/student.spec.js"
+    "test:qa": "playwright test",
+    "test:e2e:student": "playwright test e2e-tests/student.spec.js",
+    "test:e2e:core": "playwright test e2e-tests/student.spec.js e2e-tests/admin-mini.functional.spec.js",
+    "test:e2e:audit": "playwright test e2e-tests/audit-student-admin.spec.js",
+    "test:e2e:audit:headed": "playwright test e2e-tests/audit-student-admin.spec.js --headed",
+    "test:e2e:audit:trace": "playwright test e2e-tests/audit-student-admin.spec.js --trace on",
+    "test:qa:senior": "playwright test e2e-tests/qa-senior-audit.spec.js e2e-tests/audit-student-admin.spec.js"
   },
   "repository": {
     "type": "git",

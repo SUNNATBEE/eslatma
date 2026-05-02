@@ -1931,9 +1931,9 @@ function showHomeworkCreateSheet(prefillGroup = '') {
   openSheet(`
     <div class="inline-label">Guruhni tanlang</div>
     ${isLocked
-      ? `<input class="search-box" id="hwCreateGroup" value="${safeGroup}" readonly>
+      ? `<input class="search-box" id="hwCreateGroupLocked" value="${safeGroup}" readonly>
          <div style="color:#6b7280;font-size:12px;margin-bottom:8px;">Guruh eslatmadan avtomatik tanlandi.</div>`
-      : `<select class="search-box" id="hwCreateGroup">
+      : `<select class="search-box" id="hwCreateGroupSelect">
            <option value="">— Guruh tanlang —</option>
            ${allGroupNames.map(g => {
              const info = _hwScheduleData.find(x => (x.group_name || x.name) === g);
@@ -1951,7 +1951,11 @@ function showHomeworkCreateSheet(prefillGroup = '') {
 }
 
 async function createHomeworkFromSheet() {
-  const group_name = (document.getElementById('hwCreateGroup')?.value || '').trim();
+  const group_name = (
+    document.getElementById('hwCreateGroupLocked')?.value ||
+    document.getElementById('hwCreateGroupSelect')?.value ||
+    ''
+  ).trim();
   const text = (document.getElementById('hwCreateText')?.value || '').trim();
   const due_at = (document.getElementById('hwCreateDueAt')?.value || '').trim();
   if (!group_name) { showToast('❌ Guruhni tanlang'); return; }

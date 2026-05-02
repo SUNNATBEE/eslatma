@@ -21,8 +21,8 @@ python -m unittest discover -s tests -p "test_*.py" -v
 echo "==> pytest"
 pytest tests/ -v --tb=short
 
-echo "==> playwright (npm run test:e2e)"
-npm run test:e2e
+echo "==> playwright (npm run test:qa — barcha e2e, PW_WORKERS=1)"
+PW_WORKERS=1 npm run test:qa
 
 echo ""
 echo "OK: barcha CI tekshiruvlari muvaffaqiyatli tugadi."

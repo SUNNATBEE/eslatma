@@ -229,6 +229,23 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 </div>
 
 <script>
+// ── XSS himoyasi: API/foydalanuvchi matnini HTML ga xavfsiz qo‘yish ──────────
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+// Inline onclick ichidagi single-quoted JS string argumenti uchun xavfsiz escape.
+// Avval JS-string kontekst (\\ va '), so'ng HTML-attribute kontekst (escHtml).
+function escJsAttr(s) {
+  if (s == null) return '';
+  return escHtml(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
@@ -745,7 +762,7 @@ function renderStudentList() {
       oninput="_studentSearch=this.value;renderStudentList()">
     <div class="chips">
       <div class="chip ${_studentFilter==='all'?'active':''}" onclick="_studentFilter='all';renderStudentList()">Barchasi (${_studentsData.length})</div>
-      ${uniqueGroups.map(g => `<div class="chip ${_studentFilter===g?'active':''}" onclick="_studentFilter='${g}';renderStudentList()">${g}</div>`).join('')}
+      ${uniqueGroups.map(g => `<div class="chip ${_studentFilter===g?'active':''}" onclick="_studentFilter='${escJsAttr(g)}';renderStudentList()">${escHtml(g)}</div>`).join('')}
     </div>
     <div id="studentList">
       ${filtered.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
@@ -753,8 +770,8 @@ function renderStudentList() {
           <div class="student-card" onclick="openStudentSheet(${s.user_id})">
             <div class="student-avatar">${s.avatar || '👤'}</div>
             <div class="student-info">
-              <div class="student-name">${s.full_name}</div>
-              <div class="student-group">${s.group_name} • ${s.mars_id || ''}</div>
+              <div class="student-name">${escHtml(s.full_name)}</div>
+              <div class="student-group">${escHtml(s.group_name)} • ${escHtml(s.mars_id || '')}</div>
             </div>
             <span class="att-badge ${s.att_today==='yes'?'att-yes':s.att_today==='no'?'att-no':'att-pending'}">
               ${s.att_today==='yes'?'✅':s.att_today==='no'?'❌':'⏳'}
@@ -772,15 +789,15 @@ async function openStudentSheet(userId) {
   openSheet(`
     <div style="text-align:center;margin-bottom:20px;">
       <div style="font-size:52px;">${s.avatar || '👤'}</div>
-      <div style="font-size:20px;font-weight:700;margin-top:8px;">${s.full_name}</div>
-      <div style="color:#666;font-size:13px;">${s.group_name}</div>
+      <div style="font-size:20px;font-weight:700;margin-top:8px;">${escHtml(s.full_name)}</div>
+      <div style="color:#666;font-size:13px;">${escHtml(s.group_name)}</div>
     </div>
     <div class="card">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div><div style="color:#666;font-size:12px;">Mars ID</div><div style="color:#fff;">${s.mars_id||'—'}</div></div>
-        <div><div style="color:#666;font-size:12px;">Telegram</div><div style="color:#fff;">${s.username||'—'}</div></div>
-        <div><div style="color:#666;font-size:12px;">Telefon</div><div style="color:#fff;">${s.phone||'—'}</div></div>
-        <div><div style="color:#666;font-size:12px;">So'nggi faollik</div><div style="color:#fff;font-size:12px;">${s.last_active||'—'}</div></div>
+        <div><div style="color:#666;font-size:12px;">Mars ID</div><div style="color:#fff;">${escHtml(s.mars_id||'—')}</div></div>
+        <div><div style="color:#666;font-size:12px;">Telegram</div><div style="color:#fff;">${escHtml(s.username||'—')}</div></div>
+        <div><div style="color:#666;font-size:12px;">Telefon</div><div style="color:#fff;">${escHtml(s.phone||'—')}</div></div>
+        <div><div style="color:#666;font-size:12px;">So'nggi faollik</div><div style="color:#fff;font-size:12px;">${escHtml(s.last_active||'—')}</div></div>
       </div>
     </div>
     <div style="margin-bottom:12px;">
@@ -794,7 +811,7 @@ async function openStudentSheet(userId) {
       <div class="inline-label">Guruhni o'zgartirish</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <select class="search-box" id="moveStudentGroup" style="margin-bottom:0;">
-          ${groupOptions.map(g => `<option value="${g}" ${s.group_name===g?'selected':''}>${g}</option>`).join('')}
+          ${groupOptions.map(g => `<option value="${escHtml(g)}" ${s.group_name===g?'selected':''}>${escHtml(g)}</option>`).join('')}
         </select>
         <button class="btn btn-outline" style="width:auto;white-space:nowrap;margin-top:0;" onclick="moveStudentGroup(${userId})">O'tkazish</button>
       </div>
@@ -1149,8 +1166,8 @@ async function switchLb(type, el) {
         <div style="font-size:16px;font-weight:700;color:#666;min-width:28px;">${i+1}</div>
         <div class="student-avatar">${s.avatar||'👤'}</div>
         <div class="student-info">
-          <div class="student-name">${s.full_name}</div>
-          <div class="student-group">${s.group_name}</div>
+          <div class="student-name">${escHtml(s.full_name)}</div>
+          <div class="student-group">${escHtml(s.group_name)}</div>
         </div>
         <div style="color:#ffd700;font-weight:700;">${s.score}</div>
       </div>
@@ -1216,22 +1233,22 @@ function renderRefList() {
           : `<span style="background:rgba(76,175,80,.15);color:#4CAF50;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;margin-right:6px;">📝 To'g'ridan</span>`;
         const groupInfoHtml = r.has_group ? `
           <div style="margin-top:6px;padding:8px;background:rgba(255,255,255,.05);border-radius:8px;font-size:12px;">
-            🏫 <b>Guruh:</b> ${r.group_time || '—'} &nbsp;
+            🏫 <b>Guruh:</b> ${escHtml(r.group_time || '—')} &nbsp;
             📅 ${r.group_day_type === 'ODD' ? 'Toq kunlar' : r.group_day_type === 'EVEN' ? 'Juft kunlar' : '—'} &nbsp;
-            👨‍🏫 ${r.teacher_name || '—'}
+            👨‍🏫 ${escHtml(r.teacher_name || '—')}
           </div>` : '';
         const rejectReasonHtml = r.status === 'rejected' && r.reject_reason
-          ? `<div style="margin-top:6px;color:#ff6b6b;font-size:12px;background:rgba(255,107,107,.1);padding:6px 10px;border-radius:8px;">Sabab: ${r.reject_reason}</div>`
+          ? `<div style="margin-top:6px;color:#ff6b6b;font-size:12px;background:rgba(255,107,107,.1);padding:6px 10px;border-radius:8px;">Sabab: ${escHtml(r.reject_reason)}</div>`
           : '';
         return `
         <div class="ref-card">
-          <div class="ref-name">${typeBadge}${r.full_name}</div>
+          <div class="ref-name">${typeBadge}${escHtml(r.full_name)}</div>
           <div class="ref-meta">
-            Yosh: ${r.age} • ${r.location}<br>
-            📱 ${r.phone}<br>
-            💡 ${r.interests}<br>
-            ${isReferral ? `🔗 Taklif qilgan: <code>${r.referrer_user_id}</code><br>` : ''}
-            🕐 ${r.created_at}
+            Yosh: ${escHtml(r.age)} • ${escHtml(r.location)}<br>
+            📱 ${escHtml(r.phone)}<br>
+            💡 ${escHtml(r.interests)}<br>
+            ${isReferral ? `🔗 Taklif qilgan: <code>${escHtml(r.referrer_user_id)}</code><br>` : ''}
+            🕐 ${escHtml(r.created_at)}
           </div>
           ${groupInfoHtml}
           ${rejectReasonHtml}
@@ -1245,8 +1262,8 @@ function renderRefList() {
               <span class="att-badge ${r.status==='approved'?'att-yes':'att-no'}">
                 ${r.status==='approved'?'✅ '+t('approved'):'❌ '+t('rejected')}
               </span>
-              ${r.group_name ? ` • 📚 ${r.group_name}` : ''}
-              ${r.mars_id ? ` • Mars ID: <b>${r.mars_id}</b>` : ''}
+              ${r.group_name ? ` • 📚 ${escHtml(r.group_name)}` : ''}
+              ${r.mars_id ? ` • Mars ID: <b>${escHtml(r.mars_id)}</b>` : ''}
             </div>
           `}
         </div>
@@ -1262,9 +1279,9 @@ async function approveRef(id) {
     <div style="margin-bottom:16px;font-weight:600;">Guruh tanlang:</div>
     <div id="groupSelectList">
       ${groupList.map(g => `
-        <div class="student-card" onclick="confirmApproveRef(${id},'${g}')" style="margin-bottom:6px;cursor:pointer;">
+        <div class="student-card" onclick="confirmApproveRef(${id},'${escJsAttr(g)}')" style="margin-bottom:6px;cursor:pointer;">
           <div style="font-size:20px;">📚</div>
-          <div class="student-info"><div class="student-name">${g}</div></div>
+          <div class="student-info"><div class="student-name">${escHtml(g)}</div></div>
           <div>→</div>
         </div>
       `).join('')}
@@ -1654,7 +1671,7 @@ async function sendBroadcast() {
   const target = document.getElementById('broadcastTarget')?.value || 'all';
   if (!text) { showToast('❌ Xabar bo\'sh'); return; }
   const r = await api('/api/admin/broadcast', { method: 'POST', body: { text, target } });
-  if (r.ok) showToast(`✅ Yuborildi: ${r.sent}, Xato: ${r.failed}`);
+  if (r.ok) showToast(`✅ Navbatga qo'yildi: ${r.queued ?? r.sent ?? 0} ta`);
   else showToast('❌ ' + (r.error || t('error')));
 }
 
@@ -1681,7 +1698,7 @@ async function doQuickBroadcast() {
   const target = document.getElementById('bcTarget')?.value || 'all';
   if (!text) { showToast('❌ Xabar bo\'sh'); return; }
   const r = await api('/api/admin/broadcast', { method: 'POST', body: { text, target } });
-  if (r.ok) { showToast(`✅ Yuborildi: ${r.sent}`); closeSheet(); }
+  if (r.ok) { showToast(`✅ Navbatga qo'yildi: ${r.queued ?? r.sent ?? 0} ta`); closeSheet(); }
   else showToast('❌ ' + (r.error || t('error')));
 }
 
@@ -1719,8 +1736,8 @@ async function loadAuditLogs() {
   if (!logs.length) { box.textContent = 'Loglar yo‘q'; return; }
   box.innerHTML = logs.map(x => `
     <div style="padding:6px 0;border-bottom:1px solid #1f2937;">
-      <b>${x.action}</b> ${x.target ? '— '+x.target : ''}<br>
-      <span style="color:#6b7280;">${x.created_at || ''} ${x.details ? '• '+x.details : ''}</span>
+      <b>${escHtml(x.action)}</b> ${x.target ? '— '+escHtml(x.target) : ''}<br>
+      <span style="color:#6b7280;">${escHtml(x.created_at || '')} ${x.details ? '• '+escHtml(x.details) : ''}</span>
     </div>
   `).join('');
 }

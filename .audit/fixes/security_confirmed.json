@@ -1,0 +1,61 @@
+{
+  "role": "security",
+  "fixes": [
+    {
+      "id": "SEC-001",
+      "file": "main.py",
+      "line": 144,
+      "tier": "confirm",
+      "what_was_wrong": "_verify_webapp_init_data faqat HMAC ni tekshirardi, auth_date eskirishini emas — eski (yoki o'g'irlangan) initData replay attack uchun cheksiz ishlatilishi mumkin edi.",
+      "what_changed": "Modul darajasida MAX_INITDATA_AGE_SEC = 86400 konstantasi qo'shildi. HMAC tasdiqdan KEYIN auth_date int sifatida try/except bilan o'qiladi; xato/<=0 bo'lsa yoki (time.time()-auth_date) > MAX_INITDATA_AGE_SEC bo'lsa None qaytariladi. import time allaqachon mavjud edi.",
+      "verification": "python -m py_compile + python -c 'import main' muvaffaqiyatli.",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "SEC-002",
+      "file": "main.py",
+      "line": 115,
+      "tier": "confirm",
+      "what_was_wrong": "CORS fail-OPEN edi: allowlist bo'sh bo'lsa config.py avtomatik wildcard '*' beradi; main.py'da Origin header bo'lmaganda ham '*' qaytarilardi.",
+      "what_changed": "config.py: CORS_USE_WILDCARD endi avtomatik (len==0) emas, balki faqat aniq CORS_ALLOW_WILDCARD env flag (default false) bilan yoqiladi. WEBAPP_URL allowlist'ga avtomatik qo'shilishi SAQLANDI (prod buzilmaydi). main.py _cors_allow_origin_value: Origin header yo'q bo'lganda '*' o'rniga None qaytaradi; allowlist'da bo'lmagan origin uchun None (fail-closed).",
+      "verification": "python -m py_compile + python -c 'import config'/'import main' muvaffaqiyatli.",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "SEC-003",
+      "file": "config.py",
+      "line": 55,
+      "tier": "confirm",
+      "what_was_wrong": "MINI_ADMIN_LOGINS parollari plaintext; hash qo'yish imkoni hujjatlanmagan edi.",
+      "what_changed": "_parse_logins allaqachon split(':', 1) ishlatadi (hash-safe — hash formati pbkdf2_sha256$iter$salt$derived '$' ajratuvchi ishlatadi, ':' emas). Hujjat/comment qo'shildi: parolni utils.hash_secret bilan hash qilib qo'yish mumkin; verify_secret() hash va legacy plaintext ikkalasini qabul qiladi (orqaga moslik saqlandi). Mantiqiy o'zgarish kerak emas edi.",
+      "verification": "python -m py_compile + python -c 'import config' muvaffaqiyatli.",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "SEC-004",
+      "file": "routes/curator_routes.py",
+      "line": 49,
+      "tier": "confirm",
+      "what_was_wrong": "api_curator_login'da rate limiting yo'q edi (brute-force xavfi), api_mini_admin_login'dan farqli o'laroq.",
+      "what_changed": "ctx allaqachon login_rate_limiter va trust_x_forwarded_for ni uzatardi. setup_curator_routes ularni ctx.get() bilan oladi; from rate_limit import client_ip qo'shildi. api_curator_login'da _auth muvaffaqiyatli bo'lgach, parol tekshirishdan oldin curator:{ip} kaliti bilan rate-limit qo'yildi (429 rate_limited). main.py o'zgartirilmadi — ctx kalitlari bor edi.",
+      "verification": "python -m py_compile + python -c 'import main' muvaffaqiyatli.",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "API-009",
+      "file": "routes/student_routes.py",
+      "line": 854,
+      "tier": "confirm",
+      "what_was_wrong": "api_student_pending_status auth'siz, query'dan ixtiyoriy telegram_user_id oladi — IDOR (boshqa user arizasini ko'rish) + rate-limit yo'q.",
+      "what_changed": "Mavjud _reg_rate_ok (5/min IP) rate-limiti qo'shildi (429). X-Init-Data berilganda so'rovchi tg_id (_get_user_id) query tg_id bilan mos kelmasa 403 forbidden. init_data'siz reg flow ishlashda davom etadi (kamida rate-limit bilan).",
+      "verification": "python -m py_compile + python -c 'import main' muvaffaqiyatli.",
+      "status": "applied",
+      "reason": null
+    }
+  ],
+  "summary": "5 ta xavfsizlik muammosi tuzatildi (SEC-001..004 + API-009): initData replay-expiry, CORS fail-closed + aniq wildcard flag, hash-safe parol parse hujjati, curator login rate-limit, pending-status IDOR/rate-limit. Faqat ruxsat etilgan 4 fayl o'zgartirildi; barchasi py_compile va import testlaridan o'tdi."
+}

@@ -1,0 +1,28 @@
+{
+  "role": "handlers",
+  "fixes": [
+    {
+      "id": "HND-003",
+      "file": "handlers/admin_extras.py",
+      "line": 264,
+      "tier": "auto",
+      "what_was_wrong": "AddCredentialFSM handlerlarida (name/mars_id/password) message.text.strip() ishlatilgan; admin matn o'rniga rasm/stiker yuborsa message.text=None bo'lib AttributeError beradi va FSM tiqilib qoladi.",
+      "what_changed": "Uchala handlerda (message.text or '').strip() qilindi, bo'sh bo'lsa o'zbekcha qayta so'rov xabari yuborilib return qilinadi (FSM holati saqlanadi).",
+      "verification": "py_compile OK",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "HND-004",
+      "file": "handlers/attendance.py",
+      "line": 38,
+      "tier": "auto",
+      "what_was_wrong": "handle_attendance_yes/no callback'dan date_str = cb.data.split(':')[2] ni format validatsiyasiz db.save_attendance ga uzatardi; nuqsonli cb.data IndexError yoki yaroqsiz sana keltirib chiqarishi mumkin edi.",
+      "what_changed": "import re qo'shildi; ikkala handlerda split uzunligi >=3 tekshiriladi va date_str YYYY-MM-DD regex bilan validatsiyadan o'tkaziladi, aks holda show_alert bilan to'xtaydi.",
+      "verification": "py_compile OK",
+      "status": "applied",
+      "reason": null
+    }
+  ],
+  "summary": "tugadi — HND-003 va HND-004 qo'llandi: admin credential FSM matn None-tekshiruvi va davomat callback sana format/uzunlik validatsiyasi, py_compile o'tdi."
+}

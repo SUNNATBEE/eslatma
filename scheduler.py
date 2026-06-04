@@ -5,6 +5,7 @@ Ota-onalar va o'quvchilar uchun ALOHIDA xabar matnlari.
 Yuborilgan xabar ID lari bazaga saqlanadi (keyinchalik o'chirish uchun).
 """
 
+import asyncio
 import html
 import logging
 import os
@@ -16,6 +17,7 @@ from datetime import datetime, timedelta
 
 import pytz
 from aiogram import Bot
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -207,19 +209,18 @@ async def _send_homework_group_and_dm_reminders(
         pass
 
     for s in students:
-        try:
-            await bot.send_message(
-                chat_id=s.user_id,
-                text=(
-                    f"📝 <b>Uy vazifa eslatmasi</b>\n\n"
-                    f"Guruh: <b>{group_name}</b>\n"
-                    f"Uy vazifani bajarib, belgilashni unutmang."
-                ),
-                parse_mode="HTML",
-            )
+        ok = await _safe_send_dm(
+            bot,
+            s.user_id,
+            text=(
+                f"📝 <b>Uy vazifa eslatmasi</b>\n\n"
+                f"Guruh: <b>{group_name}</b>\n"
+                f"Uy vazifani bajarib, belgilashni unutmang."
+            ),
+            parse_mode="HTML",
+        )
+        if ok:
             dm_sent += 1
-        except Exception:
-            continue
     return (len(students), dm_sent)
 
 
@@ -410,13 +411,63 @@ async def send_daily_reminder_to_group(
         return None
 
 
+# ─── Avto-xabar dedup (restartga chidamli) ──────────────────────────────────
+#
+# Eslatmalar takror yuborilmasligi uchun "yuborildi" holatini DB'da (BotSetting)
+# saqlaymiz. Shu sababli process qayta ishga tushganda ham takroriy xabar
+# yuborilmaydi. _dedup_cache — DB'ga ortiqcha so'rovni kamaytiruvchi tezkor kesh.
+_dedup_cache: set[str] = set()
+
+
+async def _dedup_seen(db: DatabaseService, key: str) -> bool:
+    """Ushbu kalit bo'yicha amal allaqachon bajarilganmi (DB orqali tekshiriladi)."""
+    if key in _dedup_cache:
+        return True
+    if await db.get_setting(f"sched_dedup:{key}", "") == "1":
+        _dedup_cache.add(key)
+        return True
+    return False
+
+
+async def _dedup_mark(db: DatabaseService, key: str) -> None:
+    """Kalitni "bajarildi" deb belgilaydi (DB + kesh)."""
+    _dedup_cache.add(key)
+    await db.set_setting(f"sched_dedup:{key}", "1")
+
+
+# Telegram ~30 msg/sek limiti — ko'p-DM yuboradiga sikllar uchun kichik pauza.
+_DM_THROTTLE_SEC = 0.05
+
+
+async def _safe_send_dm(bot: Bot, chat_id: int, **kwargs) -> bool:
+    """Bitta DM yuboradi: flood throttle + TelegramRetryAfter (429) handling.
+
+    Muvaffaqiyatda True, aks holda False qaytaradi. 429 bo'lsa e.retry_after
+    soniya kutib BIR marta qayta urinadi. Boshqa xatolar log qilinib yutiladi
+    ('except: pass' ostida jim ko'mma).
+    """
+    try:
+        await bot.send_message(chat_id, **kwargs)
+        await asyncio.sleep(_DM_THROTTLE_SEC)
+        return True
+    except TelegramRetryAfter as e:
+        logger.warning("DM flood limit (429): chat=%s retry_after=%ss", chat_id, e.retry_after)
+        await asyncio.sleep(e.retry_after + 1)
+        try:
+            await bot.send_message(chat_id, **kwargs)
+            await asyncio.sleep(_DM_THROTTLE_SEC)
+            return True
+        except Exception as e2:
+            logger.warning("DM qayta urinish ham xato: chat=%s err=%s", chat_id, e2)
+            return False
+    except Exception as e:
+        logger.debug("DM yuborilmadi: chat=%s err=%s", chat_id, e)
+        return False
+
+
 # ─── Dars eslatmasi: har 10 daqiqada ────────────────────────────────────────
 
-# 1-eslatma va 2-eslatma yuborilgan foydalanuvchilarni kuzatish
-# Key: "user_id:date_str" — restart bo'lsa reset bo'ladi (normal holat)
-_sent_first_reminder: set[str] = set()
-_sent_second_reminder: set[str] = set()
-# 1-eslatma message_id lari — 2-eslatma yuborishda o'chirish uchun
+# 1-eslatma message_id lari — 2-eslatma yuborishda o'chirish uchun (ephemeral, dedup emas)
 _first_reminder_msg_ids: dict[str, int] = {}
 
 
@@ -468,9 +519,14 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
         if now < reminder_start or now >= class_dt:
             continue
 
-        # Qaysi eslatma oynasida ekanligini aniqlaymiz
-        in_first_window = now < reminder_start + timedelta(minutes=10)
-        in_second_window = reminder_start + timedelta(minutes=30) <= now < reminder_start + timedelta(minutes=40)
+        # "Quvlash" mantig'i: oynani aniq 10 daq kenglik bilan emas, balki dars
+        # boshlanishigacha (class_dt) kengaytiramiz. Dedup (r1/r2) takror yuborishni
+        # to'xtatgani uchun bu xavfsiz — har eslatma kuniga bir marta ketadi va
+        # kechikkan/o'tkazib yuborilgan run'larda ham kafolatlanadi.
+        #   1-eslatma: reminder_start <= now < class_dt (r1 dedup yo'q bo'lsa)
+        #   2-eslatma: reminder_start+30daq <= now < class_dt (r2 dedup yo'q bo'lsa)
+        in_first_window = reminder_start <= now < class_dt
+        in_second_window = reminder_start + timedelta(minutes=30) <= now < class_dt
 
         # Hech bir oynada emasmiz — o'tkazib yuboramiz
         if not in_first_window and not in_second_window:
@@ -489,10 +545,11 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
 
             key = f"{student.user_id}:{today_str}"
 
-            if in_first_window:
-                if key in _sent_first_reminder:
-                    continue
-                _sent_first_reminder.add(key)
+            r1_done = await _dedup_seen(db, f"r1:{key}")
+
+            # 1-eslatma hali ketmagan bo'lsa — birinchi navbatda uni yuboramiz
+            # (oyna class_dt gacha kengaytirilgan, kechikkan run'larda ham kafolat).
+            if not r1_done and in_first_window:
                 text = f"🎯 Bugun soat <b>{class_time_str}</b> da dars!\nTayyor bo'l, dasturchi! Kelasanmi? 💻"
                 try:
                     sent = await bot.send_message(
@@ -501,13 +558,23 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
                         reply_markup=kb_attendance(today_str),
                         parse_mode="HTML",
                     )
+                    # MUHIM: mark faqat muvaffaqiyatli yuborishdan KEYIN (homework_prompt pattern)
+                    await _dedup_mark(db, f"r1:{key}")
                     _first_reminder_msg_ids[key] = sent.message_id
+                    await asyncio.sleep(_DM_THROTTLE_SEC)
+                except TelegramRetryAfter as e:
+                    logger.warning(
+                        "check_class_reminders r1 flood (429): chat=%s retry_after=%ss",
+                        student.user_id,
+                        e.retry_after,
+                    )
+                    await asyncio.sleep(e.retry_after + 1)
                 except Exception:
                     pass
-            else:  # in_second_window
-                if key in _sent_second_reminder:
-                    continue
-                _sent_second_reminder.add(key)
+                continue
+
+            # 2-eslatma: r1 ketgan AND r2 hali yo'q AND 2-oynada (class_dt gacha)
+            if r1_done and in_second_window and not await _dedup_seen(db, f"r2:{key}"):
                 # Birinchi eslatmani o'chiramiz
                 if key in _first_reminder_msg_ids:
                     try:
@@ -522,6 +589,16 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
                         reply_markup=kb_attendance(today_str),
                         parse_mode="HTML",
                     )
+                    # MUHIM: mark faqat muvaffaqiyatli yuborishdan KEYIN
+                    await _dedup_mark(db, f"r2:{key}")
+                    await asyncio.sleep(_DM_THROTTLE_SEC)
+                except TelegramRetryAfter as e:
+                    logger.warning(
+                        "check_class_reminders r2 flood (429): chat=%s retry_after=%ss",
+                        student.user_id,
+                        e.retry_after,
+                    )
+                    await asyncio.sleep(e.retry_after + 1)
                 except Exception:
                     pass
 
@@ -529,14 +606,11 @@ async def check_class_reminders(bot: Bot, db: DatabaseService, timezone_str: str
 
 
 # ─── Kurator davomat eslatmasi: dars boshlanganidan 20 daqiqa o'tgach ────────
-
-_sent_davomat_notify: set[str] = set()  # {group_name:date_str} — qayta yubormaslik
-
-# Uy vazifasi eslatmasi: {group_name:date_str} — qayta yubormaslik
-_sent_homework_prompt: set[str] = set()
-
-# Uy vazifasi expire (dars boshlanganda): {group_name:date_str} — qayta yubormaslik
-_homework_expired_today: set[str] = set()
+#
+# Quyidagi takror-yuborish holatlari endi DB orqali kuzatiladi (_dedup_seen/_dedup_mark):
+#   davomat eslatmasi  → "davomat:{group_name}:{date_str}"
+#   uy vazifasi prompt → "hwprompt:{group_name}:{date_str}"
+#   uy vazifasi expire → "hwexpire:{group_name}:{date_str}"
 
 
 def _group_end_time(day_type: str, group_name: str, class_time_str: str) -> str:
@@ -591,14 +665,17 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
     today_str = now.strftime("%Y-%m-%d")
 
     for group_name, class_time_str in schedule.items():
-        notify_key = f"{group_name}:{today_str}"
-        if notify_key in _sent_davomat_notify:
+        notify_key = f"davomat:{group_name}:{today_str}"
+        if await _dedup_seen(db, notify_key):
             continue
 
         class_hour, class_min = map(int, class_time_str.split(":"))
         class_dt = now.replace(hour=class_hour, minute=class_min, second=0, microsecond=0)
+        # Oynani kengaytiramiz (20 daq dan dars tugashigacha taxminan +3 soat) —
+        # dedup (notify_key) takror yuborishni to'xtatgani uchun bu xavfsiz va
+        # kechikkan run'larda ham eslatma kafolatlanadi.
         window_start = class_dt + timedelta(minutes=20)
-        window_end = class_dt + timedelta(minutes=30)
+        window_end = class_dt + timedelta(hours=3)
 
         if not (window_start <= now < window_end):
             continue
@@ -608,28 +685,31 @@ async def check_davomat_notify(bot: Bot, db: DatabaseService, timezone_str: str)
             result = await session.execute(select(CuratorSession))
             curator_sessions = list(result.scalars().all())
 
-        _sent_davomat_notify.add(notify_key)  # Belgilaymiz (kuratorlar bo'lmasa ham)
-
+        # SCH-003: kurator ulanmagan bo'lsa MARK QILMAYMIZ — keyingi run qayta urinsin
+        # (aks holda kurator keyin ulansa ham eslatma olmaydi).
         if not curator_sessions:
             continue
 
         notify_text = (
             f"📋 <b>{group_name}</b> — dars boshlangan, 20 daq o'tdi!\n\n⏰ Davomatni ota-ona guruhiga yuboring."
         )
+        sent_any = False
         for cs in curator_sessions:
             # Kurator uchun avto xabar o'chirilgan bo'lsa — o'tkazamiz
             if await db.get_setting(f"AUTO_MSG_CURATOR:{cs.telegram_id}", "1") == "0":
                 continue
-            try:
-                await bot.send_message(
-                    cs.telegram_id,
-                    notify_text,
-                    reply_markup=kb_davomat_start(group_name, today_str),
-                )
-            except Exception:
-                pass
+            if await _safe_send_dm(
+                bot,
+                cs.telegram_id,
+                text=notify_text,
+                reply_markup=kb_davomat_start(group_name, today_str),
+            ):
+                sent_any = True
 
-        logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
+        # Mark faqat kamida bitta yuborish urinishi bo'lganda
+        if sent_any:
+            await _dedup_mark(db, notify_key)
+            logger.info(f"Davomat eslatmasi: {group_name} | {today_str}")
 
 
 async def check_homework_prompt(
@@ -670,8 +750,8 @@ async def check_homework_prompt(
         end_dt = now.replace(hour=end_hour, minute=end_min, second=0, microsecond=0)
         prompt_dt = end_dt - timedelta(minutes=2)
 
-        key = f"{group_name}:{today_str}"
-        if key in _sent_homework_prompt:
+        key = f"hwprompt:{group_name}:{today_str}"
+        if await _dedup_seen(db, key):
             continue
         # 1 daqiqalik oynada bir marta yuboramiz
         if not (prompt_dt <= now < prompt_dt + timedelta(minutes=1)):
@@ -703,7 +783,7 @@ async def check_homework_prompt(
                 continue
 
         if sent_any:
-            _sent_homework_prompt.add(key)
+            await _dedup_mark(db, key)
             logger.info(f"Uy vazifasi eslatmasi yuborildi: {group_name} | {today_str} | {end_time_str}")
     _mark_job("homework_prompt_before_end", ok=True, details="checked")
 
@@ -737,8 +817,8 @@ async def expire_homeworks_at_class_start(
 
     expired_total = 0
     for group_name, class_time_str in schedule.items():
-        key = f"{group_name}:{today_str}"
-        if key in _homework_expired_today:
+        key = f"hwexpire:{group_name}:{today_str}"
+        if await _dedup_seen(db, key):
             continue
 
         class_hour, class_min = map(int, class_time_str.split(":"))
@@ -752,7 +832,7 @@ async def expire_homeworks_at_class_start(
         # shuning uchun cutoff ni ham naive qilamiz.
         cutoff = class_dt.replace(tzinfo=None)
         expired = await db.expire_homework_if_old(group_name, cutoff)
-        _homework_expired_today.add(key)
+        await _dedup_mark(db, key)
 
         if not expired:
             continue
@@ -1365,17 +1445,21 @@ async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: st
             try:
                 await db.add_xp(student.user_id, XP_WEEKLY_BONUS, "weekly_streak_bonus")
                 updated = await db.get_student(student.user_id)
-                await bot.send_message(
-                    student.user_id,
+            except Exception:
+                continue
+            # SCH-002: ko'p-DM siklida flood throttle + 429 handling
+            if await _safe_send_dm(
+                bot,
+                student.user_id,
+                text=(
                     f"🎉 <b>7 kun streak — BONUS!</b>\n\n"
                     f"Zo'rsan! 7 kun ketma-ket kirding! 🔥\n"
                     f"<b>+{XP_WEEKLY_BONUS} XP</b> oldin! 🚀\n\n"
-                    f"⭐ Jami: <b>{updated.xp if updated else '?'} XP</b>",
-                    parse_mode="HTML",
-                )
+                    f"⭐ Jami: <b>{updated.xp if updated else '?'} XP</b>"
+                ),
+                parse_mode="HTML",
+            ):
                 awarded += 1
-            except Exception:
-                pass
         logger.info(f"WEEKLY BONUS: {awarded} ta o'quvchiga +{XP_WEEKLY_BONUS} XP berildi")
     except Exception as e:
         logger.exception(f"WEEKLY BONUS: Xato: {e}")

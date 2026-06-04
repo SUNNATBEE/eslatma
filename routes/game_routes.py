@@ -4,10 +4,32 @@ Endpointlar: /api/game/*
 """
 
 import asyncio
+from datetime import datetime
 
 from aiohttp import web
 
 from routes.api_json import json_err
+
+# Har o'yin uchun server tomonda ruxsat etilgan maksimal XP.
+# Frontenddagi savol soni × har to'g'ri javob XP'siga mos (mijozga ishonmaymiz):
+#   quiz: 10×2, css_duel: 10×3, bug_hunter: 8×5,
+#   code_order: 6×5, tag_match: 10×2, selector_quiz: 10×2
+GAME_MAX_XP: dict[str, int] = {
+    "quiz": 20,
+    "css_duel": 30,
+    "bug_hunter": 40,
+    "code_order": 30,
+    "tag_match": 20,
+    "selector_quiz": 20,
+}
+_GAME_XP_FALLBACK = 30  # noma'lum o'yin turi uchun ehtiyot chegarasi
+
+# ── Multiplayer (typing_race) anti-cheat chegaralari ─────────────────────────
+# Mijoz o'yin boshlanishi bilanoq {progress:100, finished:true} POST qilib XP
+# yutib ketmasligi uchun server tomonda minimal real o'yin vaqti talab qilinadi.
+# Inson maksimal taxminan shu tezlikda yozadi — bundan tez = bot/cheat.
+MAX_CHARS_PER_SEC = 20.0
+MIN_GAME_SECONDS = 5  # matn maydoni bo'lmasa ishlatiladigan qat'iy chegara
 
 
 def setup_game_routes(app: web.Application, ctx: dict) -> None:
@@ -31,7 +53,7 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
             body = await request.json()
         except Exception:
             return json_err("Bad JSON", code="bad_json", status=400)
-        game_type = body.get("game_type", "")
+        game_type = (body.get("game_type") or "").strip()[:30]
         try:
             score = int(body.get("score", 0))
             xp_earned = int(body.get("xp_earned", 0))
@@ -39,8 +61,21 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
             return json_err("Noto'g'ri qiymat", code="validation_error", status=400)
         if not game_type:
             return json_err("game_type kerak", code="validation_error", status=400)
-        xp_earned = min(xp_earned, 50)
+        # Salbiy/aql bovar qilmas qiymatlardan himoya
+        score = max(0, min(score, 1_000_000))
+        xp_earned = max(0, xp_earned)
+        # XP'ni server tomonda har o'yin uchun belgilangan maksimal bilan cheklaymiz
+        # (mijoz yuborgan xp_earned ga ishonmaymiz)
+        xp_earned = min(xp_earned, GAME_MAX_XP.get(game_type, _GAME_XP_FALLBACK))
+        # Cooldown faol bo'lsa — natija saqlanadi, ammo XP berilmaydi
+        # (3 soatlik cheklovni server tomonda majburlab, cheksiz XP yig'ishni to'xtatamiz)
+        window = await db.get_play_window(user_id, game_type)
+        if window.get("blocked"):
+            xp_earned = 0
         await db.save_game_score(user_id, game_type, score, xp_earned)
+        # Bu o'yin uchun cooldown'ni server tomonda yoqamiz (XP berilgan bo'lsa)
+        if xp_earned > 0:
+            await db.increment_play_in_window(user_id, game_type)
         prog = await db.get_student_progress(user_id)
         lvup = False
         if prog and prog.get("level", 1) > (student.level or 1):
@@ -176,15 +211,51 @@ def setup_game_routes(app: web.Application, ctx: dict) -> None:
             progress = int(body.get("progress", 0))
         except (ValueError, TypeError):
             return json_err("Noto'g'ri qiymat", code="validation_error", status=400)
+        # progress'ni 0..100 oralig'iga clamp qilamiz (mijoz qiymatiga ishonmaymiz).
+        progress = max(0, min(100, progress))
         finished = bool(body.get("finished", False))
+
+        # ── Anti-cheat: finished=true bo'lganda minimal real o'yin vaqtini talab qil ──
+        # Mijoz o'yin boshlanishi bilanoq finished=true yuborsa, XP bermaymiz.
+        # created_at — naive UTC (server_default=func.now()), shuning uchun utcnow() bilan
+        # solishtiriladi. Avval xona holatini o'qib, o'tgan vaqtni hisoblaymiz.
+        if finished:
+            pre = await db.get_game_room(room_id)
+            if pre is None:
+                return json_err("Xona topilmadi", code="not_found", status=404)
+            created = pre.created_at
+            elapsed = None
+            if created is not None:
+                try:
+                    # naive (UTC) bo'lsa to'g'ridan-to'g'ri, aware bo'lsa tzinfo'ni olib tashlaymiz.
+                    if created.tzinfo is not None:
+                        created = created.replace(tzinfo=None)
+                    elapsed = (datetime.utcnow() - created).total_seconds()
+                except Exception:
+                    elapsed = None
+            # Minimal kerakli vaqt: matn uzunligiga nisbatan, aks holda qat'iy chegara.
+            text = pre.text_passage or ""
+            if text:
+                min_seconds = max(MIN_GAME_SECONDS, len(text) / MAX_CHARS_PER_SEC)
+            else:
+                min_seconds = float(MIN_GAME_SECONDS)
+            # Vaqt aniqlangan VA juda qisqa bo'lsa — finished'ni qabul qilmaymiz
+            # (progress saqlanadi, lekin g'olib/XP belgilanmaydi). Mavjud javob shaklini buzmaymiz.
+            if elapsed is not None and elapsed < min_seconds:
+                finished = False
+
         room = await db.update_game_progress(room_id, user_id, progress, finished)
         if not room:
             return json_err("Xona topilmadi", code="not_found", status=404)
-        if finished and room.winner_id == user_id:
-            await db.add_xp(user_id, 20)
-            await db.record_game_win(user_id)
-        elif room.status == "finished" and room.winner_id and room.winner_id != user_id:
-            await db.add_xp(user_id, 5)
+        # XP faqat o'yin tugagach VA atomik tarzda bir martagina beriladi.
+        # claim_room_xp() faqat birinchi chaqiruvda True qaytaradi — shuning uchun
+        # finished=true bilan qayta-qayta so'rov yuborib XP yig'ib bo'lmaydi.
+        if room.status == "finished" and room.winner_id and await db.claim_room_xp(room.id):
+            await db.add_xp(room.winner_id, 20)
+            await db.record_game_win(room.winner_id)
+            loser_id = room.player2_id if room.winner_id == room.player1_id else room.player1_id
+            if loser_id:
+                await db.add_xp(loser_id, 5)
         return web.json_response(
             {
                 "ok": True,

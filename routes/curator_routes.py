@@ -9,6 +9,7 @@ from aiohttp import web
 
 from config import ADMIN_IDS
 from curator_credentials import CURATORS
+from rate_limit import client_ip
 from routes.api_json import json_err
 from utils import verify_secret
 
@@ -26,6 +27,8 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
     db = ctx["db"]
     tz = ctx["tz"]
     _auth = ctx["auth"]
+    _login_limiter = ctx.get("login_rate_limiter")
+    _trust_xff = ctx.get("trust_x_forwarded_for", False)
 
     # ── Login / logout / me ────────────────────────────────────────────────────
 
@@ -50,6 +53,11 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
         user_id = _auth(request)
         if not user_id:
             return json_err("Unauthorized", code="unauthorized", status=401)
+        # Brute-force himoyasi: parol tekshirishdan oldin IP bo'yicha tezlik cheklovi.
+        if _login_limiter is not None:
+            ip = client_ip(request, trust_x_forwarded_for=bool(_trust_xff))
+            if not _login_limiter.allow(f"curator:{ip}"):
+                return json_err("Juda ko'p urinish", code="rate_limited", status=429)
         try:
             body = await request.json()
         except Exception:
@@ -291,10 +299,14 @@ def setup_curator_routes(app: web.Application, ctx: dict) -> None:
         new_status = body.get("status")
         if not student_id or not date_str or new_status not in ("yes", "no"):
             return json_err("Missing or invalid fields", code="validation_error", status=400)
-        student = await db.get_student(int(student_id))
+        try:
+            student_id_int = int(student_id)
+        except (ValueError, TypeError):
+            return json_err("Noto'g'ri ID", code="validation_error", status=400)
+        student = await db.get_student(student_id_int)
         if not student:
             return json_err("Student not found", code="not_found", status=404)
-        await db.save_attendance(int(student_id), date_str, new_status)
+        await db.save_attendance(student_id_int, date_str, new_status)
         old_emoji = "❌" if new_status == "yes" else "✅"
         new_emoji = "✅" if new_status == "yes" else "❌"
         cname = CURATORS.get(session.curator_key, {}).get("full_name", session.curator_key)

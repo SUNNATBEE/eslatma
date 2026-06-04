@@ -1,0 +1,108 @@
+{
+  "role": "scheduler",
+  "score": 6,
+  "partial": false,
+  "files_reviewed": ["scheduler.py", "class_schedule.py"],
+  "findings": [
+    {
+      "id": "SCH-001",
+      "severity": "critical",
+      "confidence": 0.8,
+      "title": "Interval (10 daq) va eslatma oynasi (10 daq) bir xil — bitta misfire butun eslatmani yo'qotadi",
+      "file": "scheduler.py",
+      "line": 492,
+      "description": "check_class_reminders 10 daqiqalik IntervalTrigger bilan ishlaydi, lekin 1-oyna kengligi ham aniq 10 daqiqa (reminder_start..reminder_start+10), 2-oyna ham 10 daqiqa (start+30..start+40). misfire_grace_time=60s. APScheduler runi 60s dan ko'proq kechiksa yoki process band bo'lsa, run aniq shu 10-daqiqalik oynaga tushmay qoladi va o'sha eslatma BUTUNLAY yuborilmaydi (dedup yozilmagan, lekin oyna o'tib ketgan). Interval davri oyna kengligiga teng bo'lganda hech qanday zaxira (overlap) yo'q. Xuddi shu muammo check_davomat_notify (20-30 daq oynasi, 10 daq interval) da ham bor.",
+      "fix": "Oyna kengligini intervaldan kattaroq qiling (masalan 1-oyna 0..15 daq, interval 5 daq), yoki 'oxirgi yuborilmagan eslatmani qувlash' mantig'i: now >= reminder_start AND hali dedup yo'q AND now < class_dt bo'lsa yubor (aniq oynaga bog'lamasdan). Bu kechikkan runlarda ham eslatmani kafolatlaydi.",
+      "snippet": "in_first_window = now < reminder_start + timedelta(minutes=10)\nin_second_window = reminder_start + timedelta(minutes=30) <= now < reminder_start + timedelta(minutes=40)"
+    },
+    {
+      "id": "SCH-002",
+      "severity": "warning",
+      "confidence": 0.85,
+      "title": "Telegram flood limiti — DM siklida throttle/sleep yo'q",
+      "file": "scheduler.py",
+      "line": 504,
+      "description": "check_class_reminders barcha guruhlardagi barcha o'quvchilarga DM yuboradi (for student in students: bot.send_message), hech qanday asyncio.sleep yoki rate-limit yo'q. Xuddi shunday _send_homework_group_and_dm_reminders (line 209) har bir o'quvchiga ketma-ket DM yuboradi. Telegram global DM limiti ~30 msg/sek; ko'p o'quvchili guruhlarda 429 Flood (retry_after) keladi va except: pass ostida jim yo'qoladi — o'quvchilar eslatma olmaydi. send_weekly_streak_bonus va davomat broadcast'da ham shu.",
+      "fix": "Yuborish sikllariga kichik throttle qo'shing (masalan har msg dan keyin await asyncio.sleep(0.05)) yoki aiogram'ning TelegramRetryAfter ni ushlab retry qiling. Hech bo'lmaganda RetryAfter ni alohida log qiling, 'except: pass' ostida ko'mib qo'ymang.",
+      "snippet": "for student in students:\n    ...\n    try:\n        await bot.send_message(student.user_id, text, ...)\n    except Exception:\n        pass"
+    },
+    {
+      "id": "SCH-003",
+      "severity": "warning",
+      "confidence": 0.9,
+      "title": "check_davomat_notify dedup'ni kuratorlarni tekshirishdan OLDIN belgilaydi",
+      "file": "scheduler.py",
+      "line": 628,
+      "description": "_dedup_mark(notify_key) curator_sessions bo'sh bo'lsa ham (kommentda 'kuratorlar bo'lmasa ham' deb yozilgan) chaqiriladi. Agar dars boshida (20-30 daq oynasida) hech kim ulanmagan bo'lsa, key 'bajarildi' deb belgilanadi va o'sha kunga boshqa urinish bo'lmaydi — kurator keyinroq ulansa ham eslatma olmaydi. Bu ataylab qilingan ko'rinadi, lekin natijada davomat eslatmasi butunlay tushib qolishi mumkin.",
+      "fix": "Agar maqsad 'kamida bitta kurator bo'lganda yuborish' bo'lsa, _dedup_mark ni faqat curator_sessions mavjud bo'lganda (yoki yuborish urinilgandan keyin) chaqiring. Bo'sh holatda belgilamang.",
+      "snippet": "await _dedup_mark(db, notify_key)  # Belgilaymiz (kuratorlar bo'lmasa ham)\nif not curator_sessions:\n    continue"
+    },
+    {
+      "id": "SCH-004",
+      "severity": "warning",
+      "confidence": 0.75,
+      "title": "2-eslatmani o'chirish in-memory dict'ga bog'liq — restart/multi-worker'da ishlamaydi",
+      "file": "scheduler.py",
+      "line": 440,
+      "description": "_first_reminder_msg_ids — oddiy modul-darajadagi dict (in-memory). 2-eslatma yuborilganda 1-eslatma message_id shu dict'dan olinib o'chiriladi. Agar process 1- va 2-oyna orasida (30 daq) qayta ishga tushsa, dict bo'shaydi va eski eslatma o'chmaydi (foydalanuvchi 2 ta eslatma ko'radi). Bir nechta instance/worker bo'lsa ham har biri o'z dict'iga ega — o'chirish ishonchsiz. Bundan tashqari _dedup_cache va _first_reminder_msg_ids cheksiz o'sadi (har kun yangi keylar), uzoq ishlaganda xotira sizishi.",
+      "fix": "msg_id ni DB (BotSetting yoki dedup yozuvi) ga saqlang, yoki o'chirish kerakligini aniq bog'lang. Kunlik keylar uchun eski sanalarni kesh/dict'dan tozalovchi mexanizm qo'shing (TTL yoki kun o'zgarganda clear).",
+      "snippet": "_first_reminder_msg_ids: dict[str, int] = {}\n_dedup_cache: set[str] = set()"
+    },
+    {
+      "id": "SCH-005",
+      "severity": "warning",
+      "confidence": 0.7,
+      "title": "Dedup mark xato bo'lsa qaytarib bo'lmaydi — xabar takror yuborilishi mumkin",
+      "file": "scheduler.py",
+      "line": 513,
+      "description": "Pattern: _dedup_mark(...) AVVAL chaqiriladi, keyin bot.send_message. Agar set_setting muvaffaqiyatli bo'lib send_message xato bersa, key 'bajarildi' bo'lib qoladi va eslatma hech qachon yuborilmaydi (1-oyna). Aksincha homework_prompt'da (line 722) sent_any True bo'lganda mark qilinadi — bu yaxshiroq. check_class_reminders'da esa send'gacha mark qilinadi, bu noizchillik. Yuborilmagan xabar jim yo'qoladi.",
+      "fix": "Mark qilishni faqat send muvaffaqiyatli bo'lgandan keyin bajaring (homework_prompt kabi). Yoki 'optimistik mark + send fail bo'lsa unmark' qiling.",
+      "snippet": "if await _dedup_seen(db, f\"r1:{key}\"):\n    continue\nawait _dedup_mark(db, f\"r1:{key}\")\n...\ntry:\n    sent = await bot.send_message(...)\nexcept Exception:\n    pass"
+    },
+    {
+      "id": "SCH-006",
+      "severity": "suggestion",
+      "confidence": 0.6,
+      "title": "Sozlamalar (get_setting) har guruh/o'quvchi uchun N marta DB so'roviga aylanadi",
+      "file": "scheduler.py",
+      "line": 481,
+      "description": "Har sikl iteratsiyasida db.get_setting(f'AUTO_MSG_GROUP:{name}') alohida DB so'rovi. check_class_reminders / davomat / homework_prompt har 1-10 daqiqada ishlaydi va guruhlar/o'quvchilar bo'yicha aylanib, ko'p mayda DB so'rov qiladi (homework_prompt har 1 daqiqada = ~1440/kun). Bu bloklamaydi (async) lekin DB yuklamasi ortiqcha. _dedup_seen DB keshga ega, lekin AUTO_MSG_* sozlamalari keshlanmagan.",
+      "fix": "Bir tsikl boshida barcha kerakli sozlamalarni bitta so'rovda olib keling yoki qisqa TTL'li kesh qo'shing.",
+      "snippet": "if await db.get_setting(f\"AUTO_MSG_GROUP:{group_name}\", \"1\") == \"0\":\n    continue"
+    },
+    {
+      "id": "SCH-007",
+      "severity": "suggestion",
+      "confidence": 0.55,
+      "title": "Bir nechta interval job (1 daq) bir vaqtda ishlaydi — coalesce/max_instances sozlanmagan",
+      "file": "scheduler.py",
+      "line": 1683,
+      "description": "check_homework_prompt, expire_homeworks_at_class_start, send_homework_deadline_reminders, send_student_homework_reminders — barchasi IntervalTrigger(minutes=1). AsyncIOScheduler default max_instances=1, coalesce=False. Agar bitta run (ko'p DM tufayli) 1 daqiqadan ortiq cho'zilsa, navbatdagi run 'maximum number of running instances reached' bilan tashlanadi (jim). Throttle qo'shilsa bu xavf oshadi. coalesce=True va misfire mantig'i aniq sozlanmagan.",
+      "fix": "Og'ir joblar uchun coalesce=True va kerak bo'lsa max_instances ni aniq belgilang; yoki 1-daqiqalik joblarni birlashtiring (bitta tick funksiyasi).",
+      "snippet": "trigger=IntervalTrigger(minutes=1, timezone=timezone_str)"
+    },
+    {
+      "id": "SCH-008",
+      "severity": "suggestion",
+      "confidence": 0.5,
+      "title": "Job re-schedule duplicate'siz, lekin override interval joblarni qamramaydi",
+      "file": "scheduler.py",
+      "line": 1607,
+      "description": "reschedule_job_by_id reschedule_job ishlatadi (yangi job qo'shmaydi) va setup'da replace_existing=True — duplicate job xavfi yo'q, bu to'g'ri. Biroq apply_db_schedule_overrides faqat SCHEDULED_JOBS_REGISTRY dagi cron joblarni qayta sozlaydi; interval joblar (class_reminders va h.k.) admin tomonidan sozlanmaydi (editable=False) — bu mos. Eslatma: reschedule_job da timezone CronTrigger ga uzatilmagan (CronTrigger(day_of_week=..., hour=..)), lekin scheduler default tz=timezone_str bo'lgani uchun ishlaydi. Aniqlik uchun timezone'ni uzatish tavsiya etiladi.",
+      "fix": "reschedule_job_by_id ichida CronTrigger(..., timezone=_scheduler_ref.timezone) ni aniq uzating, kelajakda scheduler tz default'i o'zgarsa moslik buzilmasligi uchun.",
+      "snippet": "trigger = CronTrigger(day_of_week=dow, hour=hour, minute=minute)"
+    },
+    {
+      "id": "SCH-009",
+      "severity": "suggestion",
+      "confidence": 0.5,
+      "title": "expire_homeworks naive cutoff — DST/tz almashinuvida noaniq, lekin Tashkent'da DST yo'q",
+      "file": "scheduler.py",
+      "line": 770,
+      "description": "cutoff = class_dt.replace(tzinfo=None) — aware (Asia/Tashkent) datetime'dan tzinfo olib tashlanib, DB'dagi naive datetime.now() bilan solishtiriladi. Asia/Tashkent (UTC+5, DST yo'q) uchun bu to'g'ri ishlaydi AGAR DB'dagi sent_at ham Tashkent local vaqtida yozilgan bo'lsa. Lekin database.py datetime.now() server local vaqtini beradi — agar server UTC'da (Render/Railway odatda UTC) ishlasa, sent_at UTC, cutoff esa Tashkent (UTC+5) bo'lib 5 soatlik nomuvofiqlik bo'ladi: hammasi noto'g'ri 'eski' yoki 'yangi' deb belgilanadi.",
+      "fix": "DB'da vaqtlarni doimo UTC (datetime.now(timezone.utc)) yozing va bu yerda cutoff ni ham UTC'ga aylantiring — yoki ikkala tomonni ham Asia/Tashkent naive qilib izchil saqlang. Server tz farqini tekshiring (database.py datetime.now()).",
+      "snippet": "cutoff = class_dt.replace(tzinfo=None)\nexpired = await db.expire_homework_if_old(group_name, cutoff)"
+    }
+  ],
+  "summary": "ODD/EVEN mantig'i (Du/Ch/Ju=ODD weekday 0,2,4; Se/Pa/Sh=EVEN 1,3,5; Yakshanba=dars yo'q) barcha funksiyalarda izchil va to'g'ri; class_schedule.py docstring ham mos. Timezone asosan datetime.now(tz) (aware) bilan to'g'ri ishlatiladi. Asosiy xavflar: (1) KRITIK — interval davri (10 daq) eslatma oynasi kengligiga (10 daq) teng, misfire_grace_time atigi 60s; bitta kechikkan/o'tkazib yuborilgan run o'sha eslatmani BUTUNLAY yo'qotadi (SCH-001). (2) Flood throttle umuman yo'q — ko'p DM yuborganda 429 'except: pass' ostida jim yo'qoladi (SCH-002). (3) Dedup pattern noizchil: ba'zi joyda send'dan oldin mark qilinadi (xato bo'lsa xabar yo'qoladi), davomat'da kuratorlar yo'q bo'lsa ham mark qilinadi (SCH-003, SCH-005). (4) 2-eslatma o'chirish in-memory dict'ga bog'liq, restart/multi-worker'da ishonchsiz, dedup_cache cheksiz o'sadi (SCH-004). Xato handling loop ichida (try/except per-guruh/o'quvchi) — bitta xato qolganlarni to'xtatmaydi, bu yaxshi. Duplicate job xavfi yo'q (replace_existing=True + reschedule_job). DB tz nomuvofiqligini tekshirish kerak (SCH-009)."
+}

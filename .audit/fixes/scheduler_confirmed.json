@@ -1,0 +1,50 @@
+{
+  "role": "scheduler",
+  "fixes": [
+    {
+      "id": "SCH-001",
+      "file": "scheduler.py",
+      "line": 492,
+      "tier": "confirm",
+      "what_was_wrong": "check_class_reminders eslatma oynalari aniq 10 daq kenglikda edi (in_first_window: now < reminder_start+10daq; in_second_window: start+30..start+40). IntervalTrigger(10 daq) bitta kechikkan/o'tkazib yuborilgan run o'sha eslatmani butunlay yo'qotardi — oyna o'tib ketardi va dedup yozilmagani uchun qayta urinilmasdi.",
+      "what_changed": "Oynalar 'quvlash' mantig'iga o'zgartirildi: 1-eslatma reminder_start <= now < class_dt, 2-eslatma reminder_start+30daq <= now < class_dt. Yuqori chegara class_dt gacha kengaytirildi. Dedup (r1/r2) takror yuborishni to'xtatgani uchun bu xavfsiz — har eslatma kuniga bir marta ketadi. Send bloki r1_done bayrog'i bilan qayta tuzildi (oldin if/else, endi har biri o'z dedup va oynasi bilan). check_davomat_notify oynasi ham 20daq..class_dt+3soat gacha kengaytirildi (notify_key dedup mavjud).",
+      "verification": "python -m py_compile scheduler.py + python -c \"import scheduler\" — ikkalasi ham OK",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "SCH-002",
+      "file": "scheduler.py",
+      "line": 437,
+      "tier": "confirm",
+      "what_was_wrong": "Ko'p-DM yuboradigan sikllarda (check_class_reminders DM, _send_homework_group_and_dm_reminders, davomat broadcast, send_weekly_streak_bonus) flood throttle yo'q edi; Telegram ~30 msg/sek 429 limiti 'except: pass' ostida jim yo'qolardi.",
+      "what_changed": "_safe_send_dm helper qo'shildi: har send dan keyin asyncio.sleep(0.05) throttle, TelegramRetryAfter (429) alohida ushlanib e.retry_after+1 soniya kutib bir marta qayta urinish, boshqa xatolar logger bilan yutiladi. asyncio va TelegramRetryAfter importlari qo'shildi. _send_homework_group_and_dm_reminders, davomat broadcast va send_weekly_streak_bonus sikllari _safe_send_dm ga o'tkazildi; check_class_reminders r1/r2 bloklariga inline throttle + 429 handling qo'shildi.",
+      "verification": "py_compile + import OK; asyncio importi tasdiqlandi (oldin yo'q edi).",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "SCH-003",
+      "file": "scheduler.py",
+      "line": 628,
+      "tier": "confirm",
+      "what_was_wrong": "check_davomat_notify _dedup_mark(notify_key) ni curator_sessions bo'sh bo'lsa ham chaqirardi; hech kim ulanmagan bo'lsa key 'bajarildi' bo'lib, kurator keyin ulansa ham eslatma olmasdi.",
+      "what_changed": "curator_sessions bo'sh bo'lsa endi continue qilinadi va MARK qilinmaydi — keyingi run qayta urinadi. Mark faqat sent_any (kamida bitta muvaffaqiyatli/urinilgan yuborish) bo'lganda chaqiriladi.",
+      "verification": "py_compile + import OK",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "SCH-005",
+      "file": "scheduler.py",
+      "line": 513,
+      "tier": "confirm",
+      "what_was_wrong": "check_class_reminders'da _dedup_mark send'dan OLDIN chaqirilardi; set_setting muvaffaqiyatli bo'lib send_message xato bersa eslatma hech qachon yuborilmasdi.",
+      "what_changed": "r1 va r2 bloklarida _dedup_mark endi faqat bot.send_message muvaffaqiyatli bo'lgandan KEYIN chaqiriladi (homework_prompt sent_any pattern'iga moslashtirildi). Xato bo'lsa key belgilanmaydi, keyingi run qayta urinadi.",
+      "verification": "py_compile + import OK",
+      "status": "applied",
+      "reason": null
+    }
+  ],
+  "summary": "tugadi. SCH-001/002/003/005 hammasi scheduler.py'da qo'llandi: eslatma oynalari class_dt gacha kengaytirildi (dedup himoyasi bilan kechikkan run'larda kafolat), _safe_send_dm orqali flood throttle + 429 retry qo'shildi, davomat dedup endi kurator yo'qida mark qilmaydi, va class reminder dedup endi muvaffaqiyatli send'dan keyin yoziladi; py_compile va import ikkalasi ham muvaffaqiyatli."
+}

@@ -1,0 +1,106 @@
+{
+  "role": "handlers",
+  "score": 7,
+  "partial": false,
+  "files_reviewed": [
+    "handlers/callbacks.py",
+    "handlers/curator.py",
+    "handlers/student.py",
+    "handlers/registration.py",
+    "handlers/attendance.py",
+    "handlers/commands.py",
+    "handlers/admin_extras.py",
+    "handlers/school.py"
+  ],
+  "findings": [
+    {
+      "id": "HND-001",
+      "severity": "warning",
+      "confidence": 0.9,
+      "title": "read_confirm: arbitrary chat_id'ga spam yuborish mumkin (auth yo'q)",
+      "file": "handlers/student.py",
+      "line": 80,
+      "description": "student_read_confirm callback data'dan admin_id'ni to'g'ridan-to'g'ri oladi (admin_id = int(cb.data.split(':')[1])) va o'sha ID'ga 'X xabaringizni o'qidi' xabari yuboradi. Hech qanday tekshiruv yo'q: foydalanuvchi haqiqatan ham o'sha admin'dan relay xabar olganmi yoki yo'qmi. Zararli foydalanuvchi cb.data'ni 'read_confirm:<istalgan_telegram_id>' qilib soxtalashtirib, istalgan Telegram foydalanuvchisiga soxta 'o'qildi' bildirishnomasini yuborishi mumkin (spam vektori). Xabar matni qat'iy/zararsiz, shuning uchun critical emas, lekin abuse imkoniyati bor.",
+      "fix": "Yuborishdan oldin tekshiring: chaqiruvchi (cb.from_user.id) haqiqatan ham o'sha admin/relay seansiga bog'liqmi (masalan, kutilayotgan read-receipt mavjudligini DB/setting orqali tasdiqlang), yoki admin_id ADMIN_IDS ichidaligini tekshiring.",
+      "snippet": "admin_id = int(cb.data.split(':')[1])\nawait bot.send_message(admin_id, f\"\\u{1F441} <b>{name}</b> xabaringizni o'qidi ...\")"
+    },
+    {
+      "id": "HND-002",
+      "severity": "warning",
+      "confidence": 0.88,
+      "title": "cur_read: arbitrary curator_tg_id'ga spam (auth yo'q)",
+      "file": "handlers/curator.py",
+      "line": 499,
+      "description": "student_read_curator_msg HND-001 bilan bir xil naqsh: curator_tg_id = int(cb.data.split(':')[1]) callback data'dan olinadi va o'sha ID'ga 'X xabarni o'qidi' yuboriladi. Chaqiruvchining ushbu kurator bilan haqiqiy aloqasi tekshirilmaydi. Soxta callback orqali istalgan ID'ga bildirishnoma yuborish mumkin.",
+      "fix": "Yuborishdan oldin db.get_active_curator_chat_by_student(cb.from_user.id) orqali aktiv chat borligini va chat.curator_telegram_id == curator_tg_id ekanligini tekshiring.",
+      "snippet": "curator_tg_id = int(cb.data.split(':')[1])\nawait bot.send_message(curator_tg_id, f\"\\u{1F441} <b>{sname}</b> xabarni o'qidi.\")"
+    },
+    {
+      "id": "HND-003",
+      "severity": "warning",
+      "confidence": 0.85,
+      "title": "AddCredentialFSM: message.text=None bo'lsa AttributeError (FSM tiqilib qoladi)",
+      "file": "handlers/admin_extras.py",
+      "line": 264,
+      "description": "admin_add_cred_name (264) message.text.strip() ni None-tekshiruvsiz chaqiradi; admin_add_cred_mars_id (271) va admin_add_cred_password (286) ham xuddi shunday. Agar admin matn o'rniga rasm/stiker/kontakt yuborsa message.text=None bo'lib AttributeError ko'tariladi. Xatolik state.clear()'dan oldin yuz beradi, shuning uchun admin AddCredentialFSM holatida tiqilib qoladi va keyingi har bir matn xabari yana shu handlerga tushadi. Loyiha boshqa joylarda 'message.text.strip() if message.text else ...' naqshini ishlatadi, bu yerda esa yo'q.",
+      "fix": "Har uchala handlerda: name = message.text.strip() if message.text else ''  ; bo'sh bo'lsa qayta so'rang (return). /start state.clear() qiladi, lekin admin buni bilmasligi mumkin.",
+      "snippet": "await state.update_data(name=message.text.strip())  # message.text None bo'lishi mumkin"
+    },
+    {
+      "id": "HND-004",
+      "severity": "warning",
+      "confidence": 0.8,
+      "title": "Davomat callback: sana (date_str) validatsiya qilinmaydi",
+      "file": "handlers/attendance.py",
+      "line": 38,
+      "description": "handle_attendance_yes/no va student.py hwflow:* handlerlari date_str = cb.data.split(':')[2] ni hech qanday format tekshiruvisiz to'g'ridan-to'g'ri db.save_attendance / set_setting kalitiga uzatadi. Prefiks filtri (attend:yes:) faqat indeks 2 mavjudligini kafolatlaydi, lekin qiymatni emas. Soxta callback bilan ixtiyoriy sana satri saqlanishi mumkin (ma'lumotlar yaxlitligi). Foydalanuvchi DM'da o'z attendance'iga yozadi, shuning uchun cross-user xavf yo'q, lekin axlat sana yozuvlari paydo bo'lishi mumkin.",
+      "fix": "date_str ni regex (\\d{4}-\\d{2}-\\d{2}) yoki datetime.strptime bilan tasdiqlang; noto'g'ri bo'lsa cb.answer xato bilan qaytaring.",
+      "snippet": "date_str = cb.data.split(':')[2]  # validatsiya yo'q"
+    },
+    {
+      "id": "HND-005",
+      "severity": "suggestion",
+      "confidence": 0.75,
+      "title": "Keng 'except Exception: pass' jim yutish — yuborilmagan xabarlar kuzatilmaydi",
+      "file": "handlers/attendance.py",
+      "line": 65,
+      "description": "Bir nechta joyda admin/kurator bildirishnomalari 'except Exception: pass' (log yo'q) bilan o'raladi: attendance.py 65, 81, 155, 171; curator.py 193, 511, 558, 859, 874; commands.py 489. Asosiy oqim uchun bu to'g'ri (bitta admin botni bloklasa boshqalari xabar olishi kerak), lekin barcha urinishlar muvaffaqiyatsiz bo'lsa hech narsa loglanmaydi va muammo ko'rinmas qoladi. attendance.py'dagi tashqi try-block esa logger.warning qiladi (yaxshi naqsh).",
+      "fix": "Hech bo'lmaganda logger.debug/warning qo'shing yoki kuratorlarga yuborish bo'limini get_active sessions try'sidagidek loglovchi naqshga keltiring.",
+      "snippet": "for admin_id in ADMIN_IDS:\n    try: await bot.send_message(admin_id, notify_text)\n    except Exception: pass  # log yo'q"
+    },
+    {
+      "id": "HND-006",
+      "severity": "suggestion",
+      "confidence": 0.7,
+      "title": "cur:resume / cur:got_answer: kurator session tekshiruvi yo'q",
+      "file": "handlers/curator.py",
+      "line": 400,
+      "description": "cur_resume (400) va cur_got_answer_ask (520) callbacklarida db.get_curator_session tekshiruvi yo'q (boshqa cur:* handlerlardan farqli). Ular faqat UI ko'rsatadi/edit qiladi va o'quvchiga/kuratorga xabar YUBORMAYDI, shuning uchun xavf past. Lekin izchillik uchun va kelajakda kengaytirilsa xavfsizlik teshigi bo'lmasligi uchun session tekshiruvi qo'shilishi kerak. cur:end_confirm to'g'ri tekshiradi.",
+      "fix": "Boshqa kurator handlerlaridagidek boshida session = await db.get_curator_session(cb.from_user.id); if not session: cb.answer(...); return qo'shing.",
+      "snippet": "@router.callback_query(F.data.startswith('cur:resume:'))\nasync def cur_resume(cb, db):  # session tekshiruvi yo'q\n    student_id = int(cb.data.split(':')[2])"
+    },
+    {
+      "id": "HND-007",
+      "severity": "suggestion",
+      "confidence": 0.6,
+      "title": "int(cb.data.split(...)) ValueError'dan himoyalanmagan",
+      "file": "handlers/curator.py",
+      "line": 296,
+      "description": "Ko'plab callback handlerlar int(cb.data.split(':')[N]) ni try'siz bajaradi (curator.py: 296,334,402,499,522,544,738,833; student.py: 80,231,270,332,354; school.py: 146-147). Normal oqimda klaviatura tugmalari to'g'ri ma'lumot beradi, shuning uchun amaliy xavf past, lekin soxta/eskirgan callback (yoki migratsiyada o'zgargan format) ValueError → handlerda ushlanmagan istisno → foydalanuvchiga 'loading' qotib qolishi (cb.answer chaqirilmaydi). aiogram global error handler bo'lmasa, javob berilmaydi.",
+      "fix": "Parsing'ni try/except ValueError, IndexError bilan o'rang yoki global error middleware qo'shib har callbackda fallback cb.answer() ni kafolatlang.",
+      "snippet": "student_id = int(cb.data.split(':')[2])  # ValueError ushlanmagan"
+    },
+    {
+      "id": "HND-008",
+      "severity": "suggestion",
+      "confidence": 0.55,
+      "title": "auto_save_group: har guruh xabarida DB yozuvi (yuk)",
+      "file": "handlers/commands.py",
+      "line": 442,
+      "description": "auto_save_group barcha guruh/superguruh xabarlarini ushlaydi va har bir xabarda db.save_bot_chat chaqiradi. Bu eng oxirgi (catch-all) message handler bo'lib boshqa private handlerlar bilan to'qnashmaydi (F.chat.type filtri tufayli), lekin faol guruhlarda har xabarda DB write qiladi — keraksiz yuk. save_bot_chat upsert bo'lsa ham har safar yoziladi.",
+      "fix": "In-memory cache (set) bilan allaqachon saqlangan chat_id'larni o'tkazib yuboring yoki save_bot_chat ichida o'zgarish bo'lsagina yozing.",
+      "snippet": "@router.message(F.chat.type.in_({'group','supergroup'}))\nasync def auto_save_group(message, db):\n    await db.save_bot_chat(message.chat.id, ...)  # har xabarda"
+    }
+  ],
+  "summary": "8 handler fayli to'liq ko'rib chiqildi. Umumiy sifat yaxshi: FSM state.clear() barcha tugash yo'llarida to'g'ri chaqirilgan (registration, curator login, davomat, broadcast, addcred, schedule, hw, change_phone), callback.answer() amalda hamma joyda mavjud, admin tekshiruvi har bir admin callbackida bor, va FSM holatlari StateFilter bilan ajratilgan (fsm:type:/fsm:audience: AddGroupFSM va BulkAddFSM o'rtasida state orqali to'g'ri farqlanadi — to'qnashuv yo'q). RELAY mantig'i mustahkam: yo'naltirish callback data'dan emas, DB lookup'dan (get_active_curator_chat_by_*) keladi, _StudentInCuratorChat filtri FSM holatida relay'ni to'xtatadi, shuning uchun xabar noto'g'ri foydalanuvchiga ketishi ehtimoli past. Asosiy muammolar: (1) read_confirm/cur_read callbacklari arbitrary chat_id'ga auth'siz xabar yuboradi — spam vektori (HND-001/002, warning); (2) AddCredentialFSM message.text None-tekshiruvsiz — non-text input AttributeError va FSM tiqilishi (HND-003); (3) davomat/hwflow date_str validatsiya qilinmaydi (HND-004). Critical xavfsizlik teshigi topilmadi. Telefon (+998\\d{9}) va Mars ID validatsiyasi to'g'ri. int() parsing'lar va keng except'lar kichik mustahkamlik takomillashtirishlari."
+}

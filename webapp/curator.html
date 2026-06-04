@@ -1606,8 +1606,8 @@ function renderStudents() {
     const strBadge = s.streak_days > 0 ? `<span style="color:#e67e22;font-size:10px">🔥${s.streak_days}</span>` : '';
     return `
     <div class="student-card ${cardClass}"
-         onclick="openSheet('${esc(s.mars_id)}')">
-      <div class="student-avatar" style="${s.registered ? '' : 'opacity:.5'}">${s.full_name.charAt(0).toUpperCase()}</div>
+         onclick="openSheet('${escJsAttr(s.mars_id)}')">
+      <div class="student-avatar" style="${s.registered ? '' : 'opacity:.5'}">${esc(s.full_name.charAt(0).toUpperCase())}</div>
       <div class="student-info">
         <div class="student-name">${esc(s.full_name)}</div>
         <div class="student-meta">📚 ${esc(s.group_name)} · ${regBadge} ${xpBadge} ${lvlBadge} ${strBadge}</div>
@@ -1721,7 +1721,12 @@ function esc(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+// Inline onclick ichidagi single-quoted JS string argumenti uchun xavfsiz escape.
+function escJsAttr(str) {
+  return esc(String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 }
 
 /* ── Tab switch ──────────────────────────────────────────── */
@@ -1869,9 +1874,9 @@ function renderAttendance() {
         const tgUrl = s.username.startsWith('@')
           ? `https://t.me/${s.username.slice(1)}`
           : `https://t.me/${s.username}`;
-        tgBtn = `<a class="att-tg-btn" href="${tgUrl}" target="_blank">📞 TG</a>`;
+        tgBtn = `<a class="att-tg-btn" href="${esc(tgUrl)}" target="_blank">📞 TG</a>`;
       } else if (s.user_id) {
-        tgBtn = `<button class="att-tg-btn" onclick="openMsgForStudent('${esc(s.mars_id || '')}')" style="background:rgba(82,136,193,.3);color:var(--accent)">💬</button>`;
+        tgBtn = `<button class="att-tg-btn" onclick="openMsgForStudent('${escJsAttr(s.mars_id || '')}')" style="background:rgba(82,136,193,.3);color:var(--accent)">💬</button>`;
       }
       const updateBtn = s.user_id
         ? `<button class="att-update-btn" onclick="updateAttendance(${s.user_id},'${today}','yes')">✏️ Keldi</button>`
@@ -1881,7 +1886,7 @@ function renderAttendance() {
 
     return `
       <div class="att-card ${s._status}">
-        <div class="att-avatar">${s.full_name.charAt(0).toUpperCase()}</div>
+        <div class="att-avatar">${esc(s.full_name.charAt(0).toUpperCase())}</div>
         <div class="att-info">
           <div class="att-name">${statusIcon} ${esc(s.full_name)}</div>
           <div class="att-meta">📚 ${esc(s.group_name)}</div>
@@ -1928,8 +1933,8 @@ function renderMsgStudents() {
   }
 
   container.innerHTML = list.slice(0, 20).map(s => `
-    <div class="msg-student-item" onclick="selectMsgStudentById('${esc(s.mars_id)}')">
-      <div class="msg-si-av">${s.full_name.charAt(0).toUpperCase()}</div>
+    <div class="msg-student-item" onclick="selectMsgStudentById('${escJsAttr(s.mars_id)}')">
+      <div class="msg-si-av">${esc(s.full_name.charAt(0).toUpperCase())}</div>
       <div class="msg-si-info">
         <div class="msg-si-name">${esc(s.full_name)}</div>
         <div class="msg-si-meta">📚 ${esc(s.group_name)}</div>

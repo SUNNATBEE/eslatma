@@ -77,7 +77,18 @@ async def student_read_confirm(
     db: DatabaseService,
     bot: Bot,
 ) -> None:
-    admin_id = int(cb.data.split(":")[1])
+    try:
+        admin_id = int(cb.data.split(":")[1])
+    except (ValueError, IndexError):
+        await cb.answer()
+        return
+
+    # Soxta callback bilan ixtiyoriy telegram_id'ga spam yuborilishini oldini olamiz:
+    # faqat haqiqiy admin ID'ga read-receipt yuboriladi.
+    if admin_id not in ADMIN_IDS:
+        await cb.answer()
+        return
+
     student = await db.get_student(cb.from_user.id)
     name = student.full_name if student else cb.from_user.full_name
     group = student.group_name if student else "—"

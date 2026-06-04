@@ -736,7 +736,7 @@ async function loadGameLeaderboard(gameType) {
       <div style="display:flex;align-items:center;gap:12px;background:#1e2a3a;border-radius:10px;padding:12px;margin-bottom:8px;">
         <div style="font-size:18px;font-weight:700;color:${i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'#666'};min-width:24px;">${i+1}</div>
         <div style="font-size:24px;">${l.avatar || '👤'}</div>
-        <div style="flex:1;"><div style="color:#fff;font-weight:600;">${l.full_name}</div><div style="color:#666;font-size:12px;">${l.group_name || ''}</div></div>
+        <div style="flex:1;"><div style="color:#fff;font-weight:600;">${escHtml(l.full_name)}</div><div style="color:#666;font-size:12px;">${escHtml(l.group_name || '')}</div></div>
         <div style="color:#ffd700;font-weight:700;">${l.score}</div>
       </div>`).join('');
   } catch(e) {}
@@ -1872,7 +1872,13 @@ function showBugQ() {
 }
 
 function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 
 function updateBhTimer() {

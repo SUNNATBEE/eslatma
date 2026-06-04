@@ -12,6 +12,7 @@ from typing import Optional
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String, UniqueConstraint, delete, select, text, update
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -102,8 +103,8 @@ class Student(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     telegram_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    mars_id: Mapped[str] = mapped_column(String(50), nullable=False)
-    group_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    mars_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    group_name: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     registered_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     last_active: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -417,6 +418,8 @@ class GameRoom(Base):
     p1_finished: Mapped[bool] = mapped_column(Boolean, default=False)
     p2_finished: Mapped[bool] = mapped_column(Boolean, default=False)
     winner_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # XP faqat bir marta berilishi uchun bayroq (idempotentlik)
+    xp_awarded: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -579,6 +582,17 @@ class DatabaseService:
         self.engine = create_async_engine(database_url, echo=False)
         self.session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(self.engine, expire_on_commit=False)
 
+    @staticmethod
+    def _log_migration_error(e: Exception) -> None:
+        """Migratsiya xatosini log qiladi.
+
+        "duplicate"/"already exists" (ustun/indeks mavjud) — kutilgan, jim o'tkaziladi.
+        Boshqa har qanday xato logger.warning bilan qayd etiladi (DM-009).
+        """
+        msg = str(e).lower()
+        if "duplicate" not in msg and "already exists" not in msg:
+            logger.warning("Migration step failed: %s", e)
+
     async def init_db(self) -> None:
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -588,22 +602,22 @@ class DatabaseService:
                     __import__("sqlalchemy").text("ALTER TABLE students ADD COLUMN phone_number VARCHAR(20)")
                 )
                 logger.info("Migration: students.phone_number ustuni qo'shildi.")
-            except Exception:
-                pass  # Ustun allaqon mavjud — xato e'tiborsiz qoldiriladi
+            except Exception as e:
+                self._log_migration_error(e)  # Ustun allaqon mavjud — kutilgan xato
             try:
                 await conn.execute(
                     __import__("sqlalchemy").text("ALTER TABLE attendance ADD COLUMN reason VARCHAR(500)")
                 )
                 logger.info("Migration: attendance.reason ustuni qo'shildi.")
-            except Exception:
-                pass
+            except Exception as e:
+                self._log_migration_error(e)
             try:
                 await conn.execute(
                     __import__("sqlalchemy").text("ALTER TABLE curator_sessions ADD COLUMN last_active DATETIME")
                 )
                 logger.info("Migration: curator_sessions.last_active ustuni qo'shildi.")
-            except Exception:
-                pass
+            except Exception as e:
+                self._log_migration_error(e)
             # Gamification colonlari
             for _col, _def in [
                 ("xp", "INTEGER NOT NULL DEFAULT 0"),
@@ -617,8 +631,8 @@ class DatabaseService:
                 try:
                     await conn.execute(__import__("sqlalchemy").text(f"ALTER TABLE students ADD COLUMN {_col} {_def}"))
                     logger.info(f"Migration: students.{_col} ustuni qo'shildi.")
-                except Exception:
-                    pass
+                except Exception as e:
+                    self._log_migration_error(e)
             # referral_students jadvaliga yangi ustunlar
             for _col, _def in [
                 ("reject_reason", "VARCHAR(500)"),
@@ -634,24 +648,47 @@ class DatabaseService:
                         __import__("sqlalchemy").text(f"ALTER TABLE referral_students ADD COLUMN {_col} {_def}")
                     )
                     logger.info(f"Migration: referral_students.{_col} ustuni qo'shildi.")
-                except Exception:
-                    pass
+                except Exception as e:
+                    self._log_migration_error(e)
             # game_play_counts.last_played_at — 3 soatlik cooldown uchun
             try:
                 await conn.execute(
                     __import__("sqlalchemy").text("ALTER TABLE game_play_counts ADD COLUMN last_played_at DATETIME")
                 )
                 logger.info("Migration: game_play_counts.last_played_at ustuni qo'shildi.")
-            except Exception:
-                pass
+            except Exception as e:
+                self._log_migration_error(e)
+            # game_rooms.xp_awarded — multiplayer XP'ni bir marta berish uchun
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "ALTER TABLE game_rooms ADD COLUMN xp_awarded BOOLEAN NOT NULL DEFAULT 0"
+                    )
+                )
+                logger.info("Migration: game_rooms.xp_awarded ustuni qo'shildi.")
+            except Exception as e:
+                self._log_migration_error(e)
             # Eski kunlik yozuvlarni tozalash (cooldown tizimiga o'tish)
             try:
                 await conn.execute(
                     __import__("sqlalchemy").text("DELETE FROM game_play_counts WHERE date_str != 'cooldown'")
                 )
                 logger.info("Migration: eski game_play_counts yozuvlari tozalandi.")
-            except Exception:
-                pass
+            except Exception as e:
+                self._log_migration_error(e)
+            # DM-004: create_all mavjud jadvalga indeks qo'shmaydi — qo'lda qo'shamiz
+            try:
+                await conn.execute(
+                    text("CREATE INDEX IF NOT EXISTS ix_students_group_name ON students (group_name)")
+                )
+                logger.info("Migration: ix_students_group_name indeksi qo'shildi.")
+            except Exception as e:
+                self._log_migration_error(e)
+            try:
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_students_mars_id ON students (mars_id)"))
+                logger.info("Migration: ix_students_mars_id indeksi qo'shildi.")
+            except Exception as e:
+                self._log_migration_error(e)
         logger.info("Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi.")
 
     async def check_db_live(self) -> bool:
@@ -1362,6 +1399,26 @@ class DatabaseService:
                 session.add(BotSetting(key=key, value=value))
             await session.commit()
 
+    async def cleanup_scheduler_dedup(self, keep_days: int = 3) -> int:
+        """Eski avto-xabar dedup yozuvlarini ('sched_dedup:...:YYYY-MM-DD') tozalaydi.
+        Kalit oxiridagi sana keep_days kundan eski bo'lsa o'chiriladi. O'chirilgan sonni qaytaradi.
+        """
+        from datetime import date, timedelta
+
+        cutoff = (date.today() - timedelta(days=keep_days)).isoformat()
+        async with self.session_factory() as session:
+            result = await session.execute(select(BotSetting).where(BotSetting.key.like("sched_dedup:%")))
+            rows = list(result.scalars().all())
+            removed = 0
+            for s in rows:
+                tail = s.key[-10:]  # ...YYYY-MM-DD
+                if len(tail) == 10 and tail[4] == "-" and tail < cutoff:
+                    await session.delete(s)
+                    removed += 1
+            if removed:
+                await session.commit()
+            return removed
+
     # ── STUDENT CREDENTIALS (bot orqali qo'shilganlar) ────────────────────────
 
     async def add_student_credential(
@@ -1534,7 +1591,11 @@ class DatabaseService:
         Lv.6+ uchun 2x multiplikator; level oshsa bonus XP ham qo'shiladi.
         """
         async with self.session_factory() as session:
-            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            # with_for_update — bir vaqtda kelgan so'rovlarda "lost update" oldini oladi
+            # (SQLite uchun no-op, Postgres uchun qator qulflanadi)
+            result = await session.execute(
+                select(Student).where(Student.user_id == user_id).with_for_update()
+            )
             s = result.scalar_one_or_none()
             if not s:
                 return 0, 1, False, 1
@@ -1550,17 +1611,28 @@ class DatabaseService:
             await session.commit()
             return s.xp, s.level, leveled_up, old_level
 
-    async def daily_checkin(self, user_id: int) -> dict:
+    async def daily_checkin(self, user_id: int, today_str: str | None = None) -> dict:
         """
         Kunlik kirish tekshiruvi: ketma-ketlikni yangilaydi, XP beradi.
         Returns: {already_done, xp_gained, streak_bonus, streak_days}
-        """
-        from datetime import date, timedelta
 
-        today_str = date.today().isoformat()
-        yesterday_str = (date.today() - timedelta(days=1)).isoformat()
+        today_str — chaqiruvchi vaqt mintaqasiga mos sanani beradi (YYYY-MM-DD).
+        Berilmasa server lokal sanasidan foydalaniladi (orqaga moslik uchun).
+        """
+        from datetime import date, datetime, timedelta
+
+        if today_str:
+            today_d = datetime.strptime(today_str, "%Y-%m-%d").date()
+        else:
+            today_d = date.today()
+            today_str = today_d.isoformat()
+        yesterday_str = (today_d - timedelta(days=1)).isoformat()
         async with self.session_factory() as session:
-            result = await session.execute(select(Student).where(Student.user_id == user_id))
+            # with_for_update — double-tap'da streak/XP ikki marta berilishining (lost update)
+            # oldini oladi (SQLite uchun no-op, Postgres uchun qatorni qulflaydi)
+            result = await session.execute(
+                select(Student).where(Student.user_id == user_id).with_for_update()
+            )
             s = result.scalar_one_or_none()
             if not s:
                 return {"already_done": True, "xp_gained": 0, "streak_days": 0, "streak_bonus": 0}
@@ -1893,7 +1965,11 @@ class DatabaseService:
     async def join_game_room(self, room_id: int, player2_id: int, player2_name: str) -> Optional["GameRoom"]:
         """2-o'yinchi xonaga qo'shiladi."""
         async with self.session_factory() as session:
-            result = await session.execute(select(GameRoom).where(GameRoom.id == room_id))
+            # with_for_update — ikki o'yinchi bir vaqtda qo'shilsa player2 ustiga
+            # yozilishining oldini oladi; shartlar qulf ostida QAYTA tekshiriladi
+            result = await session.execute(
+                select(GameRoom).where(GameRoom.id == room_id).with_for_update()
+            )
             room = result.scalar_one_or_none()
             if room and room.status == "waiting" and room.player1_id != player2_id:
                 room.player2_id = player2_id
@@ -1909,7 +1985,11 @@ class DatabaseService:
     ) -> Optional["GameRoom"]:
         """O'yinchi typing progress'ini yangilaydi."""
         async with self.session_factory() as session:
-            result = await session.execute(select(GameRoom).where(GameRoom.id == room_id))
+            # with_for_update — g'olibni belgilashda race'ning oldini oladi
+            # (claim_room_xp namunasidek qatorni qulflaymiz)
+            result = await session.execute(
+                select(GameRoom).where(GameRoom.id == room_id).with_for_update()
+            )
             room = result.scalar_one_or_none()
             if not room or room.status == "finished":
                 return room
@@ -1928,6 +2008,21 @@ class DatabaseService:
             await session.commit()
             await session.refresh(room)
             return room
+
+    async def claim_room_xp(self, room_id: int) -> bool:
+        """Multiplayer XP'ni atomik tarzda bir martagina "band qiladi".
+        Faqat birinchi chaqiruvda True qaytaradi — shu orqali XP takror berilmaydi.
+        """
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GameRoom).where(GameRoom.id == room_id).with_for_update()
+            )
+            room = result.scalar_one_or_none()
+            if not room or room.xp_awarded:
+                return False
+            room.xp_awarded = True
+            await session.commit()
+            return True
 
     # ── DUPLICATE CLEANUP ─────────────────────────────────────────────────────
 
@@ -2022,6 +2117,8 @@ class DatabaseService:
             if rec:
                 rec.play_count += 1
                 rec.last_played_at = now
+                await session.commit()
+                count = rec.play_count
             else:
                 rec = GamePlayCount(
                     user_id=user_id,
@@ -2031,8 +2128,25 @@ class DatabaseService:
                     last_played_at=now,
                 )
                 session.add(rec)
-            await session.commit()
-            count = rec.play_count
+                try:
+                    await session.commit()
+                    count = rec.play_count
+                except IntegrityError:
+                    # DM-006: bir vaqtda boshqa so'rov shu qatorni yaratdi
+                    # (UniqueConstraint user_id+game_type+'cooldown'). Qayta o'qib yangilaymiz.
+                    await session.rollback()
+                    result = await session.execute(
+                        select(GamePlayCount).where(
+                            GamePlayCount.user_id == user_id,
+                            GamePlayCount.game_type == game_type,
+                            GamePlayCount.date_str == "cooldown",
+                        )
+                    )
+                    rec = result.scalar_one()
+                    rec.play_count += 1
+                    rec.last_played_at = now
+                    await session.commit()
+                    count = rec.play_count
         secs = self._cooldown_seconds_left(now)
         return {
             "count": count,
@@ -2166,13 +2280,30 @@ class DatabaseService:
         daily check-in va o'yinlar orqali o'z XP sini to'playdi.
         """
         async with self.session_factory() as session:
-            result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id))
+            # Idempotentlik tekshiruvi qulf ostida — double-award oldini oladi
+            result = await session.execute(
+                select(ReferralStudent).where(ReferralStudent.id == rs_id).with_for_update()
+            )
             rs = result.scalar_one_or_none()
             if not rs or rs.xp_awarded:
                 return False
+            # Referrer XP'sini xuddi shu tranzaksiyada qo'shamiz (add_xp mantig'i takrori).
+            # Crash bo'lsa rs.xp_awarded ham, XP ham birga roll-back bo'ladi — XP yo'qolmaydi.
+            stu_result = await session.execute(
+                select(Student).where(Student.user_id == referrer_id).with_for_update()
+            )
+            s = stu_result.scalar_one_or_none()
+            if s:
+                old_level = s.level or 1
+                actual_amount = _apply_xp_multiplier(old_level, 500)
+                s.xp = (s.xp or 0) + actual_amount
+                s.level = _calc_level(s.xp)
+                leveled_up = s.level > old_level
+                if leveled_up and s.level in LEVEL_UP_BONUS:
+                    s.xp += LEVEL_UP_BONUS[s.level]
+                    s.level = _calc_level(s.xp)
             rs.xp_awarded = True
             await session.commit()
-        await self.add_xp(referrer_id, 500)
         return True
 
     # ── ADMIN PROFILE ────────────────────────────────────────────────────────────
@@ -2338,14 +2469,18 @@ class DatabaseService:
     async def get_monthly_leaderboard(self, year_month: str, limit: int = 50) -> list[dict]:
         """Oy bo'yicha o'quvchilar reytingi — o'sha oyda topilgan XP (game_scores dan)."""
         import calendar
+        from datetime import datetime
 
         from sqlalchemy import func as sqlfunc
 
-        # Oyning birinchi va oxirgi kunini hisoblash
+        # Oyning birinchi va oxirgi kunini hisoblash.
+        # created_at server_default=func.now() — naive datetime (SQLite UTC, Postgres now()).
+        # String literal solishtiruvi UTC/lokal chegara xatosiga olib keladi; o'rniga
+        # haqiqiy naive datetime obyektlaridan foydalanamiz — driver to'g'ri serializatsiya qiladi.
         year, month = int(year_month.split("-")[0]), int(year_month.split("-")[1])
         _, last_day = calendar.monthrange(year, month)
-        date_from = f"{year_month}-01"
-        date_to = f"{year_month}-{last_day:02d} 23:59:59"
+        date_from = datetime(year, month, 1)
+        date_to = datetime(year, month, last_day, 23, 59, 59, 999999)
         async with self.session_factory() as session:
             # game_scores dan o'sha oy uchun XP summasi
             result = await session.execute(

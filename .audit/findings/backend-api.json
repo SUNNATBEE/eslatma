@@ -1,0 +1,136 @@
+{
+  "role": "backend-api",
+  "score": 6,
+  "partial": false,
+  "files_reviewed": [
+    "routes/student_routes.py",
+    "routes/game_routes.py",
+    "routes/curator_routes.py",
+    "routes/api_json.py",
+    "routes/admin_routes.py (business endpoints only)"
+  ],
+  "findings": [
+    {
+      "id": "API-001",
+      "severity": "critical",
+      "confidence": 0.9,
+      "title": "Multiplayer g'olib mijoz tomonidan boshqariladi — XP cheating",
+      "file": "routes/game_routes.py",
+      "line": 206,
+      "description": "api_game_room_progress da `finished` va `progress` to'liq mijozdan olinadi. db.update_game_progress (database.py:1966) birinchi `finished=true` yuborgan o'yinchini g'olib deb belgilaydi. Hech qanday server tomonlama tekshiruv yo'q (typing vaqti, progress tezligi, matn uzunligiga mosligi). Aldoqchi mijoz o'yin boshlanishi bilanoq `{progress:100, finished:true}` POST qilib har doim 20 XP yutib oladi. Solo o'yinda (api_game_score) XP server cheklovi (GAME_MAX_XP) va cooldown qo'yilgan, lekin multiplayer'da bunday himoya yo'q.",
+      "fix": "Server tomonda boshlanish vaqtini (room.created_at yoki join vaqti) saqlab, minimal o'yin davomiyligi/maksimal yozish tezligini tekshiring. progress qiymatini room.text_passage uzunligiga nisbatan validatsiya qiling; juda tez 'finished' bo'lsa rad eting yoki XP bermang.",
+      "snippet": "finished = bool(body.get(\"finished\", False))\nroom = await db.update_game_progress(room_id, user_id, progress, finished)"
+    },
+    {
+      "id": "API-002",
+      "severity": "warning",
+      "confidence": 0.85,
+      "title": "join_game_room race condition — ikki o'yinchi bir xonaga qo'shiladi",
+      "file": "database.py",
+      "line": 1936,
+      "description": "join_game_room oddiy SELECT bilan o'qiydi (with_for_update yo'q), status=='waiting' ni tekshiradi va player2 ni yozadi. Ikki o'yinchi bir vaqtda /join chaqirsa, ikkalasi ham status tekshiruvidan o'tib, ikkinchisi birinchisini ustiga yozadi (player2 almashinadi). Solishtiring: claim_room_xp (database.py:1981) to'g'ri with_for_update ishlatadi. Endpoint (game_routes.py:173) DB qaytaruviga ishonadi, lekin DB darajasida atomik emas.",
+      "fix": "join_game_room da `select(...).with_for_update()` qo'shing yoki status va player2_id ni shartli UPDATE ... WHERE status='waiting' AND player2_id IS NULL bilan atomik yangilang va affected rows ni tekshiring.",
+      "snippet": "result = await session.execute(select(GameRoom).where(GameRoom.id == room_id))\nroom = result.scalar_one_or_none()\nif room and room.status == \"waiting\" and room.player1_id != player2_id:"
+    },
+    {
+      "id": "API-003",
+      "severity": "warning",
+      "confidence": 0.95,
+      "title": "int() konvertatsiyada try/except yo'q — ValueError 500 ga aylanadi",
+      "file": "routes/curator_routes.py",
+      "line": 294,
+      "description": "Bir nechta endpoint mijozdan kelgan ID ni faqat truthy ekanini tekshirib, keyin int() qiladi. Raqam bo'lmagan qiymat ValueError → ushlanmagan 500 (json_err o'rniga). Joylar: curator_routes.py:294 `int(student_id)` (api_curator_update_attendance); admin_routes.py:903 `int(target_user_id)` (student_move), :919 (student_delete), :935 (student_restore), :885 (message_student). Hammasida `if not target_user_id` faqat bo'shlikni tekshiradi, '12a' kabi qiymat 500 beradi.",
+      "fix": "Har birida try: tid = int(target_user_id) except (ValueError, TypeError): return json_err('Noto\\'g\\'ri user_id', code='validation_error', status=400). game_routes/student_routes da bu pattern to'g'ri qo'llangan — admin/curator move/delete uchun ham qo'llang.",
+      "snippet": "if not student_id or not date_str or new_status not in (\"yes\", \"no\"):\n    return json_err(...)\nstudent = await db.get_student(int(student_id))"
+    },
+    {
+      "id": "API-004",
+      "severity": "warning",
+      "confidence": 0.8,
+      "title": "api_game_score: cooldown TOCTOU va record-play bilan nomuvofiqlik",
+      "file": "routes/game_routes.py",
+      "line": 62,
+      "description": "api_game_score get_play_window().blocked ni tekshirib, bloklanmagan bo'lsa XP beradi va keyin increment_play_in_window chaqiradi. Lekin alohida api_game_record_play endpoint ham increment qiladi. Mijoz record-play ni chaqirmasdan to'g'ridan-to'g'ri score yuborsa, har 3 soatda bir marta to'liq XP oladi (bu kutilgan), lekin check va increment orasida atomiklik yo'q: bir nechta parallel score so'rovi cooldown yozuvi yaratilishidan oldin o'tib, bir necha marta XP berishi mumkin (race). Shuningdek best_score fallback (line 86) prog None bo'lsa ham score ni qaytaradi — kichik nomuvofiqlik.",
+      "fix": "XP berish va increment_play_in_window ni bitta atomik DB tranzaksiyaga/with_for_update ga birlashtiring; increment natijasiga (blocked) qarab XP bering, oldindan get_play_window emas.",
+      "snippet": "window = await db.get_play_window(user_id, game_type)\nif window.get(\"blocked\"):\n    xp_earned = 0\nawait db.save_game_score(user_id, game_type, score, xp_earned)\nif xp_earned > 0:\n    await db.increment_play_in_window(user_id, game_type)"
+    },
+    {
+      "id": "API-005",
+      "severity": "warning",
+      "confidence": 0.9,
+      "title": "Solo o'yin va leaderboard endpointlari json_ok o'rniga xom web.json_response — javob shakli nomuvofiq + status kodlari",
+      "file": "routes/game_routes.py",
+      "line": 77,
+      "description": "Loyiha standarti: muvaffaqiyat {ok:true,...}. api_game_score (line 77), rooms_get (99), room_get (144), leaderboard (238), plays_today (248) xom web.json_response qaytaradi. Ba'zilari `ok:true` ni qo'lda qo'shadi (score, rooms_post), ba'zilari umuman qo'shmaydi (leaderboard {leaders}, room_get). Mijoz uchun nomuvofiq kontrakt; json_ok helper ishlatilmagan. Bu correctness emas, lekin api-design izchilligi buzilgan.",
+      "fix": "json_ok(...) helper'ini barcha muvaffaqiyat javoblarida ishlating yoki kamida har bir GET/POST javobida bir xil envelope (ok maydoni) bering.",
+      "snippet": "return web.json_response({\"leaders\": rows})"
+    },
+    {
+      "id": "API-006",
+      "severity": "warning",
+      "confidence": 0.85,
+      "title": "Broadcast/yoqlama: pagination/limit yo'q, ketma-ket send — slow loris / timeout",
+      "file": "routes/admin_routes.py",
+      "line": 423,
+      "description": "api_admin_broadcast barcha o'quvchilarga (get_all_students, limitsiz) ketma-ket `await bot.send_message` qiladi. Minglab o'quvchida HTTP so'rov o'nlab soniya/daqiqa osiladi, aiohttp timeout va Telegram flood-limit muammosi. api_curator_send_yoqlama marks ro'yxati uzunligiga limit qo'ymaydi. api_curator_statistics esa 30+7 marta get_attendance_by_date ni loopda chaqiradi (N ta DB so'rov) — sekin.",
+      "fix": "Broadcast'ni fon vazifasiga (asyncio.create_task / queue) o'tkazing va darhol {ok:true, queued:N} qaytaring; Telegram rate-limit uchun chunk + asyncio.sleep qo'shing. Statistikada attendance'ni bitta diapazon so'rovi bilan oling.",
+      "snippet": "students = await db.get_all_students()\nfor s in students:\n    try:\n        await bot.send_message(s.user_id, text)"
+    },
+    {
+      "id": "API-007",
+      "severity": "warning",
+      "confidence": 0.85,
+      "title": "_notify_level_up asyncio.create_task — ushlanmagan task istisnolari yo'qoladi",
+      "file": "routes/game_routes.py",
+      "line": 75,
+      "description": "api_game_score (line 75), api_student_checkin (354), api_attendance (179), api_student_hw_confirm (458) asyncio.create_task(_notify_level_up(...)) chaqiradi, ammo task'ga referens saqlanmaydi va exception handler yo'q. Task ichida xato bo'lsa 'Task exception was never retrieved' og'ohlantirishi va jim yo'qotish bo'ladi. Shuningdek GC task'ni erta to'xtatib qo'yishi mumkin (referens saqlanmasa).",
+      "fix": "_notify_level_up ni ichki try/except bilan o'rang yoki task'ni to'plamga saqlab add_done_callback bilan istisnoni log qiling (boshqa _send_notification kabi).",
+      "snippet": "asyncio.create_task(_notify_level_up(user_id, prog[\"level\"]))"
+    },
+    {
+      "id": "API-008",
+      "severity": "suggestion",
+      "confidence": 0.7,
+      "title": "api_game_rooms_post: game_type validatsiya qilinmaydi va GAME_MAX_XP bilan bog'lanmagan",
+      "file": "routes/game_routes.py",
+      "line": 126,
+      "description": "rooms_post `game_type = body.get('game_type', 'typing_race')` ni hech qanday tekshiruvsiz DB ga yuboradi (uzunlik/whitelist yo'q). Solo score'da game_type [:30] kesiladi va GAME_MAX_XP fallback bor, lekin xona yaratishda ixtiyoriy uzun/noma'lum tur saqlanishi mumkin. get_open_game_rooms uchun type query'da ham filtr yo'q.",
+      "fix": "game_type ni ruxsat etilgan turlar ro'yxati (whitelist) bilan tekshiring va uzunlikni cheklang; noto'g'ri bo'lsa 400 qaytaring.",
+      "snippet": "game_type = body.get(\"game_type\", \"typing_race\")\nroom = await db.create_game_room(user_id, student.full_name, game_type)"
+    },
+    {
+      "id": "API-009",
+      "severity": "suggestion",
+      "confidence": 0.8,
+      "title": "api_student_pending_status: telegram_user_id uchun auth yo'q — boshqa kishi arizasini ko'rish",
+      "file": "routes/student_routes.py",
+      "line": 854,
+      "description": "api_student_pending_status auth talab qilmaydi va query'dan telegram_user_id oladi, get_pending_registration_by_user qaytaradi (full_name, phone'siz lekin status/mars_id/reject_reason bilan). Har kim ixtiyoriy tg_id kiritib boshqa odamning ariza holati va mars_id sini ko'rishi mumkin (IDOR). Reg endpointi rate-limited, bu emas.",
+      "fix": "Bu endpointni kamida rate-limit qiling; iloji bo'lsa X-Init-Data orqali so'rovchi tg_id ni tasdiqlab, faqat o'z arizasini ko'rsating.",
+      "snippet": "tg_id_str = request.rel_url.query.get(\"telegram_user_id\", \"\")\n...\nrs = await db.get_pending_registration_by_user(tg_id)"
+    },
+    {
+      "id": "API-010",
+      "severity": "suggestion",
+      "confidence": 0.75,
+      "title": "api_referral_register: telegram_user_id int() try'siz, validatsiyadan oldin",
+      "file": "routes/student_routes.py",
+      "line": 758,
+      "description": "ref_code uchun int() to'g'ri try/except bilan o'ralgan (line 751), lekin create_referral_student chaqiruvida `int(telegram_user_id) if telegram_user_id else None` (line 758) try'siz. Mijoz telegram_user_id='abc' yuborsa ValueError → 500. api_student_pending_register da bu pattern to'g'ri (line 803-806 try/except bilan), demak nomuvofiqlik.",
+      "fix": "telegram_user_id ni ham try/except int() bilan tekshiring (pending_register dagi kabi) yoki 400 qaytaring.",
+      "snippet": "\"telegram_user_id\": int(telegram_user_id) if telegram_user_id else None,"
+    },
+    {
+      "id": "API-011",
+      "severity": "suggestion",
+      "confidence": 0.6,
+      "title": "api_admin_student_move/delete/restore: db ok=False bo'lsa ham 200 qaytaradi",
+      "file": "routes/admin_routes.py",
+      "line": 906,
+      "description": "update_student_group/soft_delete_student/restore_deleted_student False qaytarsa (o'quvchi topilmadi), endpoint json_ok(ok=False) ni 200 status bilan qaytaradi. Resurs topilmaganda 404 kerak edi; mijoz HTTP statusiga qarab xato ishlov bera olmaydi.",
+      "fix": "ok=False bo'lsa json_err('O\\'quvchi topilmadi', code='not_found', status=404) qaytaring.",
+      "snippet": "ok = await db.update_student_group(int(target_user_id), group_name)\nif ok:\n    await _audit(...)\nreturn json_ok(ok=ok)"
+    }
+  ],
+  "summary": "11 ta topildi. Eng jiddiy (critical) — multiplayer o'yin g'olibi va progress to'liq mijozdan olinadi, server validatsiyasiz, shuning uchun XP'ni cheating bilan yutib olish mumkin (API-001); solo o'yinda esa GAME_MAX_XP va cooldown himoyasi bor. Warning darajasida: join_game_room race (atomik emas, claim_room_xp esa to'g'ri qilingan), bir nechta admin/curator endpointida int() try/except yo'q (ValueError → 500), broadcast/statistika limitsiz ketma-ket so'rovlar (timeout), create_task istisnolari ushlanmagan, va game endpointlarida json_ok envelope nomuvofiqligi. Suggestion: pending-status IDOR/rate-limit yo'qligi, referral int() nomuvofiqligi, db False'da 200 qaytarish. JSON parse (request.json()) hamma joyda to'g'ri try/except bilan ushlangan va auth tekshiruvlari izchil — bu kuchli tomon."
+}

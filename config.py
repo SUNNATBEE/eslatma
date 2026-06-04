@@ -41,11 +41,18 @@ MINI_ADMIN_IDS: list[int] = list(set(ADMIN_IDS + _parse_admin_ids(_mini_raw)))
 
 # Mini Admin parol logini — "username:password,username2:password2" formatida
 # Faqat admin-mini.html uchun (Telegram bo'lmasa ham kirish mumkin)
+#
+# XAVFSIZLIK: parolni plaintext o'rniga hash qilib qo'yish tavsiya etiladi.
+# Hash generatsiya: `python -c "from utils import hash_secret; print(hash_secret('parol'))"`
+# Hash formati `pbkdf2_sha256$iter$salt$derived` — `$` ajratuvchi ishlatadi, `:` emas,
+# shuning uchun split(":", 1) hash qiymatini buzmaydi (faqat birinchi `:` username/parolni
+# ajratadi). verify_secret() (utils.py) ham hash, ham legacy plaintext'ni qabul qiladi.
 def _parse_logins(raw: str) -> dict[str, str]:
     result = {}
     for pair in raw.split(","):
         pair = pair.strip()
         if ":" in pair:
+            # Faqat birinchi ':' bo'yicha ajratamiz — parol/hash ichidagi belgilar buzilmaydi.
             u, p = pair.split(":", 1)
             if u.strip():
                 result[u.strip()] = p.strip()
@@ -94,8 +101,10 @@ def _parse_comma_list(raw: str) -> list[str]:
     return [x.strip() for x in (raw or "").split(",") if x.strip()]
 
 
-# CORS: vergul bilan bir nechta origin yoki bo'sh (wildcard "*", lokal dev uchun).
-# WEBAPP_URL bo'lsa, uning origin'i ro'yxatga qo'shiladi.
+# CORS: vergul bilan bir nechta origin ko'rsatiladi (allowlist).
+# WEBAPP_URL bo'lsa, uning origin'i avtomatik ro'yxatga qo'shiladi (prod buzilmasligi uchun).
+# Xavfsizlik: allowlist bo'sh bo'lsa avtomatik wildcard YO'Q (fail-closed).
+# Wildcard ("*") faqat CORS_ALLOW_WILDCARD=1 aniq o'rnatilganda yoqiladi (lokal dev uchun).
 _cors_env = _parse_comma_list(os.getenv("CORS_ALLOW_ORIGINS", ""))
 _cors_list = list(_cors_env)
 _o = _http_origin(WEBAPP_URL)
@@ -109,7 +118,7 @@ if (
 ):
     _cors_list.append("https://web.telegram.org")
 
-CORS_USE_WILDCARD: bool = len(_cors_list) == 0
+CORS_USE_WILDCARD: bool = os.getenv("CORS_ALLOW_WILDCARD", "").lower() in ("1", "true", "yes")
 CORS_ORIGINS: frozenset[str] = frozenset(_cors_list)
 
 # Versiya / deploy (monitoring uchun)

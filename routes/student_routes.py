@@ -4,6 +4,7 @@ Endpointlar: /api/me, /api/student/*, /api/referral/*, /api/chat, /api/class-sch
 """
 
 import asyncio
+import html
 import json
 import logging
 import re
@@ -12,10 +13,14 @@ from datetime import datetime, timedelta
 from aiohttp import web
 
 from config import ADMIN_IDS, CHANNEL_LINK
+from rate_limit import SlidingWindowLimiter, client_ip
 from routes.api_json import json_err
 from utils import is_hashed_secret, verify_secret
 
 logger = logging.getLogger(__name__)
+
+# Ro'yxatga olish maydonlari uchun maksimal uzunlik (DoS / spam oldini olish)
+_MAX_FIELD_LEN = 200
 
 
 def _normalize_mars_id(raw: str) -> str:
@@ -43,6 +48,13 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
     _notify_level_up = ctx["notify_level_up"]
     _get_user_id = ctx["get_user_id"]
     _verify_init_data = ctx["verify_init_data"]
+    _trust_xff = ctx.get("trust_x_forwarded_for", False)
+    # Ochiq (auth'siz) ro'yxatga olish endpointlari uchun IP bo'yicha tezlik cheklovi:
+    # bir IP daqiqasiga 5 ta ro'yxatga olish urinishi
+    _reg_limiter = SlidingWindowLimiter(5, 60.0)
+
+    def _reg_rate_ok(request: web.Request) -> bool:
+        return _reg_limiter.allow(client_ip(request, trust_x_forwarded_for=bool(_trust_xff)))
 
     # ── Basic student routes ──────────────────────────────────────────────────
 
@@ -148,27 +160,41 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         if status_val not in ("yes", "no"):
             return json_err("Invalid status", code="invalid_status", status=400)
         reason = body.get("reason") or None
+        if reason:
+            reason = str(reason)[:500]
         today = datetime.now(tz).strftime("%Y-%m-%d")
+        # Bugun allaqachon belgilanganmi? — XP va bildirishnomalarni faqat
+        # holat o'zgarganda beramiz (takroriy POST orqali XP yig'ish va admin spam oldini olamiz)
+        prev = await db.get_student_attendance(user_id, today)
+        prev_status = prev.status if prev else None
         await db.save_attendance(user_id, today, status_val, reason=reason)
         await db.update_last_active(user_id)
-        if status_val == "yes":
+        status_changed = prev_status != status_val
+        # XP faqat bugun birinchi marta "Boraman" deganda beriladi
+        if status_val == "yes" and prev_status != "yes":
             _, _, lvup, _ = await db.add_xp(user_id, 10)
             if lvup:
                 student2 = await db.get_student(user_id)
                 if student2:
                     asyncio.create_task(_notify_level_up(user_id, student2.level))
+        if not status_changed:
+            # Holat o'zgarmagan — qayta bildirishnoma yubormaymiz
+            return web.json_response({"ok": True, "unchanged": True})
         time_str = datetime.now(tz).strftime("%H:%M")
+        safe_name = html.escape(student.full_name or "")
+        safe_group = html.escape(student.group_name or "")
         if status_val == "yes":
             notify_text = (
-                f"✅ <b>{student.full_name}</b> — Boraman (Mini App)\n"
-                f"📚 Guruh: <b>{student.group_name}</b>\n"
+                f"✅ <b>{safe_name}</b> — Boraman (Mini App)\n"
+                f"📚 Guruh: <b>{safe_group}</b>\n"
                 f"📅 Kun: {today} | 🕐 {time_str}"
             )
         else:
+            safe_reason = html.escape(reason) if reason else ""
             notify_text = (
-                f"❌ <b>{student.full_name}</b> — Kela olmayman (Mini App)\n"
-                f"📚 Guruh: <b>{student.group_name}</b>\n"
-                f"📅 Kun: {today} | 🕐 {time_str}\n" + (f"💬 Sabab: <i>{reason}</i>" if reason else "")
+                f"❌ <b>{safe_name}</b> — Kela olmayman (Mini App)\n"
+                f"📚 Guruh: <b>{safe_group}</b>\n"
+                f"📅 Kun: {today} | 🕐 {time_str}\n" + (f"💬 Sabab: <i>{safe_reason}</i>" if safe_reason else "")
             )
         for admin_id in ADMIN_IDS:
             await _send_notification(bot, admin_id, notify_text, context="attendance:admin")
@@ -322,7 +348,8 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         student = await db.get_student(user_id)
         if not student:
             return json_err("Not registered", code="not_registered", status=404)
-        result = await db.daily_checkin(user_id)
+        today_str = datetime.now(tz).strftime("%Y-%m-%d")
+        result = await db.daily_checkin(user_id, today_str=today_str)
         if result.get("leveled_up"):
             asyncio.create_task(_notify_level_up(user_id, result["new_level"]))
         return web.json_response(result)
@@ -419,6 +446,11 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         date_str = body.get("date_str")
         if not date_str:
             return json_err("Missing date_str", code="validation_error", status=400)
+        # date_str haqiqiy, hozir amal qilayotgan uy vazifasiga mos kelishi shart.
+        # Aks holda mijoz ixtiyoriy sanalar yuborib (masalan "2099-01-01") cheksiz XP yig'a oladi.
+        hw = await db.get_homework(student.group_name)
+        if not hw or hw.sent_at.strftime("%d.%m.%Y") != str(date_str):
+            return json_err("Tasdiqlash uchun faol uy vazifasi topilmadi", code="no_active_homework", status=400)
         is_new = await db.confirm_homework(user_id, date_str)
         if is_new:
             new_xp, new_level, lvup, _ = await db.add_xp(user_id, 15)
@@ -701,16 +733,18 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         )
 
     async def api_referral_register(request: web.Request) -> web.Response:
+        if not _reg_rate_ok(request):
+            return json_err("Juda ko'p urinish. Birozdan keyin qayta urining.", code="rate_limited", status=429)
         try:
             body = await request.json()
         except Exception:
             return json_err("Bad JSON", code="bad_json", status=400)
-        ref_code = (body.get("ref_code") or "").strip()
-        full_name = (body.get("full_name") or "").strip()
-        age = (body.get("age") or "").strip()
-        location = (body.get("location") or "").strip()
-        interests = (body.get("interests") or "").strip()
-        phone = (body.get("phone") or "").strip()
+        ref_code = (body.get("ref_code") or "").strip()[:_MAX_FIELD_LEN]
+        full_name = (body.get("full_name") or "").strip()[:_MAX_FIELD_LEN]
+        age = (body.get("age") or "").strip()[:_MAX_FIELD_LEN]
+        location = (body.get("location") or "").strip()[:_MAX_FIELD_LEN]
+        interests = (body.get("interests") or "").strip()[:_MAX_FIELD_LEN]
+        phone = (body.get("phone") or "").strip()[:_MAX_FIELD_LEN]
         telegram_user_id = body.get("telegram_user_id")
         if not all([ref_code, full_name, age, location, interests, phone]):
             return json_err("Barcha maydonlarni to'ldiring", code="validation_error", status=400)
@@ -718,10 +752,14 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
             referrer_user_id = int(ref_code)
         except ValueError:
             return json_err("Noto'g'ri referal kod", code="invalid_referral", status=400)
+        try:
+            tg_id = int(telegram_user_id) if telegram_user_id else None
+        except (ValueError, TypeError):
+            return json_err("Noto'g'ri telegram_user_id", code="invalid_telegram_user_id", status=400)
         rs = await db.create_referral_student(
             {
                 "referrer_user_id": referrer_user_id,
-                "telegram_user_id": int(telegram_user_id) if telegram_user_id else None,
+                "telegram_user_id": tg_id,
                 "full_name": full_name,
                 "age": age,
                 "location": location,
@@ -731,10 +769,10 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         )
         notif = (
             f"🔗 <b>Yangi referal o'quvchi</b>\n\n"
-            f"👤 {full_name} | Yosh: {age}\n"
-            f"📍 Joylashuv: {location}\n"
-            f"💡 Qiziqishlari: {interests}\n"
-            f"📱 Telefon: {phone}\n"
+            f"👤 {html.escape(full_name)} | Yosh: {html.escape(age)}\n"
+            f"📍 Joylashuv: {html.escape(location)}\n"
+            f"💡 Qiziqishlari: {html.escape(interests)}\n"
+            f"📱 Telefon: {html.escape(phone)}\n"
             f"🆔 Taklif qilgan: <code>{referrer_user_id}</code>\n"
             f"✅ Admin Mini App da tasdiqlang (Referal tab)"
         )
@@ -746,20 +784,22 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         return web.json_response({"ok": True, "id": rs.id})
 
     async def api_student_pending_register(request: web.Request) -> web.Response:
+        if not _reg_rate_ok(request):
+            return json_err("Juda ko'p urinish. Birozdan keyin qayta urining.", code="rate_limited", status=429)
         try:
             body = await request.json()
         except Exception:
             return json_err("Bad JSON", code="bad_json", status=400)
-        full_name = (body.get("full_name") or "").strip()
-        age = (body.get("age") or "").strip()
-        location = (body.get("location") or "").strip()
-        interests = (body.get("interests") or "").strip()
-        phone = (body.get("phone") or "").strip()
+        full_name = (body.get("full_name") or "").strip()[:_MAX_FIELD_LEN]
+        age = (body.get("age") or "").strip()[:_MAX_FIELD_LEN]
+        location = (body.get("location") or "").strip()[:_MAX_FIELD_LEN]
+        interests = (body.get("interests") or "").strip()[:_MAX_FIELD_LEN]
+        phone = (body.get("phone") or "").strip()[:_MAX_FIELD_LEN]
         telegram_user_id = body.get("telegram_user_id")
         has_group = bool(body.get("has_group", False))
-        group_time = (body.get("group_time") or "").strip() or None
-        group_day_type = (body.get("group_day_type") or "").strip() or None
-        teacher_name = (body.get("teacher_name") or "").strip() or None
+        group_time = (body.get("group_time") or "").strip()[:_MAX_FIELD_LEN] or None
+        group_day_type = (body.get("group_day_type") or "").strip()[:_MAX_FIELD_LEN] or None
+        teacher_name = (body.get("teacher_name") or "").strip()[:_MAX_FIELD_LEN] or None
         if not all([full_name, age, location, interests, phone]):
             return json_err("Barcha majburiy maydonlarni to'ldiring", code="validation_error", status=400)
         if has_group and not all([group_time, group_day_type, teacher_name]):
@@ -794,13 +834,17 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
                 day_label = "Juft kunlar"
             else:
                 day_label = group_day_type
-            group_info = f"\n🏫 Guruh vaqti: {group_time}\n📅 Kun turi: {day_label}\n👨‍🏫 O'qituvchi: {teacher_name}"
+            group_info = (
+                f"\n🏫 Guruh vaqti: {html.escape(group_time)}\n"
+                f"📅 Kun turi: {html.escape(day_label)}\n"
+                f"👨‍🏫 O'qituvchi: {html.escape(teacher_name)}"
+            )
         notif = (
             f"📝 <b>Yangi ariza (to'g'ridan-to'g'ri)</b>\n\n"
-            f"👤 {full_name} | Yosh: {age}\n"
-            f"📍 Joylashuv: {location}\n"
-            f"💡 Qiziqishlari: {interests}\n"
-            f"📱 Telefon: {phone}"
+            f"👤 {html.escape(full_name)} | Yosh: {html.escape(age)}\n"
+            f"📍 Joylashuv: {html.escape(location)}\n"
+            f"💡 Qiziqishlari: {html.escape(interests)}\n"
+            f"📱 Telefon: {html.escape(phone)}"
             f"{group_info}\n\n"
             f"✅ Admin Mini App da tasdiqlang (Ariza tab)"
         )
@@ -812,11 +856,20 @@ def setup_student_routes(app: web.Application, ctx: dict) -> None:
         return web.json_response({"ok": True, "id": rs.id, "status": rs.status})
 
     async def api_student_pending_status(request: web.Request) -> web.Response:
+        # IP bo'yicha tezlik cheklovi (auth'siz endpoint — enumeratsiyani sekinlashtiradi).
+        if not _reg_rate_ok(request):
+            return json_err("Juda ko'p urinish", code="rate_limited", status=429)
         tg_id_str = request.rel_url.query.get("telegram_user_id", "")
         try:
             tg_id = int(tg_id_str)
         except ValueError:
             return json_err("telegram_user_id kerak", code="validation_error", status=400)
+        # IDOR himoyasi: init_data berilgan bo'lsa, so'rovchi faqat o'z arizasini ko'rishi mumkin.
+        init_data = request.headers.get("X-Init-Data", "")
+        if init_data:
+            requester_id = _get_user_id(init_data)
+            if not requester_id or requester_id != tg_id:
+                return json_err("Ruxsat yo'q", code="forbidden", status=403)
         rs = await db.get_pending_registration_by_user(tg_id)
         if not rs:
             return web.json_response({"found": False})

@@ -6,6 +6,7 @@ attend:no:DATE   → FSM: sabab so'raladi → admin + kurator + ota-onalar guruh
 """
 
 import logging
+import re
 from datetime import datetime
 
 from aiogram import Bot, F, Router
@@ -35,7 +36,14 @@ class AbsenceReasonFSM(StatesGroup):
 @router.callback_query(F.data.startswith("attend:yes:"))
 async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
     """attend:yes:2026-03-17"""
-    date_str = cb.data.split(":")[2]
+    parts = (cb.data or "").split(":")
+    if len(parts) < 3:
+        await cb.answer("❌ Noto'g'ri so'rov", show_alert=True)
+        return
+    date_str = parts[2]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        await cb.answer("❌ Noto'g'ri sana", show_alert=True)
+        return
 
     student = await db.get_student(cb.from_user.id)
     if not student:
@@ -92,7 +100,14 @@ async def handle_attendance_yes(cb: CallbackQuery, db: DatabaseService, bot: Bot
 @router.callback_query(F.data.startswith("attend:no:"))
 async def handle_attendance_no(cb: CallbackQuery, db: DatabaseService, state: FSMContext) -> None:
     """attend:no:2026-03-17 — sabab so'raladi"""
-    date_str = cb.data.split(":")[2]
+    parts = (cb.data or "").split(":")
+    if len(parts) < 3:
+        await cb.answer("❌ Noto'g'ri so'rov", show_alert=True)
+        return
+    date_str = parts[2]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        await cb.answer("❌ Noto'g'ri sana", show_alert=True)
+        return
 
     student = await db.get_student(cb.from_user.id)
     if not student:

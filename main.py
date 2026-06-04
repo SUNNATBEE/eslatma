@@ -111,16 +111,22 @@ def setup_logging() -> None:
 
 logger = logging.getLogger(__name__)
 
+# Telegram initData auth_date eng katta yoshi (replay attack himoyasi). 24 soat.
+MAX_INITDATA_AGE_SEC = 86400
+
 
 def _cors_allow_origin_value(request: web.Request) -> str | None:
-    """Access-Control-Allow-Origin qiymati (None — header qo'yilmaydi)."""
+    """Access-Control-Allow-Origin qiymati (None — header qo'yilmaydi).
+
+    Fail-closed: allowlist'da bo'lmagan origin uchun header qo'yilmaydi.
+    Wildcard faqat CORS_ALLOW_WILDCARD aniq yoqilganda. Origin header bo'lmaganda
+    (same-origin / non-browser) CORS header umuman kerak emas — None qaytariladi.
+    """
     if CORS_USE_WILDCARD:
         return "*"
     origin = request.headers.get("Origin")
     if origin and origin in CORS_ORIGINS:
         return origin
-    if not origin:
-        return "*"
     return None
 
 
@@ -145,6 +151,7 @@ def _verify_webapp_init_data(init_data: str) -> dict | None:
     """
     Telegram WebApp initData ni HMAC-SHA256 orqali tekshiradi.
     Yaroqli bo'lsa — parsed dict qaytaradi, aks holda None.
+    HMAC to'g'ri bo'lsa ham, auth_date eskirgan bo'lsa (replay attack) None qaytaradi.
     """
     try:
         parsed = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
@@ -158,6 +165,17 @@ def _verify_webapp_init_data(init_data: str) -> dict | None:
 
         if not hmac.compare_digest(computed_hash, received_hash):
             return None
+
+        # Replay himoyasi: HMAC to'g'ri bo'lsa ham auth_date eskirishini tekshiramiz.
+        try:
+            auth_date = int(parsed.get("auth_date", "0"))
+        except (ValueError, TypeError):
+            return None
+        if auth_date <= 0:
+            return None
+        if (time.time() - auth_date) > MAX_INITDATA_AGE_SEC:
+            return None
+
         return parsed
     except Exception:
         return None
@@ -199,45 +217,50 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
     # ── Level-up bildirishnoma ────────────────────────────────────────────────
     async def _notify_level_up(user_id: int, new_level: int) -> None:
         """O'quvchiga level oshganda xabar yuboradi; Lv.7 da adminni xabardor qiladi."""
-        from database import LEVEL_UP_BONUS, _level_name
-
-        PERK_TEXT = {
-            2: "💬 Chat ochildi + 🎨 Emoji avatar!",
-            3: "⭐ Streak bonuslar 2x kuchaydi!",
-            4: "📊 VIP belgi + batafsil statistika!",
-            5: "🌟 Reytingda oltin ism — hammaga ko'rinasan!",
-            6: "⚡ 2x XP mode ON — hamma XP ikki barobar!",
-            7: "👑 LEGEND! Adminga yoz — Telegram Premium seniki!",
-        }
-        bonus = LEVEL_UP_BONUS.get(new_level, 0)
-        lname = _level_name(new_level)
-        perk = PERK_TEXT.get(new_level, "")
-        icons = {1: "🎯", 2: "⭐", 3: "🌟", 4: "💎", 5: "🏆", 6: "⚡", 7: "👑"}
-        icon = icons.get(new_level, "🎉")
-        text = f"{icon} <b>LEVEL UP!</b>\n\n🏅 {new_level}-daraja — <b>{lname}</b>\n🎁 +<b>{bonus} XP</b> bonus!\n"
-        if perk:
-            text += f"✨ {perk}\n"
+        # Butun tana try/except bilan o'ralgan — asyncio.create_task'da ushlanmagan
+        # istisnolar "Task exception was never retrieved" bermasligi uchun.
         try:
-            await bot.send_message(user_id, text, parse_mode="HTML")
+            from database import LEVEL_UP_BONUS, _level_name
+
+            PERK_TEXT = {
+                2: "💬 Chat ochildi + 🎨 Emoji avatar!",
+                3: "⭐ Streak bonuslar 2x kuchaydi!",
+                4: "📊 VIP belgi + batafsil statistika!",
+                5: "🌟 Reytingda oltin ism — hammaga ko'rinasan!",
+                6: "⚡ 2x XP mode ON — hamma XP ikki barobar!",
+                7: "👑 LEGEND! Adminga yoz — Telegram Premium seniki!",
+            }
+            bonus = LEVEL_UP_BONUS.get(new_level, 0)
+            lname = _level_name(new_level)
+            perk = PERK_TEXT.get(new_level, "")
+            icons = {1: "🎯", 2: "⭐", 3: "🌟", 4: "💎", 5: "🏆", 6: "⚡", 7: "👑"}
+            icon = icons.get(new_level, "🎉")
+            text = f"{icon} <b>LEVEL UP!</b>\n\n🏅 {new_level}-daraja — <b>{lname}</b>\n🎁 +<b>{bonus} XP</b> bonus!\n"
+            if perk:
+                text += f"✨ {perk}\n"
+            try:
+                await bot.send_message(user_id, text, parse_mode="HTML")
+            except Exception:
+                logger.warning("Level-up xabari yuborilmadi | user_id=%s level=%s", user_id, new_level, exc_info=True)
+            if new_level == 7:
+                student = await db.get_student(user_id)
+                notif = (
+                    f"🏆 <b>{student.full_name if student else user_id}</b> 7-darajaga yetdi!\n"
+                    f"📚 Guruh: {student.group_name if student else '—'}\n"
+                    f"🎁 1 oylik Telegram Premium berishni unutmang!"
+                )
+                for admin_id in ADMIN_IDS:
+                    try:
+                        await bot.send_message(admin_id, notif, parse_mode="HTML")
+                    except Exception:
+                        logger.warning(
+                            "Legend level admin notify yuborilmadi | admin_id=%s user_id=%s",
+                            admin_id,
+                            user_id,
+                            exc_info=True,
+                        )
         except Exception:
-            logger.warning("Level-up xabari yuborilmadi | user_id=%s level=%s", user_id, new_level, exc_info=True)
-        if new_level == 7:
-            student = await db.get_student(user_id)
-            notif = (
-                f"🏆 <b>{student.full_name if student else user_id}</b> 7-darajaga yetdi!\n"
-                f"📚 Guruh: {student.group_name if student else '—'}\n"
-                f"🎁 1 oylik Telegram Premium berishni unutmang!"
-            )
-            for admin_id in ADMIN_IDS:
-                try:
-                    await bot.send_message(admin_id, notif, parse_mode="HTML")
-                except Exception:
-                    logger.warning(
-                        "Legend level admin notify yuborilmadi | admin_id=%s user_id=%s",
-                        admin_id,
-                        user_id,
-                        exc_info=True,
-                    )
+            logger.warning("Level-up bildirishnoma xatosi | user_id=%s level=%s", user_id, new_level, exc_info=True)
 
     # ── Auth helper ───────────────────────────────────────────────────────────
     def _auth(request: web.Request) -> int | None:

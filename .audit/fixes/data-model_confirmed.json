@@ -1,0 +1,50 @@
+{
+  "role": "data-model",
+  "fixes": [
+    {
+      "id": "DM-001",
+      "file": "database.py",
+      "line": 1630,
+      "tier": "confirm",
+      "what_was_wrong": "daily_checkin Student qatorini with_for_update SIZ o'qigan; double-tap'da streak/XP ikki marta berilar edi (lost update).",
+      "what_changed": "select(Student).where(...).with_for_update() bilan o'raldi; mavjud mantiq va qaytariladigan dict shakli saqlandi.",
+      "verification": "py_compile + import ok; test_security.py 6 passed.",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "DM-002",
+      "file": "database.py",
+      "line": 2270,
+      "tier": "confirm",
+      "what_was_wrong": "award_referral_xp avval rs.xp_awarded=True commit qilib, keyin ALOHIDA session add_xp() chaqirardi; crash bo'lsa referrer XP butunlay yo'qolardi.",
+      "what_changed": "Bitta tranzaksiyaga birlashtirildi: rs va Student(referrer) qatorlari with_for_update bilan olinadi, idempotentlik (xp_awarded) qulf ostida tekshiriladi, add_xp mantig'i (_apply_xp_multiplier + _calc_level + LEVEL_UP_BONUS, amount=500) takrorlanadi, rs.xp_awarded=True qilinib BITTA commit. Qaytariladigan bool shakli saqlandi.",
+      "verification": "py_compile + import ok; test_security.py 6 passed.",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "DM-003",
+      "file": "database.py",
+      "line": 2449,
+      "tier": "confirm",
+      "what_was_wrong": "get_monthly_leaderboard GameScore.created_at (DateTime) ni string literal ('YYYY-MM-01' / '...23:59:59') bilan solishtirardi; UTC/lokal chegara xatosi.",
+      "what_changed": "String o'rniga naive datetime obyektlari: date_from=datetime(year,month,1), date_to=datetime(year,month,last_day,23,59,59,999999) calendar.monthrange bilan. created_at server_default=func.now() naive bo'lgani uchun chegaralar ham naive qoldirildi (driver serializatsiya qiladi). Qaytariladigan list[dict] shakli saqlandi.",
+      "verification": "py_compile + import ok; test_security.py 6 passed.",
+      "status": "applied",
+      "reason": null
+    },
+    {
+      "id": "DM-010",
+      "file": "database.py",
+      "line": 1961,
+      "tier": "confirm",
+      "what_was_wrong": "join_game_room va update_game_progress qulflanmagan; ikki o'yinchi bir vaqtda qo'shilsa player2 ustiga yozilardi, g'olib belgilashda race.",
+      "what_changed": "join_game_room: GameRoom qatori with_for_update bilan olinib, status=='waiting' va player1_id!=player2_id qulf ostida qayta tekshiriladi. update_game_progress: GameRoom qatori with_for_update bilan olinadi (claim_room_xp namunasidek), winner_id allaqachon o'rnatilgan bo'lsa qayta yozilmaydi. Qaytariladigan qiymat shakllari saqlandi.",
+      "verification": "py_compile + import ok; test_security.py 6 passed.",
+      "status": "applied",
+      "reason": null
+    }
+  ],
+  "summary": "DM-001/DM-010 (daily_checkin, join_game_room, update_game_progress) ga with_for_update qator qulflari qo'shildi (SQLite no-op, Postgres lost-update/race oldini oladi); DM-002 award_referral_xp ikki sessiyali XP berishi bitta atomik tranzaksiyaga birlashtirildi (crashda XP yo'qolmaydi, idempotentlik qulf ostida); DM-003 get_monthly_leaderboard string sana solishtiruvi naive datetime obyektlariga almashtirildi. Faqat database.py o'zgartirildi, barcha qaytariladigan shakllar saqlandi."
+}

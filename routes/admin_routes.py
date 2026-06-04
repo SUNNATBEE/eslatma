@@ -5,11 +5,12 @@ Endpointlar: /api/admin/*, /api/mini-admin/*
 
 import asyncio
 import html
+import logging
 import secrets
 import time
 from datetime import UTC, datetime, timedelta
 
-from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
 from aiohttp import web
 
 from config import (
@@ -24,6 +25,12 @@ from config import (
 from rate_limit import client_ip
 from routes.api_json import json_err, json_ok
 from utils import verify_secret
+
+logger = logging.getLogger(__name__)
+
+# Fon broadcast vazifalariga kuchli referens — 'Task exception never retrieved'
+# va GC tomonidan vazifa to'satdan to'xtatilishining oldini oladi.
+_broadcast_tasks: set[asyncio.Task] = set()
 
 
 _WEEKDAY_UZ_FOR_META = {
@@ -117,7 +124,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if not expected or not verify_secret(expected, password):
             return json_err("Login yoki parol noto'g'ri", code="invalid_credentials", status=401)
         token = secrets.token_hex(32)
-        expires = datetime.now(UTC) + timedelta(days=30)
+        expires = datetime.now(UTC) + timedelta(days=7)
         _mini_sessions[token] = {"username": username, "expires": expires}
         return web.json_response({"ok": True, "token": token, "username": username})
 
@@ -392,47 +399,61 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         target = body.get("target", "all")
         if not text:
             return json_err("Empty message", code="validation_error", status=400)
-        ok = fail = 0
+
+        # Yuboriladigan chat_id ro'yxatini OLDINDAN to'playmiz (HTTP javobini bloklamasdan).
         if target == "parents":
             from database import AudienceType as AT
 
             all_groups = await db.get_all_groups()
-            for g in all_groups:
-                if g.audience == AT.PARENT and g.is_active:
-                    try:
-                        await bot.send_message(g.chat_id, text)
-                        ok += 1
-                    except Exception:
-                        fail += 1
+            chat_ids = [g.chat_id for g in all_groups if g.audience == AT.PARENT and g.is_active]
         elif target == "students_group":
             from database import AudienceType as AT
 
             all_groups = await db.get_all_groups()
-            for g in all_groups:
-                if g.audience == AT.STUDENT and g.is_active:
-                    try:
-                        await bot.send_message(g.chat_id, text)
-                        ok += 1
-                    except Exception:
-                        fail += 1
+            chat_ids = [g.chat_id for g in all_groups if g.audience == AT.STUDENT and g.is_active]
         else:
             if target == "all":
                 students = await db.get_all_students()
             else:
                 students = await db.get_students_by_group(target)
-            for s in students:
+            chat_ids = [s.user_id for s in students]
+
+        async def _send_broadcast() -> None:
+            """Fon vazifasi: throttle + flood (TelegramRetryAfter) bilan yuborish."""
+            ok = fail = 0
+            for chat_id in chat_ids:
                 try:
-                    await bot.send_message(s.user_id, text)
+                    await bot.send_message(chat_id, text)
                     ok += 1
-                except Exception:
+                except TelegramRetryAfter as e:
+                    # Telegram flood limiti — kutib bir marta qayta urinamiz.
+                    try:
+                        await asyncio.sleep(e.retry_after)
+                        await bot.send_message(chat_id, text)
+                        ok += 1
+                    except Exception as e2:
+                        fail += 1
+                        logger.warning("Broadcast retry failed for %s: %s", chat_id, e2)
+                except Exception as e:
                     fail += 1
-        await _audit(
-            user_id,
-            "broadcast",
-            target=target,
-            details=f"sent={ok},failed={fail},len={len(text)}",
-        )
-        return web.json_response({"ok": True, "sent": ok, "failed": fail})
+                    logger.warning("Broadcast failed for %s: %s", chat_id, e)
+                # Telegram flood'ning oldini olish uchun throttle.
+                await asyncio.sleep(0.05)
+            try:
+                await _audit(
+                    user_id,
+                    "broadcast",
+                    target=target,
+                    details=f"sent={ok},failed={fail},len={len(text)}",
+                )
+            except Exception as e:
+                logger.warning("Broadcast audit log failed: %s", e)
+
+        # Fon vazifasini ishga tushirib, darhol javob qaytaramiz.
+        task = asyncio.create_task(_send_broadcast())
+        _broadcast_tasks.add(task)
+        task.add_done_callback(_broadcast_tasks.discard)
+        return json_ok(queued=len(chat_ids))
 
     async def api_admin_auto_msg_preview(request: web.Request) -> web.Response:
         user_id = _admin_auth(request)
@@ -882,7 +903,11 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if not target_id or not text:
             return json_err("user_id va text kerak", code="validation_error", status=400)
         try:
-            await bot.send_message(int(target_id), f"📢 <b>Admin xabari:</b>\n\n{text}", parse_mode="HTML")
+            target_id_int = int(target_id)
+        except (ValueError, TypeError):
+            return json_err("Noto'g'ri ID", code="validation_error", status=400)
+        try:
+            await bot.send_message(target_id_int, f"📢 <b>Admin xabari:</b>\n\n{text}", parse_mode="HTML")
             await _audit(user_id, "message_student", target=str(target_id), details=f"len={len(text)}")
             return web.json_response({"ok": True})
         except Exception as e:
@@ -900,7 +925,11 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         group_name = (body.get("group_name") or "").strip()
         if not target_user_id or not group_name:
             return json_err("user_id va group_name kerak", code="validation_error", status=400)
-        ok = await db.update_student_group(int(target_user_id), group_name)
+        try:
+            target_user_id_int = int(target_user_id)
+        except (ValueError, TypeError):
+            return json_err("Noto'g'ri ID", code="validation_error", status=400)
+        ok = await db.update_student_group(target_user_id_int, group_name)
         if ok:
             await _audit(user_id, "move_student_group", target=str(target_user_id), details=group_name)
         return json_ok(ok=ok)
@@ -916,7 +945,11 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         target_user_id = body.get("user_id")
         if not target_user_id:
             return json_err("user_id kerak", code="validation_error", status=400)
-        ok = await db.soft_delete_student(int(target_user_id), deleted_by=user_id)
+        try:
+            target_user_id_int = int(target_user_id)
+        except (ValueError, TypeError):
+            return json_err("Noto'g'ri ID", code="validation_error", status=400)
+        ok = await db.soft_delete_student(target_user_id_int, deleted_by=user_id)
         if ok:
             await _audit(user_id, "delete_student_from_group", target=str(target_user_id))
         return json_ok(ok=ok)
@@ -932,7 +965,11 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         target_user_id = body.get("user_id")
         if not target_user_id:
             return json_err("user_id kerak", code="validation_error", status=400)
-        ok = await db.restore_deleted_student(int(target_user_id))
+        try:
+            target_user_id_int = int(target_user_id)
+        except (ValueError, TypeError):
+            return json_err("Noto'g'ri ID", code="validation_error", status=400)
+        ok = await db.restore_deleted_student(target_user_id_int)
         if ok:
             await _audit(user_id, "restore_student_to_group", target=str(target_user_id))
         return json_ok(ok=ok)

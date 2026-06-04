@@ -261,14 +261,21 @@ async def admin_add_cred_group(cb: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(StateFilter(AddCredentialFSM.waiting_name))
 async def admin_add_cred_name(message: Message, state: FSMContext) -> None:
-    await state.update_data(name=message.text.strip())
+    name = (message.text or "").strip()
+    if not name:
+        await message.answer("❌ Iltimos, ism familyani matn ko'rinishida yuboring:")
+        return
+    await state.update_data(name=name)
     await state.set_state(AddCredentialFSM.waiting_mars_id)
     await message.answer("🔑 <b>Mars Space ID</b> raqamini kiriting:")
 
 
 @router.message(StateFilter(AddCredentialFSM.waiting_mars_id))
 async def admin_add_cred_mars_id(message: Message, state: FSMContext) -> None:
-    mars_id = message.text.strip()
+    mars_id = (message.text or "").strip()
+    if not mars_id:
+        await message.answer("❌ Iltimos, ID ni matn ko'rinishida yuboring:")
+        return
     if not mars_id.isdigit():
         await message.answer("❌ ID faqat raqam bo'lishi kerak. Qayta kiriting:")
         return
@@ -283,7 +290,10 @@ async def admin_add_cred_password(message: Message, state: FSMContext, db: Datab
     group = data.get("group", "")
     name = data.get("name", "")
     mars_id = data.get("mars_id", "")
-    password = message.text.strip()
+    password = (message.text or "").strip()
+    if not password:
+        await message.answer("❌ Iltimos, parolni matn ko'rinishida yuboring:")
+        return
     await state.clear()
 
     await db.add_student_credential(mars_id, name, password, group)

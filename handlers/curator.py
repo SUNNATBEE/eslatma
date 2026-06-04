@@ -496,7 +496,20 @@ async def student_relay_to_curator(message: Message, db: DatabaseService, bot: B
 
 @router.callback_query(F.data.startswith("cur_read:"))
 async def student_read_curator_msg(cb: CallbackQuery, db: DatabaseService, bot: Bot) -> None:
-    curator_tg_id = int(cb.data.split(":")[1])
+    try:
+        curator_tg_id = int(cb.data.split(":")[1])
+    except (ValueError, IndexError):
+        await cb.answer()
+        return
+
+    # Chaqiruvchining haqiqiy aloqasini tasdiqlaymiz: o'quvchining aktiv kurator
+    # chati bo'lsin va callback'dagi curator_tg_id o'sha chatdagi kuratorga teng bo'lsin.
+    # Aks holda soxta callback bilan ixtiyoriy ID'ga xabar yuborilishi mumkin.
+    chat = await db.get_active_curator_chat_by_student(cb.from_user.id)
+    if not chat or chat.curator_telegram_id != curator_tg_id:
+        await cb.answer()
+        return
+
     student = await db.get_student(cb.from_user.id)
     sname = student.full_name if student else str(cb.from_user.id)
 

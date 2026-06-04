@@ -1,0 +1,84 @@
+{
+  "role": "security",
+  "score": 6,
+  "partial": false,
+  "files_reviewed": [
+    "main.py",
+    "utils.py",
+    "rate_limit.py",
+    "middleware.py",
+    "secrets_loader.py",
+    "config.py",
+    "routes/admin_routes.py",
+    "routes/curator_routes.py"
+  ],
+  "findings": [
+    {
+      "id": "SEC-001",
+      "severity": "critical",
+      "confidence": 0.9,
+      "title": "Telegram initData auth_date tekshirilmaydi — replay attack (cheksiz amal qiladi)",
+      "file": "main.py",
+      "line": 144,
+      "description": "_verify_webapp_init_data faqat HMAC hash to'g'riligini tekshiradi, ammo auth_date maydonini umuman tekshirmaydi. Telegram rasmiy tavsiyasi bo'yicha auth_date eskirishi (masalan 24 soat) tekshirilishi shart. Hozir bir marta qo'lga kiritilgan X-Init-Data header'i (masalan MITM, brauzer log, proxy log, yoki client device kompromisi orqali) ABADIY yaroqli bo'lib qoladi. Bu butun auth zanjirining (_auth, _admin_auth, _mini_admin_auth, curator login) asosi — bitta o'g'irlangan init_data bilan hujumchi o'sha user nomidan cheksiz so'rov yubora oladi. Replay attack uchun ochiq.",
+      "fix": "auth_date ni parse qilib eskirishni tekshirish:\n\nimport time\nMAX_INITDATA_AGE = 86400  # 24 soat\n...\nif not hmac.compare_digest(computed_hash, received_hash):\n    return None\ntry:\n    auth_date = int(parsed.get('auth_date', '0'))\nexcept (TypeError, ValueError):\n    return None\nif auth_date <= 0 or (time.time() - auth_date) > MAX_INITDATA_AGE:\n    return None\nreturn parsed",
+      "snippet": "if not hmac.compare_digest(computed_hash, received_hash):\n    return None\nreturn parsed  # auth_date tekshiruvi YO'Q"
+    },
+    {
+      "id": "SEC-002",
+      "severity": "warning",
+      "confidence": 0.75,
+      "title": "CORS: Origin header bo'lmasa '*' qaytaradi + default wildcard rejimi",
+      "file": "main.py",
+      "line": 115,
+      "description": "_cors_allow_origin_value() ikki holatda '*' qaytaradi: (1) CORS_USE_WILDCARD true bo'lganda (config.py:112 — CORS_ALLOW_ORIGINS va WEBAPP_URL bo'sh bo'lsa AVTOMATIK wildcard), (2) Origin header umuman bo'lmaganda (line 122-123). WEBAPP_URL prod'da to'g'ri sozlanmasa butun API '*' bilan ochiq qoladi — har qanday sayt fetch qila oladi. Hozir Access-Control-Allow-Credentials qo'yilmagani uchun cookie o'g'irlash xavfi yo'q (auth X-Init-Data/Bearer header orqali, JS tomonidan qo'shiladi), shu sababli to'liq kritik emas. Ammo allowlist bo'sh bo'lsa fail-open (wildcard) noto'g'ri default — fail-closed bo'lishi kerak.",
+      "fix": "Default'ni fail-closed qilish: CORS_ALLOW_ORIGINS bo'sh bo'lsa wildcard o'rniga hech narsa qaytarmaslik (faqat aniq DEV_CORS flag bilan wildcard yoqilsin). Origin yo'q bo'lganda '*' o'rniga header qo'ymaslik kifoya — same-origin va non-browser so'rovlarga CORS header kerak emas.",
+      "snippet": "if CORS_USE_WILDCARD:\n    return \"*\"\n...\nif not origin:\n    return \"*\""
+    },
+    {
+      "id": "SEC-003",
+      "severity": "warning",
+      "confidence": 0.85,
+      "title": "MINI_ADMIN_LOGINS env'da ochiq (plaintext) parol — hashlanmaydi",
+      "file": "config.py",
+      "line": 55,
+      "description": "Mini-admin parollari MINI_ADMIN_LOGINS env o'zgaruvchisida 'username:password' ko'rinishida OCHIQ matnda saqlanadi. verify_secret() PBKDF2 hash'ni ham, plain matnni ham qabul qiladi (hmac.compare_digest bilan timing-safe taqqoslaydi), shuning uchun bu yerga hashlangan qiymat qo'yish mumkin emas — _parse_logins ':' bo'yicha bo'ladi va PBKDF2 formatidagi '$' belgili hash buzilib ketishi mumkin. Natijada admin parollar deploy platformasi (Render/Railway) env panelida, log/dump'larda ochiq ko'rinadi. Bu eng kuchli imtiyozli kirish (mini-admin) uchun yetarli himoyalanmagan.",
+      "fix": "MINI_ADMIN_LOGINS uchun ham hashlangan parollarni qo'llab-quvvatlash: parolni PBKDF2 hash sifatida saqlash (':' o'rniga boshqa ajratuvchi yoki base64-qodlangan hash) va hash_secret() bilan generatsiya qilingan qiymatni env'ga qo'yish. Kamida hujjatda admin'larga kuchli, noyob parol qo'yishni va env maxfiyligini ta'kidlash.",
+      "snippet": "MINI_ADMIN_LOGINS: dict[str, str] = _parse_logins(os.getenv(\"MINI_ADMIN_LOGINS\", \"\"))  # plaintext"
+    },
+    {
+      "id": "SEC-004",
+      "severity": "warning",
+      "confidence": 0.7,
+      "title": "Curator login endpointida rate limiting yo'q",
+      "file": "routes/curator_routes.py",
+      "line": 49,
+      "description": "api_curator_login parol bilan kurator sessiyasini ochadi, lekin api_mini_admin_login'dan farqli o'laroq login_rate_limiter ishlatilmaydi. Brute-force xavfi bor (parol noto'g'ri bo'lsa 403). Mitigatsiya: oldin _auth() (valid init_data) talab qilinadi, shuning uchun hujumchi avval haqiqiy Telegram user init_data'siga ega bo'lishi kerak — bu to'siq darajasini oshiradi, lekin bir foydalanuvchi cheksiz parol urinishi mumkin.",
+      "fix": "api_mini_admin_login'dagi kabi login_rate_limiter qo'shish:\nif _login_limiter is not None:\n    ip = client_ip(request, trust_x_forwarded_for=bool(_trust_xff))\n    if not _login_limiter.allow(f\"curator:{ip}\"):\n        return json_err(\"Juda ko'p urinish\", code=\"rate_limited\", status=429)\nctx orqali login_rate_limiter va trust_x_forwarded_for ni curator routes'ga ham uzatish kerak.",
+      "snippet": "async def api_curator_login(request):\n    user_id = _auth(request)\n    ...  # rate limiter YO'Q"
+    },
+    {
+      "id": "SEC-005",
+      "severity": "suggestion",
+      "confidence": 0.6,
+      "title": "Mini-admin sessiya muddati 30 kun — uzoq + server restartda bekor bo'ladi",
+      "file": "routes/admin_routes.py",
+      "line": 120,
+      "description": "_mini_sessions xotirada (dict) saqlanadi va token 30 kun amal qiladi. Token entropiyasi yaxshi (secrets.token_hex(32) = 256 bit). Muammolar: (1) 30 kun imtiyozli admin token uchun uzoq — o'g'irlansa uzoq oyna; (2) sessiyalar faqat xotirada — restart'da hammasi yo'qoladi (mitigatsiya emas, balki noqulaylik); (3) eskirgan token'lar faqat tekshirilganda o'chiriladi (lazy), expired bo'lib turgan tokenlar xotirada to'planib qoladi (kichik DoS/memory).",
+      "fix": "Sessiya muddatini qisqartirish (masalan 7 kun yoki sliding-expiry). Ixtiyoriy: vaqti-vaqti bilan _mini_sessions'dan expired tokenlarni tozalovchi background task.",
+      "snippet": "expires = datetime.now(UTC) + timedelta(days=30)"
+    },
+    {
+      "id": "SEC-006",
+      "severity": "suggestion",
+      "confidence": 0.55,
+      "title": "client_ip X-Forwarded-For'ning birinchi qiymatiga ishonadi — spoofing (rate-limit bypass)",
+      "file": "rate_limit.py",
+      "line": 35,
+      "description": "trust_x_forwarded_for true bo'lganda client_ip XFF'ning eng chap (birinchi) qiymatini oladi. Eng chap qiymat client tomonidan to'liq nazorat qilinadi va soxtalashtirilishi mumkin — har so'rovda boshqa IP yuborib login rate-limiter'ni (SEC bo'yicha asosiy himoya) chetlab o'tish mumkin. Faqat trust_x_forwarded_for yoqilganda dolzarb.",
+      "fix": "Ishonchli reverse-proxy ortida eng o'ng (oxirgi) yoki proxy qo'shgan ma'lum index'dagi IP'ni olish; yoki proxy soni'ni konfiguratsiya qilib shuncha qiymatni orqadan sanash. Aks holda XFF'ga ishonmaslik.",
+      "snippet": "return xff.split(\",\")[0].strip()[:45]"
+    }
+  ],
+  "summary": "Eng jiddiy muammo — Telegram initData'da auth_date eskirishi tekshirilmaydi (SEC-001), bu butun auth zanjirini replay attack'ga ochiq qoldiradi. HMAC va parol taqqoslash to'g'ri (hmac.compare_digest), token entropiyasi yetarli (secrets.token_hex(32)), parol hashlash kuchli (PBKDF2-SHA256, 390k iteratsiya). Asosiy zaifliklar: initData expiry yo'qligi, plaintext mini-admin parollari, CORS fail-open default va curator login'da rate-limit yo'qligi."
+}

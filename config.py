@@ -102,6 +102,9 @@ JOIN_TARGET_CHAT_ID: int | None = _parse_int_or_none(os.getenv("JOIN_TARGET_CHAT
 # Anketadan keyin majburiy kanal obunasini talab qilishmi? (hozircha o'chiq)
 JOIN_REQUIRE_SUBSCRIPTION: bool = os.getenv("JOIN_REQUIRE_SUBSCRIPTION", "0").lower() in ("1", "true", "yes")
 
+# Video darsliklar kanali — guruhga kirgan yangi a'zoga "xush kelibsiz"da ko'rsatiladi
+VIDEO_LESSONS_LINK: str = os.getenv("VIDEO_LESSONS_LINK", "https://t.me/+SRuA2QBbLmo3MDgy")
+
 
 def _parse_required_channels(raw: str) -> list[dict]:
     """Majburiy obuna kanallarini ajratadi.

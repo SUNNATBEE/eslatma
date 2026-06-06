@@ -38,6 +38,7 @@ from config import (
     JOIN_REQUIRE_SUBSCRIPTION,
     JOIN_TARGET_CHAT_ID,
     REQUIRED_CHANNELS,
+    VIDEO_LESSONS_LINK,
 )
 from database import DatabaseService
 
@@ -421,10 +422,24 @@ async def on_member_joined(event: ChatMemberUpdated, bot: Bot, db: DatabaseServi
 
     mention = f'<a href="tg://user?id={user.id}">{name}</a>'
     text = (
-        f"🎉 <b>Xush kelibsiz, {mention}!</b> 👋\n"
-        f"🇷🇺 Добро пожаловать!"
+        "🎉🎊 <b>URRAA! Yangi do'stimiz keldi!</b> 🎊🎉\n\n"
+        f"👋 Xush kelibsiz, {mention}!\n\n"
+        "🚀 Sen endi bizning ajoyib jamoamizning bir qismisan! "
+        "Bu yerda biz birga <b>o'rganamiz</b>, <b>o'ynaymiz</b> va yangi narsalarni <b>kashf qilamiz</b>! 💡✨\n\n"
+        "📺 <b>Yangi keldingmi yoki darsdan qolib ketdingmi?</b>\n"
+        "Hech qisi yo'q! 😎 Pastdagi tugmani bos — barcha video darsliklarni ko'rib, "
+        "hammaga bemalol yetib olasan! 🎬🔥\n\n"
+        "🇷🇺 <i>Добро пожаловать! Если ты новенький или пропустил урок — "
+        "нажми кнопку ниже и смотри все видеоуроки! 🎬</i>"
     )
+    markup = None
+    if VIDEO_LESSONS_LINK:
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🎬 Video darsliklar / Видеоуроки", url=VIDEO_LESSONS_LINK)]
+            ]
+        )
     try:
-        await bot.send_message(event.chat.id, text)
+        await bot.send_message(event.chat.id, text, reply_markup=markup)
     except Exception as e:
         logger.warning(f"Guruhga xush kelibsiz xabarini yuborib bo'lmadi ({event.chat.id}): {e}")

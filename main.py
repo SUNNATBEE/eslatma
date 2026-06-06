@@ -495,10 +495,17 @@ async def main() -> None:
     logger.info("Polling boshlanmoqda... (Ctrl+C - to'xtatish)")
     logger.info("=" * 60)
 
+    _allowed = dp.resolve_used_update_types()
+    logger.info(f"Allowed updates: {_allowed}")
+    if "chat_join_request" in _allowed:
+        logger.info("✅ chat_join_request yoqilgan — guruh kirish anketasi faol.")
+    else:
+        logger.warning("⚠️ chat_join_request YO'Q — guruh kirish anketasi ishlamaydi!")
+
     try:
         await dp.start_polling(
             bot,
-            allowed_updates=dp.resolve_used_update_types(),
+            allowed_updates=_allowed,
         )
     finally:
         logger.info("Bot to'xtatilmoqda...")

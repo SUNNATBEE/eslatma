@@ -473,6 +473,36 @@ class ReferralStudent(Base):
     mars_id: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Tasdiqlangandan keyin
 
 
+# ─── Model: Guruhga kirish arizasi ────────────────────────────────────────────
+
+
+class GroupJoinApplicant(Base):
+    """Guruhga kirish arizasi — kirishdan oldin so'ralgan ism/yosh/qiziqishlar.
+
+    Foydalanuvchi guruhga kirish arizasini yuborganda bot DM da ma'lumot so'raydi,
+    obunani tekshiradi va tasdiqlaydi. Shu yozuv admin uchun a'zolar ro'yxati
+    (haqiqiy ism/yosh/qiziqish) bo'lib xizmat qiladi.
+    """
+
+    __tablename__ = "group_join_applicants"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    group_title: Mapped[str] = mapped_column(String(255), default="")
+    full_name: Mapped[str] = mapped_column(String(255), default="")
+    age: Mapped[str] = mapped_column(String(10), default="")
+    interests: Mapped[str] = mapped_column(String(500), default="")
+    username: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # pending → ma'lumot so'ralayapti, approved → guruhga qabul qilindi
+    status: Mapped[str] = mapped_column(String(20), default="approved")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<GroupJoinApplicant user_id={self.user_id} name={self.full_name!r} chat={self.chat_id}>"
+
+
 # ─── Model: Admin profili ─────────────────────────────────────────────────────
 
 
@@ -2645,3 +2675,58 @@ class DatabaseService:
         async with self.session_factory() as session:
             await session.execute(update(Student).where(Student.user_id == user_id).values(xp_notice_seen=True))
             await session.commit()
+
+    # ── GURUHGA KIRISH ARIZALARI (join request gate) ──────────────────────────────
+
+    async def save_join_applicant(
+        self,
+        *,
+        user_id: int,
+        chat_id: int,
+        group_title: str,
+        full_name: str,
+        age: str,
+        interests: str,
+        username: str | None = None,
+        status: str = "approved",
+    ) -> "GroupJoinApplicant":
+        """Guruhga kirish arizasini saqlaydi (upsert: user_id+chat_id bo'yicha)."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(GroupJoinApplicant).where(
+                    GroupJoinApplicant.user_id == user_id,
+                    GroupJoinApplicant.chat_id == chat_id,
+                )
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                row = GroupJoinApplicant(user_id=user_id, chat_id=chat_id)
+                session.add(row)
+            row.group_title = group_title
+            row.full_name = full_name
+            row.age = age
+            row.interests = interests
+            row.username = username
+            row.status = status
+            if status == "approved":
+                row.approved_at = datetime.now()
+            await session.commit()
+            await session.refresh(row)
+            return row
+
+    async def get_join_applicants(
+        self,
+        chat_id: int | None = None,
+        status: str | None = None,
+    ) -> list["GroupJoinApplicant"]:
+        """Guruhga kirgan a'zolar ro'yxati (ixtiyoriy guruh/holat filteri)."""
+        from sqlalchemy import desc
+
+        async with self.session_factory() as session:
+            q = select(GroupJoinApplicant).order_by(desc(GroupJoinApplicant.created_at))
+            if chat_id is not None:
+                q = q.where(GroupJoinApplicant.chat_id == chat_id)
+            if status:
+                q = q.where(GroupJoinApplicant.status == status)
+            result = await session.execute(q)
+            return list(result.scalars().all())

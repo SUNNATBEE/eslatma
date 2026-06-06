@@ -55,6 +55,7 @@ from handlers import (
     callbacks_router,
     commands_router,
     curator_router,
+    group_join_router,
     registration_router,
     school_router,
     student_router,
@@ -453,6 +454,7 @@ async def main() -> None:
 
     # 4. Handler router'larini ulash
     dp.include_router(commands_router)  # /start, /panel, ...
+    dp.include_router(group_join_router)  # Guruhga kirish arizasi (anketa + obuna gate)
     dp.include_router(curator_router)  # /curator + kurator relay chat
     dp.include_router(registration_router)  # Ro'yxatdan o'tish FSM
     dp.include_router(student_router)  # O'quvchi paneli + uy vazifasi

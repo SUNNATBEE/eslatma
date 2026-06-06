@@ -183,6 +183,9 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
     <span class="icon">📝</span><span id="nav_referral_lbl">Ariza</span>
     <span class="nav-badge" id="refBadge" style="display:none;">0</span>
   </button>
+  <button class="nav-item" onclick="showTab('members')" id="nav_members">
+    <span class="icon">🆕</span><span id="nav_members_lbl">A'zolar</span>
+  </button>
   <button class="nav-item" onclick="showTab('settings')" id="nav_settings">
     <span class="icon">⚙️</span><span id="nav_settings_lbl">Sozlama</span>
   </button>
@@ -508,6 +511,7 @@ async function renderTab(tab) {
       case 'leaderboard': await renderLeaderboard(); break;
       case 'curators':    await renderCurators(); break;
       case 'referral':    await renderReferral(); break;
+      case 'members':     await renderMembers(); break;
       case 'settings':    await renderSettings(); break;
       case 'homework':    await renderHomework(); break;
     }
@@ -1271,6 +1275,41 @@ function renderRefList() {
     }
   `;
 }
+// ── Yangi a'zolar (join request anketa orqali qo'shilganlar) ──────────────────
+async function renderMembers() {
+  const data = await api('/api/admin/join-applicants?status=approved');
+  const list = data.applicants || [];
+  // Guruh bo'yicha guruhlash
+  const byGroup = {};
+  list.forEach(a => {
+    const g = a.group_title || 'Noma\'lum guruh';
+    (byGroup[g] = byGroup[g] || []).push(a);
+  });
+  const groups = Object.keys(byGroup);
+  document.getElementById('mainContent').innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <div style="font-weight:700;font-size:15px;">🆕 Yangi a'zolar</div>
+      <div style="color:#aaa;font-size:12px;margin-top:4px;">Anketa orqali guruhga qo'shilganlar — jami <b>${list.length}</b> ta</div>
+    </div>
+    ${list.length === 0 ? `<div class="empty">${t('no_data')}</div>` :
+      groups.map(g => `
+        <div style="margin:14px 4px 6px;font-weight:700;color:#a78bfa;">📌 ${escHtml(g)} — ${byGroup[g].length} ta</div>
+        ${byGroup[g].map(a => `
+          <div class="ref-card">
+            <div class="ref-name">${escHtml(a.full_name)}</div>
+            <div class="ref-meta">
+              🎂 Yosh: ${escHtml(a.age)}<br>
+              💡 ${escHtml(a.interests)}<br>
+              ${a.username ? `💬 ${escHtml(a.username)} • ` : ''}🔗 <code>${escHtml(a.user_id)}</code><br>
+              🕐 ${escHtml(a.created_at)}
+            </div>
+          </div>
+        `).join('')}
+      `).join('')
+    }
+  `;
+}
+
 async function approveRef(id) {
   // Show group selector sheet
   const groups = await api('/api/admin/groups');

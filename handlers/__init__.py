@@ -7,12 +7,14 @@ from handlers.attendance import router as attendance_router
 from handlers.callbacks import router as callbacks_router
 from handlers.commands import router as commands_router
 from handlers.curator import router as curator_router
+from handlers.group_join import router as group_join_router
 from handlers.registration import router as registration_router
 from handlers.school import router as school_router
 from handlers.student import router as student_router
 
 __all__ = [
     "commands_router",
+    "group_join_router",
     "curator_router",
     "registration_router",
     "student_router",

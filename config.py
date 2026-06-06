@@ -81,6 +81,50 @@ PORT: int = int(os.getenv("PORT", "8080"))
 # Frontend darslari kanali havolasi (.env da CHANNEL_LINK=https://t.me/...)
 CHANNEL_LINK: str = os.getenv("CHANNEL_LINK", "https://t.me/sunnatbee_lessons")
 
+# ─── Guruhga kirish arizasi (join request gate) ───────────────────────────────
+# Yangi a'zo guruhga kirishdan oldin bot DM da ism/yosh/qiziqishlarni so'raydi
+# va majburiy kanallarga obunani tekshiradi. Faqat guruhda "Approve new members"
+# yoqilgan va bot admin bo'lsa ishlaydi.
+JOIN_GATE_ENABLED: bool = os.getenv("JOIN_GATE_ENABLED", "1").lower() in ("1", "true", "yes")
+
+
+def _parse_required_channels(raw: str) -> list[dict]:
+    """Majburiy obuna kanallarini ajratadi.
+
+    Format: "chat::Label::link;chat2::Label2::link2"
+      chat  — tekshirish uchun @username yoki -100... chat_id.
+              Bo'sh bo'lsa (masalan yopiq invite havola) — obuna TEKSHIRILMAYDI,
+              faqat tugma ko'rsatiladi.
+      Label — tugma matni
+      link  — bosiladigan havola (https://t.me/... yoki instagram)
+    """
+    items: list[dict] = []
+    for part in (raw or "").split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        seg = [s.strip() for s in part.split("::")]
+        items.append(
+            {
+                "chat": seg[0] if len(seg) > 0 else "",
+                "label": seg[1] if len(seg) > 1 else "Kanal",
+                "link": seg[2] if len(seg) > 2 else "",
+            }
+        )
+    return items
+
+
+# Default — foydalanuvchi bergan havolalar (yopiq guruhni faqat chat_id bilan
+# tekshirish mumkin, shuning uchun u tugma sifatida qoladi).
+_DEFAULT_CHANNELS = (
+    "@aidevix::AIDEVIX kanal::https://t.me/aidevix;"
+    "::AIDEVIX yopiq guruh::https://t.me/+SRuA2QBbLmo3MDgy"
+)
+REQUIRED_CHANNELS: list[dict] = _parse_required_channels(os.getenv("REQUIRED_CHANNELS", _DEFAULT_CHANNELS))
+
+# Instagram (Telegram bot orqali TEKSHIRIB BO'LMAYDI — faqat tugma)
+INSTAGRAM_LINK: str = os.getenv("INSTAGRAM_LINK", "https://www.instagram.com/aidevix/")
+
 # ─── Telegram Mini App (WebApp) ───────────────────────────────────────────────
 # Render/Koyeb HTTPS URL: "https://your-app.onrender.com"
 # Bo'sh bo'lsa — WebApp tugmasi ko'rinmaydi

@@ -815,3 +815,46 @@ async def cmd_reset_all_xp(message: Message, db: DatabaseService) -> None:
         f"O'quvchilar botga kirganda avtomatik xabarnoma ko'rishadi.",
         parse_mode="HTML",
     )
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# GURUHGA KIRGAN A'ZOLAR RO'YXATI — /azolar
+# ════════════════════════════════════════════════════════════════════════════════
+
+
+@router.message(Command("azolar"))
+async def cmd_join_members(message: Message, db: DatabaseService) -> None:
+    """Anketa orqali guruhga qo'shilgan a'zolar ro'yxati (ism/yosh/qiziqish)."""
+    if message.from_user.id not in ADMIN_IDS:
+        await message.answer("❌ Bu buyruq faqat adminlar uchun!")
+        return
+
+    applicants = await db.get_join_applicants(status="approved")
+    if not applicants:
+        await message.answer("📭 Hozircha anketa orqali qo'shilgan a'zolar yo'q.")
+        return
+
+    # Guruh bo'yicha guruhlaymiz
+    from collections import defaultdict
+
+    groups: dict[str, list] = defaultdict(list)
+    for a in applicants:
+        groups[a.group_title or "Noma'lum guruh"].append(a)
+
+    chunks: list[str] = []
+    text = f"👥 <b>Yangi a'zolar ro'yxati</b> (jami {len(applicants)} ta)\n"
+    for title, members in groups.items():
+        block = f"\n📌 <b>{title}</b> — {len(members)} ta\n"
+        for i, m in enumerate(members, 1):
+            uname = f" ({m.username})" if m.username else ""
+            block += f"{i}. <b>{m.full_name}</b>, {m.age} yosh — {m.interests}{uname}\n"
+        # Telegram 4096 belgi limiti — bo'laklarga ajratamiz
+        if len(text) + len(block) > 3800:
+            chunks.append(text)
+            text = ""
+        text += block
+    if text.strip():
+        chunks.append(text)
+
+    for chunk in chunks:
+        await message.answer(chunk, parse_mode="HTML")

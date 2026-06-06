@@ -782,6 +782,33 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             }
         )
 
+    async def api_admin_join_applicants(request: web.Request) -> web.Response:
+        """Anketa orqali guruhga qo'shilgan a'zolar (ism/yosh/qiziqish)."""
+        user_id = _mini_admin_auth(request)
+        if not user_id:
+            return json_err("Unauthorized", code="unauthorized", status=401)
+        status_filter = request.rel_url.query.get("status", "approved")
+        items = await db.get_join_applicants(status=status_filter or None)
+        return web.json_response(
+            {
+                "applicants": [
+                    {
+                        "id": a.id,
+                        "user_id": a.user_id,
+                        "chat_id": a.chat_id,
+                        "group_title": a.group_title,
+                        "full_name": a.full_name,
+                        "age": a.age,
+                        "interests": a.interests,
+                        "username": a.username,
+                        "status": a.status,
+                        "created_at": a.created_at.strftime("%d.%m.%Y %H:%M") if a.created_at else "",
+                    }
+                    for a in items
+                ]
+            }
+        )
+
     async def api_admin_referral_approve(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
         if not user_id:
@@ -1821,6 +1848,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     app.router.add_post("/api/admin/delete-test-messages", api_admin_delete_test_messages)
     app.router.add_get("/api/admin/curator-stats", api_admin_curator_stats)
     app.router.add_get("/api/admin/button-stats", api_admin_button_stats)
+    app.router.add_get("/api/admin/join-applicants", api_admin_join_applicants)
     app.router.add_get("/api/admin/referral-students", api_admin_referral_students)
     app.router.add_post("/api/admin/referral-students/{id}/approve", api_admin_referral_approve)
     app.router.add_post("/api/admin/referral-students/{id}/reject", api_admin_referral_reject)

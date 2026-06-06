@@ -99,6 +99,9 @@ def _parse_int_or_none(raw: str) -> int | None:
 
 JOIN_TARGET_CHAT_ID: int | None = _parse_int_or_none(os.getenv("JOIN_TARGET_CHAT_ID", ""))
 
+# Anketadan keyin majburiy kanal obunasini talab qilishmi? (hozircha o'chiq)
+JOIN_REQUIRE_SUBSCRIPTION: bool = os.getenv("JOIN_REQUIRE_SUBSCRIPTION", "0").lower() in ("1", "true", "yes")
+
 
 def _parse_required_channels(raw: str) -> list[dict]:
     """Majburiy obuna kanallarini ajratadi.

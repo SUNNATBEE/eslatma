@@ -81,6 +81,13 @@ async def cmd_start(message: Message, state: FSMContext, db: DatabaseService) ->
             )
             return
 
+    # Bot orqali kirish (Yo'l B): /start join
+    if deep_link == "join":
+        from handlers.group_join import start_join_flow
+
+        await start_join_flow(message, state, message.bot, db)
+        return
+
     if deep_link == "leaderboard":
         from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
         from aiogram.types import WebAppInfo as WAI

@@ -18,6 +18,7 @@ bo'lishi kerak (config.REQUIRED_CHANNELS).
 """
 
 import logging
+from datetime import datetime, timedelta
 
 from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
@@ -31,7 +32,13 @@ from aiogram.types import (
     Message,
 )
 
-from config import ADMIN_IDS, INSTAGRAM_LINK, JOIN_GATE_ENABLED, REQUIRED_CHANNELS
+from config import (
+    ADMIN_IDS,
+    INSTAGRAM_LINK,
+    JOIN_GATE_ENABLED,
+    JOIN_TARGET_CHAT_ID,
+    REQUIRED_CHANNELS,
+)
 from database import DatabaseService
 
 logger = logging.getLogger(__name__)
@@ -47,6 +54,47 @@ class JoinFSM(StatesGroup):
     age = State()
     interests = State()
     subscribe = State()
+
+
+async def _resolve_target_chat(bot: Bot, db: DatabaseService) -> tuple[int | None, str]:
+    """Yo'l B uchun maqsadli guruhni aniqlaydi.
+
+    1. JOIN_TARGET_CHAT_ID env bo'lsa — o'sha.
+    2. Aks holda bot a'zo bo'lgan yagona guruh.
+    Qaytaradi: (chat_id | None, title).
+    """
+    if JOIN_TARGET_CHAT_ID:
+        title = "guruh"
+        try:
+            chat = await bot.get_chat(JOIN_TARGET_CHAT_ID)
+            title = chat.title or title
+        except Exception as e:
+            logger.warning(f"Target guruh ma'lumotini olib bo'lmadi: {e}")
+        return JOIN_TARGET_CHAT_ID, title
+    chats = await db.get_bot_chats()
+    if len(chats) == 1:
+        return chats[0].chat_id, chats[0].title
+    return None, ""
+
+
+async def start_join_flow(message: Message, state: FSMContext, bot: Bot, db: DatabaseService) -> None:
+    """Yo'l B — bot orqali kirish: /start join deep-link dan chaqiriladi."""
+    chat_id, title = await _resolve_target_chat(bot, db)
+    if not chat_id:
+        await message.answer(
+            "⚠️ Hozircha guruhga qo'shilish sozlanmagan. Admin bilan bog'laning."
+        )
+        logger.warning("start_join_flow: target guruh aniqlanmadi (JOIN_TARGET_CHAT_ID ni o'rnating).")
+        return
+    await state.set_state(JoinFSM.name)
+    await state.update_data(jg_chat_id=chat_id, jg_title=title, jg_mode="invite")
+    await message.answer(
+        f"👋 <b>Assalomu alaykum!</b>\n\n"
+        f"<b>{title}</b> guruhiga qo'shilish uchun qisqa anketani to'ldiring:\n"
+        f"1️⃣ Ism familiya\n2️⃣ Yosh\n3️⃣ Qiziqishlar\n\n"
+        f"📝 <b>1/3 — Ism familiya</b>\n\nIsm va familiyangizni to'liq kiriting:\n"
+        f"<i>(Masalan: Ali Valiyev)</i>"
+    )
 
 
 # ─── Yordamchi: obuna tekshirish va klaviatura ────────────────────────────────
@@ -131,8 +179,9 @@ async def on_join_request(req: ChatJoinRequest, bot: Bot) -> None:
 @router.callback_query(F.data.startswith("joingate:start:"))
 async def join_start(cb: CallbackQuery, state: FSMContext) -> None:
     chat_id = int(cb.data.split(":")[2])
+    info = pending_join.get(cb.from_user.id, {})
     await state.set_state(JoinFSM.name)
-    await state.update_data(jg_chat_id=chat_id)
+    await state.update_data(jg_chat_id=chat_id, jg_title=info.get("title", "guruh"), jg_mode="approve")
     await cb.message.edit_text(
         "📝 <b>1/3 — Ism familiya</b>\n\nIsm va familiyangizni to'liq kiriting:\n<i>(Masalan: Ali Valiyev)</i>"
     )
@@ -192,11 +241,11 @@ async def join_verify(cb: CallbackQuery, state: FSMContext, bot: Bot, db: Databa
     user = cb.from_user
     data = await state.get_data()
     chat_id = data.get("jg_chat_id")
-    info = pending_join.get(user.id, {})
-    title = info.get("title", "guruh")
+    mode = data.get("jg_mode", "approve")
+    title = data.get("jg_title") or pending_join.get(user.id, {}).get("title", "guruh")
 
     if not chat_id:
-        await cb.answer("Ariza topilmadi. Qaytadan kirish arizasini yuboring.", show_alert=True)
+        await cb.answer("Sessiya topilmadi. /start bosing yoki qaytadan urinib ko'ring.", show_alert=True)
         await state.clear()
         return
 
@@ -210,19 +259,34 @@ async def join_verify(cb: CallbackQuery, state: FSMContext, bot: Bot, db: Databa
         )
         return
 
-    # ── Arizani tasdiqlash ──────────────────────────────────────────────────
-    approved = True
-    try:
-        await bot.approve_chat_join_request(chat_id, user.id)
-    except Exception as e:
-        # Ariza muddati o'tgan / allaqachon a'zo / bot huquqi yo'q
-        logger.warning(f"approve_chat_join_request xatosi ({user.id}→{chat_id}): {e}")
-        approved = False
-
     name = data.get("jg_name", "")
     age = data.get("jg_age", "")
     interests = data.get("jg_interests", "")
     username = f"@{user.username}" if user.username else None
+
+    # ── Rejimga qarab: havola yuborish (invite) yoki arizani tasdiqlash (approve) ──
+    ok = True
+    invite_link: str | None = None
+    if mode == "invite":
+        # Yo'l B — bir martalik taklif havolasi
+        try:
+            link_obj = await bot.create_chat_invite_link(
+                chat_id,
+                name=name[:30] or "join",
+                member_limit=1,
+                expire_date=datetime.now() + timedelta(hours=24),
+            )
+            invite_link = link_obj.invite_link
+        except Exception as e:
+            logger.warning(f"create_chat_invite_link xatosi ({chat_id}): {e}")
+            ok = False
+    else:
+        # Yo'l A — kirish arizasini tasdiqlash
+        try:
+            await bot.approve_chat_join_request(chat_id, user.id)
+        except Exception as e:
+            logger.warning(f"approve_chat_join_request xatosi ({user.id}→{chat_id}): {e}")
+            ok = False
 
     # ── DB ga saqlash ──────────────────────────────────────────────────────
     try:
@@ -234,7 +298,7 @@ async def join_verify(cb: CallbackQuery, state: FSMContext, bot: Bot, db: Databa
             age=age,
             interests=interests,
             username=username,
-            status="approved" if approved else "pending",
+            status="approved" if ok else "pending",
         )
     except Exception as e:
         logger.warning(f"save_join_applicant xatosi: {e}")
@@ -242,7 +306,18 @@ async def join_verify(cb: CallbackQuery, state: FSMContext, bot: Bot, db: Databa
     pending_join.pop(user.id, None)
     await state.clear()
 
-    if approved:
+    # ── Foydalanuvchiga javob ───────────────────────────────────────────────
+    if mode == "invite" and invite_link:
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🚀 Guruhga kirish", url=invite_link)]]
+        )
+        await cb.message.edit_text(
+            f"🎉 <b>Tabriklaymiz, {name}!</b>\n\n"
+            f"Anketa qabul qilindi. Quyidagi tugma orqali <b>{title}</b> guruhiga qo'shiling 👇\n\n"
+            f"<i>(Havola faqat siz uchun, 24 soat amal qiladi)</i>",
+            reply_markup=markup,
+        )
+    elif mode == "approve" and ok:
         await cb.message.edit_text(
             f"🎉 <b>Tabriklaymiz, {name}!</b>\n\n"
             f"Siz <b>{title}</b> guruhiga qabul qilindingiz.\n"
@@ -251,7 +326,7 @@ async def join_verify(cb: CallbackQuery, state: FSMContext, bot: Bot, db: Databa
     else:
         await cb.message.edit_text(
             "⚠️ Anketangiz qabul qilindi, lekin guruhga avtomatik qo'sha olmadik.\n"
-            "Iltimos, kirish arizangizni qaytadan yuboring yoki admin bilan bog'laning."
+            "Iltimos, admin bilan bog'laning."
         )
     await cb.answer()
 

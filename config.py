@@ -87,6 +87,18 @@ CHANNEL_LINK: str = os.getenv("CHANNEL_LINK", "https://t.me/sunnatbee_lessons")
 # yoqilgan va bot admin bo'lsa ishlaydi.
 JOIN_GATE_ENABLED: bool = os.getenv("JOIN_GATE_ENABLED", "1").lower() in ("1", "true", "yes")
 
+# "Bot orqali kirish" (Yo'l B) — anketa tugagach bot shu guruhga bir martalik
+# taklif havolasi yuboradi. Bo'sh bo'lsa, bot a'zo bo'lgan yagona guruh ishlatiladi.
+def _parse_int_or_none(raw: str) -> int | None:
+    raw = (raw or "").strip()
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+JOIN_TARGET_CHAT_ID: int | None = _parse_int_or_none(os.getenv("JOIN_TARGET_CHAT_ID", ""))
+
 
 def _parse_required_channels(raw: str) -> list[dict]:
     """Majburiy obuna kanallarini ajratadi.

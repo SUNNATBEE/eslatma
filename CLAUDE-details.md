@@ -13,6 +13,12 @@ Faqat kerak bo'lganda o'qing. Asosiy qoidalar: `CLAUDE.md`
 | `DATABASE_URL` | `sqlite+aiosqlite:///bot.db` | |
 | `SEND_HOUR/MINUTE` | `20:00` | daily reminder time |
 | `CHANNEL_LINK` | — | shown in student panel |
+| `ANTHROPIC_API_KEY` | — | AI homework review (required for the feature) |
+| `AI_MODEL` | `claude-sonnet-4-6` | Claude model; `claude-opus-4-8` for max quality |
+| `AI_HOMEWORK_ENABLED` | `1` | master toggle |
+| `AI_HOMEWORK_TRIGGERS` | `#vazifa,#uyvazifa,#дз,#homework` | trigger hashtags |
+| `AI_HOMEWORK_DAILY_LIMIT` | `5` | per-student/day (`0`=unlimited) |
+| `AI_MAX_*` | see `config.py` | images/zip/chars/link limits |
 
 ## DB Models (22 ta)
 ```
@@ -82,3 +88,21 @@ if (token) headers['Authorization'] = `Bearer ${token}`;
 ## AbsenceReasonFSM
 - "Kela olmayman" → sabab so'raydi → admins + aktiv kuratorlar + PARENT guruhlariga
 - FSM aktiv bo'lsa `curator.py` relay o'tkazib yuboradi
+
+## AI Homework Checker (`#vazifa`)
+- Oqim: guruh xabar (`#vazifa`) → `handlers/homework_ai.py` →
+  `homework_extract.build_homework_payload()` → `ai_service.analyze_homework()` →
+  o'quvchi xabariga reply (2 til: UZ+RU)
+- **Router tartibi**: `homework_ai` `commands`dan OLDIN — aks holda
+  `commands.auto_save_group` (guruh catch-all) xabarni yutadi
+- Filtr: guruh + `#vazifa` YOKI istalgan albom bo'lagi (`media_group_id`)
+- Albom (media group) → `media_group_id` bo'yicha buferlanadi (`_ALBUM_DELAY≈1.5s`),
+  trigger albomning istalgan bo'lagida bo'lishi mumkin
+- Material: rasm/albom (vision), image-doc, ZIP (kod fayllar; `node_modules`/`.git`/
+  binar skip), kod/matn fayl, havola (GitHub→raw, SSRF guard), matn
+- Cheklovlar: kunlik limit (in-memory, sana kaliti), rasm/zip/char/link caplari,
+  system prompt `cache_control` bilan keshlanadi
+- Xavfsizlik: SSRF guard (private/loopback rad), javob `html.escape()` (kod `<>&`
+  Telegram HTML'ni buzmaydi), `ANTHROPIC_API_KEY` faqat env'da
+- `anthropic` LAZY import — kalit/paket yo'q bo'lsa ham bot ishlaydi
+- Batafsil: `docs/AI_HOMEWORK.md`

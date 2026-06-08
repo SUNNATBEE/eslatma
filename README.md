@@ -1,6 +1,6 @@
 # otaOnaBot
 
-Telegram bot and **Telegram Mini App** backend for an IT training center (Mars IT, Uzbekistan): student registration, homework, attendance, curator relay, XP / levels / games, and admin tools.
+Telegram bot and **Telegram Mini App** backend for an IT training center (Mars IT, Uzbekistan): student registration, homework, attendance, curator relay, XP / levels / games, **AI homework review**, and admin tools.
 
 UI copy and inline documentation are primarily in **Uzbek**; this README is in English for contributors and hosting providers.
 
@@ -30,6 +30,21 @@ Minimum **`.env`** (see `config.py` for full list):
 | `TIMEZONE`      | Default: `Asia/Tashkent`                         |
 
 HTTP server listens on `PORT` (default **8080**). Health: `GET /health` → `OK ✅`.
+
+### AI homework review (optional)
+
+Students post work with `#vazifa` in a group; the bot reviews it via **Anthropic
+Claude** and replies in Uzbek + Russian. Requires `ANTHROPIC_API_KEY` **and**
+disabling group privacy in BotFather (`/setprivacy` → Disable).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | — | Required to enable the feature |
+| `AI_MODEL` | `claude-sonnet-4-6` | Higher quality: `claude-opus-4-8` |
+| `AI_HOMEWORK_TRIGGERS` | `#vazifa,#uyvazifa,#дз,#homework` | Trigger hashtags |
+| `AI_HOMEWORK_DAILY_LIMIT` | `5` | Per-student daily limit (`0` = unlimited) |
+
+Full reference, formats, security, and troubleshooting: **`docs/AI_HOMEWORK.md`**.
 
 ### Monitoring & readiness
 
@@ -79,6 +94,8 @@ CI (`.github/workflows/ci.yml`) runs Ruff, compileall, both test suites, and Pla
 | `main.py`       | Bot + dispatcher, scheduler, aiohttp app |
 | `config.py`     | Environment |
 | `database.py`   | Models and `DatabaseService` |
+| `ai_service.py` | Anthropic Claude client (AI homework review) |
+| `homework_extract.py` | Telegram messages → Claude content blocks |
 | `scheduler.py`  | Reminders, weekly leaderboard broadcast, etc. |
 | `handlers/`     | Telegram handlers |
 | `routes/`       | JSON API for Mini App |

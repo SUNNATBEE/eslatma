@@ -196,3 +196,40 @@ RATE_LIMIT_LOGIN_WINDOW_SEC: float = float(os.getenv("RATE_LIMIT_LOGIN_WINDOW_SE
 
 # JSON qatorli log (stdout)
 LOG_JSON: bool = os.getenv("LOG_JSON", "").lower() in ("1", "true", "yes")
+
+# ─── AI uy vazifa tekshiruvi (Anthropic Claude) ──────────────────────────────
+# O'quvchi guruhga #vazifa hashtag bilan rasm/kod/zip/havola yuborsa, AI uni
+# professional tahlil qilib, xato-kamchiliklarni 2 tilda (UZ + RU) tushuntiradi.
+#
+# Sozlash:
+#   1) BotFather'da botning "Group Privacy" rejimini O'CHIRING (/setprivacy → Disable),
+#      aks holda bot guruhdagi fayl/rasmlarni KO'RMAYDI.
+#   2) ANTHROPIC_API_KEY ni o'rnating (console.anthropic.com dan oling).
+ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Feature toggle
+AI_HOMEWORK_ENABLED: bool = os.getenv("AI_HOMEWORK_ENABLED", "1").lower() in ("1", "true", "yes")
+
+# Model — default arzon va vision'li Sonnet. Yuqori sifat uchun: claude-opus-4-8
+AI_MODEL: str = os.getenv("AI_MODEL", "claude-sonnet-4-6")
+
+# Tahlil qancha matn (token) qaytarsin
+AI_MAX_TOKENS: int = int(os.getenv("AI_MAX_TOKENS", "3500"))
+
+# Trigger hashtag(lar) — vergul bilan. Faqat shu bo'lganda AI ishlaydi.
+AI_HOMEWORK_TRIGGERS: list[str] = [
+    t.strip().lower()
+    for t in os.getenv("AI_HOMEWORK_TRIGGERS", "#vazifa,#uyvazifa,#дз,#homework").split(",")
+    if t.strip()
+]
+
+# Har bir o'quvchi uchun kunlik AI tekshiruv limiti (0 = cheksiz)
+AI_HOMEWORK_DAILY_LIMIT: int = int(os.getenv("AI_HOMEWORK_DAILY_LIMIT", "5"))
+
+# Material chegaralari (xarajat va xavfsizlik nazorati)
+AI_MAX_IMAGES: int = int(os.getenv("AI_MAX_IMAGES", "6"))
+AI_MAX_IMAGE_MB: float = float(os.getenv("AI_MAX_IMAGE_MB", "4.5"))
+AI_MAX_ZIP_FILES: int = int(os.getenv("AI_MAX_ZIP_FILES", "40"))
+AI_MAX_FILE_CHARS: int = int(os.getenv("AI_MAX_FILE_CHARS", "16000"))
+AI_MAX_TOTAL_CHARS: int = int(os.getenv("AI_MAX_TOTAL_CHARS", "60000"))
+AI_MAX_LINK_BYTES: int = int(os.getenv("AI_MAX_LINK_BYTES", "400000"))

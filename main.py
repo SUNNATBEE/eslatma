@@ -56,6 +56,7 @@ from handlers import (
     commands_router,
     curator_router,
     group_join_router,
+    homework_ai_router,
     registration_router,
     school_router,
     student_router,
@@ -453,6 +454,9 @@ async def main() -> None:
     dp.message.middleware(TypingMiddleware())  # Xabar → "yozmoqda..."
 
     # 4. Handler router'larini ulash
+    # MUHIM: homework_ai commands'dan OLDIN — aks holda commands.py'dagi
+    # auto_save_group barcha guruh xabarlarini yutib, #vazifa bu yerga yetib kelmaydi.
+    dp.include_router(homework_ai_router)  # Guruhda AI uy vazifa tekshiruvi (#vazifa)
     dp.include_router(commands_router)  # /start, /panel, ...
     dp.include_router(group_join_router)  # Guruhga kirish arizasi (anketa + obuna gate)
     dp.include_router(curator_router)  # /curator + kurator relay chat

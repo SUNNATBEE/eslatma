@@ -1,7 +1,8 @@
 # Dars vazifasi — `/vazifa` (AI uy vazifa generatori)
 
-Ustoz (admin) dars oxirida o'tilgan **mavzuni tanlaydi**, AI o'sha mavzudan
-**10-16 yoshli o'quvchilar uchun** qiziqarli uy vazifasi tuzadi va guruhga yuboradi.
+Ustoz (admin) dars oxirida **mavzuni tanlaydi** (yoki nomini o'zi yozadi), AI o'sha mavzudan
+**qisqa, professional va 10 yoshli bola tushunadigan** uy vazifasi + UI namunasini tuzadi va
+guruhga yuboradi.
 
 ## Oqim
 
@@ -10,9 +11,32 @@ Ustoz (admin) dars oxirida o'tilgan **mavzuni tanlaydi**, AI o'sha mavzudan
    - Avtomatik: dars tugagandan ~1 daqiqa keyin botdan **"📝 Vazifa yaratish"** tugmasi keladi
      (`send_lesson_topic_prompt` scheduler job; guruh allaqachon ma'lum).
 2. **Guruh** tanlanadi (qo'lda oqimda) → guruh nomidan **yo'nalish (track)** aniqlanadi.
-3. **Modul → Blok → Dars mavzusi** ketma-ket inline tugmalar bilan tanlanadi.
-4. AI mavzuni chuqur tahlil qilib **2 tilli (🇺🇿 + 🇷🇺)** vazifa tuzadi.
-5. Admin **preview** ko'radi → **✅ Guruhga yuborish** / **🔄 Qayta yaratish** / **❌ Bekor**.
+3. **Mavzu** ikki yo'l bilan beriladi:
+   - **O'quv dasturidan:** Modul → Blok → Dars mavzusi inline tugmalar bilan.
+   - **Qo'lda:** **"✍️ Mavzu nomini o'zim yozaman"** tugmasi → admin mavzu nomini yozadi.
+     Pro/maxsus guruhlar uchun (o'quv dasturi yo'q) — yagona yo'l, avtomatik taklif qilinadi.
+4. AI mavzudan **2 tilli (🇺🇿 + 🇷🇺)**, qisqa va professional vazifa tuzadi.
+5. AI **maqsadli UI namunasini** (HTML) ham chizadi — o'quvchi "shu ko'rinishni yasashi" kerak.
+6. Admin **preview** ko'radi (UI havolasi bilan) → **✅ Guruhga yuborish** / **🔄 Qayta yaratish** / **❌ Bekor**.
+7. Guruhga **📌 UYGA VAZIFA** katta sarlavhasi bilan yuboriladi.
+
+> Istalgan bosqichda **`/cancel`** bilan to'xtatish mumkin.
+
+## UI namuna havolasi (Figma o'rnida)
+
+Vazifa bilan birga AI o'quvchi yasashi kerak bo'lgan **etalon UI** ni to'liq, mustaqil HTML
+hujjat qilib generatsiya qiladi (tashqi resurssiz — barcha CSS inline, rasm o'rniga emoji/SVG).
+Bot uni DB'ga saqlaydi va guruhga **`{WEBAPP_URL}/task/<id>`** havolasini yuboradi — o'quvchi
+Telegram'da bosib, namunani ko'radi (login/Figma akkaunt kerak emas).
+
+- Saqlash: `generated_task_ui` jadvali (`DatabaseService.save_task_ui` / `get_task_ui`).
+- Ko'rsatish: `GET /task/{task_id}` endpoint (`main.py`).
+- Generatsiya: `ai_service.generate_assignment_ui()`.
+- `WEBAPP_URL` bo'sh bo'lsa yoki UI generatsiya xato bersa — vazifa matni baribir yuboriladi
+  (havolasiz, oqim buzilmaydi).
+
+> ⚠️ Render/Railway fayl tizimi efemer — shuning uchun UI **DB'da** saqlanadi (fayl emas),
+> redeploy'dan keyin ham havola ishlaydi (DB saqlansa).
 
 ## Ma'lumot manbasi
 
@@ -42,8 +66,10 @@ Fayl formati: `## Modul-N — M-blok` → `### K. Dars nomi` → `**Metodika**` 
 
 ```
 curriculum.py            — Mavzular/ parser (track → modul → blok → dars)
-ai_service.py            — generate_assignment() (2 tilli vazifa)
-handlers/lesson_topic.py — /vazifa FSM + inline oqim + preview/yuborish
+ai_service.py            — generate_assignment() (2 tilli vazifa) + generate_assignment_ui() (HTML namuna)
+handlers/lesson_topic.py — /vazifa FSM + inline oqim + preview/yuborish + UI havola
+main.py                  — GET /task/{task_id} (UI namunasini ko'rsatadi)
+database.py              — GeneratedTaskUI modeli + save_task_ui/get_task_ui
 scheduler.py             — send_lesson_topic_prompt() (dars oxirida prompt)
 ```
 

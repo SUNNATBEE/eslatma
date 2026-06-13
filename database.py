@@ -10,7 +10,19 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String, UniqueConstraint, delete, select, text, update
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    delete,
+    select,
+    text,
+    update,
+)
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import (
@@ -518,6 +530,38 @@ class AdminProfile(Base):
     last_active: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class GeneratedTaskUI(Base):
+    """AI generatsiya qilgan vazifa UI namunasi (to'liq HTML hujjat).
+
+    /vazifa oqimida AI uy vazifasi bilan birga "shu ko'rinishni yasang" deb
+    maqsadli UI ni HTML qilib chizadi. Bu yerda saqlanadi va guruhga
+    {WEBAPP_URL}/task/<id> havolasi sifatida yuboriladi (Telegram'da ochiladi).
+    """
+
+    __tablename__ = "generated_task_ui"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)  # qisqa slug
+    title: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    group_name: Mapped[str] = mapped_column(String(50), nullable=False, default="", index=True)
+    html: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class GroupCurrentTask(Base):
+    """Guruhning JORIY (oxirgi yuborilgan) uy vazifasi — AI tekshiruv uchun etalon.
+
+    /vazifa orqali guruhga vazifa yuborilganda shu yerda yangilanadi (upsert).
+    homework_ai #vazifa tekshiruvida o'quvchi ishini shu mavzu bo'yicha baholaydi.
+    """
+
+    __tablename__ = "group_current_task"
+
+    group_name: Mapped[str] = mapped_column(String(50), primary_key=True)
+    title: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    assignment_text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
 
 # Level oshganda beriladigan bonus XP
@@ -708,9 +752,7 @@ class DatabaseService:
                 self._log_migration_error(e)
             # DM-004: create_all mavjud jadvalga indeks qo'shmaydi — qo'lda qo'shamiz
             try:
-                await conn.execute(
-                    text("CREATE INDEX IF NOT EXISTS ix_students_group_name ON students (group_name)")
-                )
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_students_group_name ON students (group_name)"))
                 logger.info("Migration: ix_students_group_name indeksi qo'shildi.")
             except Exception as e:
                 self._log_migration_error(e)
@@ -730,6 +772,49 @@ class DatabaseService:
         except Exception:
             logger.warning("check_db_live: ulanish muvaffaqiyatsiz", exc_info=True)
             return False
+
+    # ── Vazifa UI namunasi (AI generatsiya) ─────────────────────────────────────
+
+    async def save_task_ui(self, task_id: str, title: str, group_name: str, html: str) -> None:
+        """AI generatsiya qilgan vazifa UI (HTML) ni saqlaydi."""
+        async with self.session_factory() as session:
+            session.add(
+                GeneratedTaskUI(
+                    id=task_id,
+                    title=(title or "")[:300],
+                    group_name=(group_name or "")[:50],
+                    html=html,
+                )
+            )
+            await session.commit()
+
+    async def get_task_ui(self, task_id: str) -> "GeneratedTaskUI | None":
+        """Saqlangan vazifa UI ni id bo'yicha qaytaradi (yo'q bo'lsa None)."""
+        async with self.session_factory() as session:
+            return await session.get(GeneratedTaskUI, task_id)
+
+    async def set_group_current_task(self, group_name: str, title: str, assignment_text: str) -> None:
+        """Guruhning joriy uy vazifasini saqlaydi (upsert) — AI tekshiruv etaloni."""
+        async with self.session_factory() as session:
+            row = await session.get(GroupCurrentTask, group_name)
+            if row is None:
+                session.add(
+                    GroupCurrentTask(
+                        group_name=group_name,
+                        title=(title or "")[:300],
+                        assignment_text=assignment_text,
+                    )
+                )
+            else:
+                row.title = (title or "")[:300]
+                row.assignment_text = assignment_text
+                row.created_at = datetime.now()
+            await session.commit()
+
+    async def get_group_current_task(self, group_name: str) -> "GroupCurrentTask | None":
+        """Guruhning joriy uy vazifasini qaytaradi (yo'q bo'lsa None)."""
+        async with self.session_factory() as session:
+            return await session.get(GroupCurrentTask, group_name)
 
     # ── CREATE / UPDATE ────────────────────────────────────────────────────────
 
@@ -1615,22 +1700,21 @@ class DatabaseService:
 
     # ── GAMIFICATION ───────────────────────────────────────────────────────────
 
-    async def add_xp(self, user_id: int, amount: int) -> tuple[int, int, bool, int]:
+    async def add_xp(self, user_id: int, amount: int, apply_multiplier: bool = True) -> tuple[int, int, bool, int]:
         """O'quvchiga XP qo'shadi, darajani yangilaydi.
         Returns: (new_xp, new_level, leveled_up, old_level)
-        Lv.6+ uchun 2x multiplikator; level oshsa bonus XP ham qo'shiladi.
+        Lv.6+ uchun 2x multiplikator (apply_multiplier=False bo'lsa aniq amount beriladi);
+        level oshsa bonus XP ham qo'shiladi.
         """
         async with self.session_factory() as session:
             # with_for_update — bir vaqtda kelgan so'rovlarda "lost update" oldini oladi
             # (SQLite uchun no-op, Postgres uchun qator qulflanadi)
-            result = await session.execute(
-                select(Student).where(Student.user_id == user_id).with_for_update()
-            )
+            result = await session.execute(select(Student).where(Student.user_id == user_id).with_for_update())
             s = result.scalar_one_or_none()
             if not s:
                 return 0, 1, False, 1
             old_level = s.level or 1
-            actual_amount = _apply_xp_multiplier(old_level, amount)
+            actual_amount = _apply_xp_multiplier(old_level, amount) if apply_multiplier else amount
             s.xp = (s.xp or 0) + actual_amount
             s.level = _calc_level(s.xp)
             leveled_up = s.level > old_level
@@ -1660,9 +1744,7 @@ class DatabaseService:
         async with self.session_factory() as session:
             # with_for_update — double-tap'da streak/XP ikki marta berilishining (lost update)
             # oldini oladi (SQLite uchun no-op, Postgres uchun qatorni qulflaydi)
-            result = await session.execute(
-                select(Student).where(Student.user_id == user_id).with_for_update()
-            )
+            result = await session.execute(select(Student).where(Student.user_id == user_id).with_for_update())
             s = result.scalar_one_or_none()
             if not s:
                 return {"already_done": True, "xp_gained": 0, "streak_days": 0, "streak_bonus": 0}
@@ -1997,9 +2079,7 @@ class DatabaseService:
         async with self.session_factory() as session:
             # with_for_update — ikki o'yinchi bir vaqtda qo'shilsa player2 ustiga
             # yozilishining oldini oladi; shartlar qulf ostida QAYTA tekshiriladi
-            result = await session.execute(
-                select(GameRoom).where(GameRoom.id == room_id).with_for_update()
-            )
+            result = await session.execute(select(GameRoom).where(GameRoom.id == room_id).with_for_update())
             room = result.scalar_one_or_none()
             if room and room.status == "waiting" and room.player1_id != player2_id:
                 room.player2_id = player2_id
@@ -2017,9 +2097,7 @@ class DatabaseService:
         async with self.session_factory() as session:
             # with_for_update — g'olibni belgilashda race'ning oldini oladi
             # (claim_room_xp namunasidek qatorni qulflaymiz)
-            result = await session.execute(
-                select(GameRoom).where(GameRoom.id == room_id).with_for_update()
-            )
+            result = await session.execute(select(GameRoom).where(GameRoom.id == room_id).with_for_update())
             room = result.scalar_one_or_none()
             if not room or room.status == "finished":
                 return room
@@ -2044,9 +2122,7 @@ class DatabaseService:
         Faqat birinchi chaqiruvda True qaytaradi — shu orqali XP takror berilmaydi.
         """
         async with self.session_factory() as session:
-            result = await session.execute(
-                select(GameRoom).where(GameRoom.id == room_id).with_for_update()
-            )
+            result = await session.execute(select(GameRoom).where(GameRoom.id == room_id).with_for_update())
             room = result.scalar_one_or_none()
             if not room or room.xp_awarded:
                 return False
@@ -2311,17 +2387,13 @@ class DatabaseService:
         """
         async with self.session_factory() as session:
             # Idempotentlik tekshiruvi qulf ostida — double-award oldini oladi
-            result = await session.execute(
-                select(ReferralStudent).where(ReferralStudent.id == rs_id).with_for_update()
-            )
+            result = await session.execute(select(ReferralStudent).where(ReferralStudent.id == rs_id).with_for_update())
             rs = result.scalar_one_or_none()
             if not rs or rs.xp_awarded:
                 return False
             # Referrer XP'sini xuddi shu tranzaksiyada qo'shamiz (add_xp mantig'i takrori).
             # Crash bo'lsa rs.xp_awarded ham, XP ham birga roll-back bo'ladi — XP yo'qolmaydi.
-            stu_result = await session.execute(
-                select(Student).where(Student.user_id == referrer_id).with_for_update()
-            )
+            stu_result = await session.execute(select(Student).where(Student.user_id == referrer_id).with_for_update())
             s = stu_result.scalar_one_or_none()
             if s:
                 old_level = s.level or 1

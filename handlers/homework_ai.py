@@ -59,7 +59,7 @@ def _strip_triggers(text: str) -> str:
         # registrga bog'liq bo'lmagan almashtirish
         idx = out.lower().find(trig)
         while idx != -1:
-            out = out[:idx] + out[idx + len(trig):]
+            out = out[:idx] + out[idx + len(trig) :]
             idx = out.lower().find(trig)
     return out.strip()
 
@@ -166,9 +166,7 @@ async def on_homework(message: Message, bot: Bot, db: DatabaseService) -> None:
     await _process([message], message, bot, db)
 
 
-async def _process(
-    messages: list[Message], trigger_msg: Message, bot: Bot, db: DatabaseService
-) -> None:
+async def _process(messages: list[Message], trigger_msg: Message, bot: Bot, db: DatabaseService) -> None:
     """Materialni yig'ib, AI tahlilini guruhga reply qiladi."""
     user = trigger_msg.from_user
 
@@ -190,6 +188,15 @@ async def _process(
     # O'quvchi ismi/guruhi (DB'dan, bo'lmasa Telegram'dan)
     name = user.full_name
     group = trigger_msg.chat.title or ""
+    student = None
+    group_resolved = ""
+    try:
+        # Guruh nomini chat'dan ishonchli aniqlaymiz (joriy vazifani topish uchun)
+        g = await db.get_group_by_chat_id(trigger_msg.chat.id)
+        if g and getattr(g, "name", None):
+            group_resolved = g.name
+    except Exception:
+        pass
     try:
         student = await db.get_student(user.id)
         if student:
@@ -197,14 +204,27 @@ async def _process(
                 name = student.full_name
             if getattr(student, "group_name", None):
                 group = student.group_name
+                if not group_resolved:
+                    group_resolved = student.group_name
     except Exception:
         pass
+    if not group_resolved:
+        group_resolved = group
+
+    # Guruhning joriy uy vazifasi (etalon) — bo'lsa, AI shunga qarab baholaydi
+    current_task = None
+    try:
+        if group_resolved:
+            current_task = await db.get_group_current_task(group_resolved)
+    except Exception:
+        logger.warning("Joriy vazifani olishda xato", exc_info=True)
 
     status = await trigger_msg.reply(
         "🔍 <b>Vazifangiz AI tomonidan tekshirilmoqda...</b>\n"
         "<i>🇷🇺 Идёт проверка работы искусственным интеллектом...</i>"
     )
 
+    score: int | None = None
     try:
         blocks, notes = await build_homework_payload(messages, bot, strip_triggers=_strip_triggers)
         if not blocks:
@@ -213,7 +233,14 @@ async def _process(
                 "⚠️ Не найден материал для проверки. Отправьте код, фото, ZIP или ссылку."
             )
             return
-        feedback = await ai_service.analyze_homework(blocks, name, group, notes)
+        if current_task is not None:
+            # Mavzu bo'yicha baholash (etalon vazifaga solishtiradi) → baho + XP
+            feedback, score = await ai_service.grade_homework(
+                blocks, name, group_resolved, current_task.assignment_text, notes
+            )
+        else:
+            # Joriy vazifa yo'q — umumiy tahlil (XP'siz)
+            feedback = await ai_service.analyze_homework(blocks, name, group, notes)
     except Exception:
         logger.exception("AI homework tahlil xatosi")
         await status.edit_text(
@@ -224,9 +251,28 @@ async def _process(
 
     _incr_usage(trigger_msg.chat.id, user.id)
 
+    # Baho asosida XP beramiz (max 30, multiplikatorsiz — aniq qiymat)
+    xp_line = ""
+    if score is not None:
+        xp = round(score / 10 * 30)
+        if student is not None and xp > 0:
+            try:
+                _new_xp, new_level, leveled_up, _old = await db.add_xp(user.id, xp, apply_multiplier=False)
+                xp_line = f"\n\n🪙 Baho / Оценка: {score}/10  →  +{xp} XP"
+                if leveled_up:
+                    xp_line += f"\n🎉 Yangi daraja / Новый уровень: {new_level}!"
+            except Exception:
+                logger.exception("XP berishda xato")
+                xp_line = f"\n\n🪙 Baho / Оценка: {score}/10"
+        else:
+            xp_line = f"\n\n🪙 Baho / Оценка: {score}/10"
+            if student is None:
+                xp_line += "\n💡 XP olish uchun botda ro'yxatdan o'ting (/start)."
+
     # Sarlavha + tahlil. feedback toza matn → HTML xavfsizligi uchun escape qilamiz.
-    header = f"📋 <b>{html.escape(name)}</b> — AI tahlil natijasi:\n\n"
-    body = html.escape(feedback)
+    title = current_task.title if current_task is not None else "AI tahlil natijasi"
+    header = f"📋 <b>{html.escape(name)}</b> — {html.escape(title)}:\n\n"
+    body = html.escape(feedback) + html.escape(xp_line)
     parts = _chunk(header + body)
 
     try:

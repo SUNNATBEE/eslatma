@@ -22,6 +22,7 @@ callback_data sxemasi (kalit qisqaligi uchun indekslar ishlatiladi, ro'yxatlar F
 
 import html
 import logging
+import uuid
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, StateFilter
@@ -31,13 +32,26 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 import ai_service
 import curriculum
-from config import ADMIN_IDS
+from config import ADMIN_IDS, WEBAPP_URL
 from database import AudienceType, DatabaseService
 
 logger = logging.getLogger(__name__)
 router = Router()
 
 _TG_LIMIT = 4000  # xavfsiz chegara (Telegram 4096)
+
+# Vazifa oxiriga qo'shiladigan "qanday topshirish" yo'riqnomasi (2 tilli)
+_SUBMIT_GUIDE = (
+    "\n\n━━━━━━━━━━━━━━━━━━━\n"
+    "📤 VAZIFANI QANDAY TOPSHIRASIZ?\n"
+    "Ishingizni shu guruhga #vazifa so'zi bilan yuboring:\n"
+    "• 🖼 rasm (skrinshot)  • 📦 ZIP arxiv  • 🔗 havola  • 💻 kod\n"
+    "🤖 AI ishingizni tekshiradi va bahosiga qarab 30 gacha XP beradi.\n\n"
+    "🇷🇺 КАК СДАТЬ ЗАДАНИЕ?\n"
+    "Отправьте работу в эту группу со словом #vazifa:\n"
+    "• 🖼 фото  • 📦 ZIP  • 🔗 ссылка  • 💻 код\n"
+    "🤖 ИИ проверит работу и начислит до 30 XP."
+)
 
 
 def _is_admin(user_id: int) -> bool:
@@ -49,6 +63,7 @@ class LessonTaskFSM(StatesGroup):
     module = State()
     block = State()
     lesson = State()
+    custom_topic = State()  # ustoz mavzu nomini qo'lda yozadi (Pro guruhlar uchun)
     preview = State()
 
 
@@ -97,6 +112,8 @@ def _kb_groups(names: list[str]) -> InlineKeyboardMarkup:
 
 def _kb_modules(modules: list[str]) -> InlineKeyboardMarkup:
     rows = [[InlineKeyboardButton(text=f"📦 {m}", callback_data=f"lt:m:{i}")] for i, m in enumerate(modules)]
+    # Pro guruhlar yoki o'quv dasturida yo'q mavzular uchun — qo'lda yozish
+    rows.append([InlineKeyboardButton(text="✍️ Mavzu nomini o'zim yozaman", callback_data="lt:custom")])
     rows += _kb_back_cancel("groups")
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -198,20 +215,32 @@ async def cb_auto_start(cb: CallbackQuery, state: FSMContext, db: DatabaseServic
 
 
 async def _enter_group(cb: CallbackQuery, state: FSMContext, group_name: str) -> None:
-    """Guruh tanlangach yo'nalishni aniqlab modullarni ko'rsatadi."""
+    """Guruh tanlangach yo'nalishni aniqlab modullarni ko'rsatadi.
+
+    O'quv dasturi topilmasa (masalan Pro guruhlar) — faqat "mavzuni o'zim yozaman"
+    yo'li ko'rsatiladi.
+    """
     track = curriculum.track_for_group(group_name)
     modules = curriculum.list_modules(track)
-    if not modules:
-        await cb.message.edit_text(f"⚠️ '{group_name}' uchun o'quv dasturi topilmadi (yo'nalish: {track}).")
-        await state.clear()
-        return
+    track_label = curriculum.TRACK_LABELS.get(track, track)
 
     await state.update_data(group_name=group_name, track=track, module_list=modules)
     await state.set_state(LessonTaskFSM.module)
+
+    if not modules:
+        await cb.message.edit_text(
+            f"🏫 Guruh: <b>{group_name}</b>\n"
+            f"🧭 Yo'nalish: <b>{track_label}</b>\n\n"
+            "ℹ️ Bu guruh uchun tayyor o'quv dasturi yo'q (Pro/maxsus guruh).\n"
+            "Mavzu nomini o'zingiz yozing — bot vazifa va UI namunasini tuzadi.",
+            reply_markup=_kb_modules(modules),  # faqat "✍️ Mavzu nomini o'zim yozaman" + Bekor
+        )
+        return
+
     await cb.message.edit_text(
         f"🏫 Guruh: <b>{group_name}</b>\n"
-        f"🧭 Yo'nalish: <b>{curriculum.TRACK_LABELS.get(track, track)}</b>\n\n"
-        f"Qaysi <b>modul</b>ni o'tdingiz?",
+        f"🧭 Yo'nalish: <b>{track_label}</b>\n\n"
+        f"Qaysi <b>modul</b>ni o'tdingiz? Yoki mavzuni o'zingiz yozing.",
         reply_markup=_kb_modules(modules),
     )
 
@@ -267,92 +296,224 @@ async def cb_pick_block(cb: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data.startswith("lt:l:"), StateFilter(LessonTaskFSM.lesson))
-async def cb_pick_lesson(cb: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+async def cb_pick_lesson(cb: CallbackQuery, state: FSMContext, bot: Bot, db: DatabaseService) -> None:
     data = await state.get_data()
     idx = int(cb.data.split(":")[2])
     titles = data.get("lesson_titles", [])
     if idx >= len(titles):
         return
-    await state.update_data(lesson_index=idx)
-    await _generate_and_preview(cb, state, bot)
 
-
-# ─── Generatsiya + preview ───────────────────────────────────────────────────
-
-
-async def _generate_and_preview(cb: CallbackQuery, state: FSMContext, bot: Bot) -> None:
-    data = await state.get_data()
-    track = data["track"]
-    module = data["module"]
-    block = data["block"]
-    idx = data["lesson_index"]
-    group_name = data["group_name"]
-
+    track, module, block, group_name = data["track"], data["module"], data["block"], data["group_name"]
     lesson = curriculum.get_lesson(track, module, block, idx)
     if lesson is None:
         await cb.message.edit_text("⚠️ Dars topilmadi. Qaytadan urinib ko'ring: /vazifa")
         await state.clear()
         return
 
+    params = {
+        "group_name": group_name,
+        "track_label": curriculum.TRACK_LABELS.get(track, track),
+        "module_label": module,
+        "block_label": block,
+        "lesson_name": lesson.name,
+        "display_title": lesson.title,
+        "metodika": lesson.metodika,
+        "academy": lesson.academy,
+        "extra_note": "",
+    }
+    await _run_generation(cb.message, state, bot, db, params)
+
+
+# ─── Mavzuni qo'lda yozish (Pro guruhlar / o'quv dasturida yo'q mavzu) ────────
+
+
+@router.callback_query(F.data == "lt:custom", StateFilter(LessonTaskFSM.module))
+async def cb_custom_start(cb: CallbackQuery, state: FSMContext) -> None:
+    """Ustoz mavzu nomini qo'lda yozishini so'raydi."""
+    data = await state.get_data()
+    group_name = data.get("group_name", "")
+    await state.set_state(LessonTaskFSM.custom_topic)
+    await cb.message.edit_text(
+        f"✍️ <b>Mavzu nomini yozing</b>\n🏫 Guruh: <b>{html.escape(group_name)}</b>\n\n"
+        "Masalan: <i>JavaScript massivlar (array) va ularning metodlari</i>\n\n"
+        "Bot shu mavzudan vazifa va UI namunasini tuzadi.\n"
+        "Bekor qilish: /cancel",
+    )
+
+
+@router.message(Command("cancel"), StateFilter(LessonTaskFSM))
+async def cmd_cancel(message: Message, state: FSMContext) -> None:
+    """/vazifa oqimining istalgan bosqichida bekor qilish."""
+    await state.clear()
+    await message.answer("❌ Bekor qilindi.")
+
+
+@router.message(StateFilter(LessonTaskFSM.custom_topic), F.text)
+async def on_custom_topic(message: Message, state: FSMContext, bot: Bot, db: DatabaseService) -> None:
+    """Ustoz yozgan mavzu nomidan vazifa + UI generatsiya qiladi."""
+    if not _is_admin(message.from_user.id):
+        return
+    topic = (message.text or "").strip()
+    if topic.startswith("/"):
+        return  # buyruq — boshqa handlerga
+    if len(topic) < 3:
+        await message.answer("⚠️ Mavzu nomi juda qisqa. Iltimos, to'liqroq yozing.")
+        return
+
+    data = await state.get_data()
+    track = data.get("track", "frontend")
+    group_name = data.get("group_name", "")
+    params = {
+        "group_name": group_name,
+        "track_label": curriculum.TRACK_LABELS.get(track, track),
+        "module_label": "Ustoz mavzusi",
+        "block_label": "—",
+        "lesson_name": topic,
+        "display_title": topic,
+        "metodika": "",
+        "academy": "",
+        "extra_note": (
+            "Bu mavzuni ustoz o'zi belgiladi — o'quv dasturida tayyor metodika yo'q. "
+            "Mavzu nomidan kelib chiqib, qisqa va professional vazifa tuz."
+        ),
+    }
+    status_msg = await message.answer("⏳ <b>Tayyorlanmoqda...</b>")
+    await _run_generation(status_msg, state, bot, db, params)
+
+
+# ─── Generatsiya + preview (umumiy yadro) ────────────────────────────────────
+
+
+async def _build_ui_link(
+    db: DatabaseService,
+    *,
+    lesson_name: str,
+    display_title: str,
+    metodika: str,
+    academy: str,
+    group_name: str,
+    assignment_text: str,
+) -> str | None:
+    """Maqsadli UI namunasini AI bilan generatsiya qilib, saqlaydi va havola qaytaradi.
+
+    WEBAPP_URL yo'q yoki xato bo'lsa None qaytaradi (vazifa matni baribir yuboriladi).
+    """
+    if not WEBAPP_URL:
+        return None
+    try:
+        ui_html = await ai_service.generate_assignment_ui(
+            lesson_name=lesson_name,
+            metodika=metodika,
+            academy=academy,
+            group_name=group_name,
+            assignment_text=assignment_text,
+        )
+        task_id = uuid.uuid4().hex[:12]
+        await db.save_task_ui(task_id, display_title, group_name, ui_html)
+        return f"{WEBAPP_URL.rstrip('/')}/task/{task_id}"
+    except Exception as e:
+        logger.warning("Vazifa UI generatsiya/saqlash xatosi: %s", e)
+        return None
+
+
+async def _run_generation(
+    status_msg: Message,
+    state: FSMContext,
+    bot: Bot,
+    db: DatabaseService,
+    params: dict,
+) -> None:
+    """Vazifa matni + UI namunasini generatsiya qilib preview ko'rsatadi.
+
+    status_msg — holat ko'rsatiladigan (tahrirlanadigan) xabar. params regen uchun
+    state'ga saqlanadi.
+    """
     if not ai_service.is_configured():
-        await cb.message.edit_text(
+        await status_msg.edit_text(
             "⚠️ AI sozlanmagan (ANTHROPIC_API_KEY yo'q).\n"
             "Vazifa generatsiyasi ishlamaydi — administrator bilan bog'laning."
         )
         await state.clear()
         return
 
-    safe_title = html.escape(lesson.title)
-    await cb.message.edit_text(
+    group_name = params["group_name"]
+    display_title = params["display_title"]
+    safe_title = html.escape(display_title)
+    await status_msg.edit_text(
         f"⏳ <b>AI vazifa tuzmoqda...</b>\n\n📖 {safe_title}\n🏫 {html.escape(group_name)}\n\nBir oz kuting..."
     )
 
     try:
         text = await ai_service.generate_assignment(
-            track_label=curriculum.TRACK_LABELS.get(track, track),
-            module=module,
-            block=block,
-            lesson_name=lesson.name,
-            metodika=lesson.metodika,
-            academy=lesson.academy,
+            track_label=params["track_label"],
+            module=params["module_label"],
+            block=params["block_label"],
+            lesson_name=params["lesson_name"],
+            metodika=params["metodika"],
+            academy=params["academy"],
             group_name=group_name,
+            extra_note=params.get("extra_note", ""),
         )
     except Exception as e:
         logger.exception("AI vazifa generatsiya xatosi: %s", e)
-        await cb.message.edit_text(f"❌ AI xatosi: <code>{e}</code>\n\nQayta urinib ko'ring: /vazifa")
+        await status_msg.edit_text(f"❌ AI xatosi: <code>{e}</code>\n\nQayta urinib ko'ring: /vazifa")
         await state.clear()
         return
 
-    await state.update_data(generated_text=text)
+    # Vazifa bilan birga maqsadli UI namunasini ham tuzamiz (havola sifatida)
+    await status_msg.edit_text(f"⏳ <b>AI UI namunasini chizmoqda...</b>\n\n📖 {safe_title}\n\nDeyarli tayyor...")
+    ui_link = await _build_ui_link(
+        db,
+        lesson_name=params["lesson_name"],
+        display_title=display_title,
+        metodika=params["metodika"],
+        academy=params["academy"],
+        group_name=group_name,
+        assignment_text=text,
+    )
+
+    await state.update_data(generated_text=text, generated_ui_link=ui_link, gen_params=params)
     await state.set_state(LessonTaskFSM.preview)
 
-    chat_id = cb.message.chat.id
+    chat_id = status_msg.chat.id
     header = (
         f"📋 <b>Tayyor vazifa (preview)</b>\n"
         f"📖 {safe_title}\n"
-        f"🏫 {html.escape(group_name)} · {html.escape(module)} · {html.escape(block)}\n"
-        f"{'─' * 20}"
+        f"🏫 {html.escape(group_name)} · {html.escape(params['module_label'])} · "
+        f"{html.escape(params['block_label'])}\n"
     )
-    await cb.message.edit_text(header)
+    if ui_link:
+        header += f"🎨 UI namuna: {html.escape(ui_link)}\n"
+    else:
+        header += "🎨 UI namuna: <i>yaratilmadi (WEBAPP_URL/AI tekshiring)</i>\n"
+    header += "─" * 20
+    await status_msg.edit_text(header)
     # AI matnini (uzun bo'lishi mumkin) alohida yuboramiz + tugmalar oxirgi bo'lakda
     await _send_long(bot, chat_id, text, reply_markup=_kb_preview())
 
 
 @router.callback_query(F.data == "lt:regen", StateFilter(LessonTaskFSM.preview))
-async def cb_regen(cb: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+async def cb_regen(cb: CallbackQuery, state: FSMContext, bot: Bot, db: DatabaseService) -> None:
     # Preview tugmalarini olib tashlaymiz va qayta generatsiya qilamiz
+    data = await state.get_data()
+    params = data.get("gen_params")
+    if not params:
+        await cb.answer("Qayta yaratish uchun ma'lumot yo'q. /vazifa", show_alert=True)
+        return
     try:
         await cb.message.edit_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await _generate_and_preview(cb, state, bot)
+    await _run_generation(cb.message, state, bot, db, params)
 
 
 @router.callback_query(F.data == "lt:send", StateFilter(LessonTaskFSM.preview))
 async def cb_send(cb: CallbackQuery, state: FSMContext, bot: Bot, db: DatabaseService) -> None:
     data = await state.get_data()
     text = data.get("generated_text", "")
+    ui_link = data.get("generated_ui_link")
     group_name = data.get("group_name", "")
+    display_title = data.get("gen_params", {}).get("display_title", "")
     if not text:
         await cb.message.edit_text("⚠️ Matn topilmadi. Qaytadan: /vazifa")
         await state.clear()
@@ -372,8 +533,19 @@ async def cb_send(cb: CallbackQuery, state: FSMContext, bot: Bot, db: DatabaseSe
     except Exception:
         pass
 
+    header = "📚📚📚📚📚📚📚📚📚📚📚\n     📌 UYGA VAZIFA 📌\n📚📚📚📚📚📚📚📚📚📚📚"
+    body = f"{header}\n\n{text}"
+    if ui_link:
+        body += f"\n\n🎨 Namuna UI — shu ko'rinishni yasang:\n{ui_link}"
+    body += _SUBMIT_GUIDE
+
     try:
-        await _send_long(bot, chat_id, f"📝 Yangi uy vazifasi!\n\n{text}")
+        await _send_long(bot, chat_id, body)
+        # Guruhning joriy vazifasini saqlaymiz — #vazifa AI tekshiruvi shunga qarab baholaydi
+        try:
+            await db.set_group_current_task(group_name, display_title or "Uy vazifasi", text)
+        except Exception as e:
+            logger.warning("Joriy vazifani saqlash xatosi: %s", e)
         await cb.message.answer(f"✅ <b>Vazifa yuborildi!</b>\n🏫 Guruh: <b>{group_name}</b>")
         logger.info("Dars vazifasi yuborildi → '%s' (%s)", group_name, chat_id)
     except Exception as e:

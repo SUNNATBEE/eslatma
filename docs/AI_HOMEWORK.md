@@ -29,6 +29,39 @@ ai_service.analyze_homework()  ──►  Claude (vision + code review)
 Reply to the student's message  (HTML-safe, chunked, UZ + RU)
 ```
 
+### Topic-based grading + XP (links the `/vazifa` flow)
+
+When the group has a **current lesson assignment** — set whenever an admin sends
+a task via `/vazifa` (`handlers/lesson_topic.py` → `db.set_group_current_task`) —
+the checker grades the student's work **against that assignment** instead of doing
+a generic review:
+
+```
+Student posts work + #vazifa
+        │
+        ▼
+resolve group_name from chat  →  db.get_group_current_task(group_name)
+        │                                   │
+   (task found)                        (no task)
+        ▼                                   ▼
+ai_service.grade_homework()          ai_service.analyze_homework()
+  → feedback + [[BAHO:N]] (0–10)        → generic feedback (no XP)
+        │
+        ▼
+XP = round(N / 10 × 30)   (max 30, awarded via add_xp(..., apply_multiplier=False))
+        │
+        ▼
+Reply shows feedback + "🪙 Baho: N/10 → +XP" (+ level-up if any)
+```
+
+- The reference assignment is stored per group in the `group_current_task` table
+  (one row per group, upserted on each `/vazifa` send).
+- Grade `N` is parsed from a machine-readable `[[BAHO:N]]` marker the model emits
+  on the last line; the marker is stripped before the reply is shown.
+- XP is awarded **without** the level multiplier so the cap is exactly 30 for any
+  student. Daily abuse is bounded by `AI_HOMEWORK_DAILY_LIMIT`.
+- Unregistered users (no `Student` row) still see the grade but earn no XP.
+
 ### Supported submission formats
 
 | Format | Handling |
@@ -90,7 +123,8 @@ required; everything else has sensible defaults.
 
 | File | Responsibility |
 |------|----------------|
-| `ai_service.py` | `AsyncAnthropic` wrapper. Teacher-persona system prompt (with prompt caching), `analyze_homework()`, vision + text. Lazy-imports `anthropic` so the bot runs even if the package/key is absent. |
+| `ai_service.py` | `AsyncAnthropic` wrapper. Teacher-persona system prompt (with prompt caching), `analyze_homework()` (generic) and `grade_homework()` (graded against the group's current assignment → `[[BAHO:N]]`), vision + text. Lazy-imports `anthropic` so the bot runs even if the package/key is absent. |
+| `database.py` | `GroupCurrentTask` model + `set_group_current_task()` / `get_group_current_task()`; `add_xp(..., apply_multiplier=False)` for exact-amount homework XP. |
 | `homework_extract.py` | `build_homework_payload()` — turns Telegram messages into Anthropic content blocks. Telegram file download, ZIP extraction, link fetching (GitHub→raw, SSRF guard), size limits. |
 | `handlers/homework_ai.py` | aiogram router. Group `#vazifa` filter, media-group buffering, per-student daily limit, status message, HTML-safe chunked reply. |
 | `config.py` | `AI_*` settings. |

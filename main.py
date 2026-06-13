@@ -346,8 +346,20 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
         }
         return web.json_response(body, status=200 if alive else 503)
 
+    async def api_task_ui(request: web.Request) -> web.Response:
+        """AI generatsiya qilgan vazifa UI namunasini (HTML) ko'rsatadi.
+
+        /vazifa oqimida guruhga yuborilgan havola shu yerga keladi (brauzerda ochiladi).
+        """
+        task_id = request.match_info.get("task_id", "")
+        row = await db.get_task_ui(task_id)
+        if row is None:
+            return web.Response(text="Vazifa namunasi topilmadi", status=404, content_type="text/plain")
+        return web.Response(text=row.html, content_type="text/html", charset="utf-8")
+
     app.router.add_get("/api/meta/version", api_meta_version)
     app.router.add_get("/ready", api_ready)
+    app.router.add_get("/task/{task_id}", api_task_ui)
 
     setup_student_routes(app, ctx)
     setup_curator_routes(app, ctx)

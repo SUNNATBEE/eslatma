@@ -24,6 +24,7 @@ from aiogram.types import Message
 
 import ai_service
 from config import (
+    ADMIN_IDS,
     AI_HOMEWORK_DAILY_LIMIT,
     AI_HOMEWORK_ENABLED,
     AI_HOMEWORK_TRIGGERS,
@@ -241,12 +242,17 @@ async def _process(messages: list[Message], trigger_msg: Message, bot: Bot, db: 
         else:
             # Joriy vazifa yo'q — umumiy tahlil (XP'siz)
             feedback = await ai_service.analyze_homework(blocks, name, group, notes)
-    except Exception:
+    except Exception as e:
         logger.exception("AI homework tahlil xatosi")
-        await status.edit_text(
+        msg = (
             "❌ AI tahlilda xatolik yuz berdi. Birozdan keyin qayta urinib ko'ring.\n"
             "❌ Произошла ошибка при анализе ИИ. Попробуйте позже."
         )
+        # Adminlarga xatoning aniq sababini ko'rsatamiz (diagnostika uchun)
+        if user.id in ADMIN_IDS:
+            detail = f"{type(e).__name__}: {e}"
+            msg += f"\n\n🛠 <i>Admin diagnostika:</i>\n<code>{html.escape(detail[:600])}</code>"
+        await status.edit_text(msg)
         return
 
     _incr_usage(trigger_msg.chat.id, user.id)

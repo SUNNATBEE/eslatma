@@ -122,3 +122,98 @@ async def analyze_homework(
     if not text:
         raise RuntimeError("AI bo'sh javob qaytardi")
     return text
+
+
+# ─── Dars mavzusidan uy vazifa generatsiyasi ─────────────────────────────────
+# Toza MATN chiqishi muhim — Telegram guruhga to'g'ridan-to'g'ri yuboriladi.
+ASSIGNMENT_SYSTEM_PROMPT = (
+    "Sen — Mars IT O'quv Markazining tajribali, ijodkor dasturlash ustozisan.\n"
+    "Senga bugun o'tilgan dars mavzusi, uning metodikasi va akademiya vazifasi beriladi.\n"
+    "Sening vazifang — shu mavzuni CHUQUR tahlil qilib, 10-16 yoshli o'quvchilar uchun "
+    "QIZIQARLI va bajariladigan uy vazifasi tuzish.\n\n"
+    "VAZIFA QANDAY BO'LISHI KERAK:\n"
+    "1. Mavzuga to'g'ridan-to'g'ri bog'liq bo'lsin (metodika va akademiya vazifasiga tayan).\n"
+    "2. 10-16 yoshli bolaga mos: sodda til, qiziqarli mavzu (o'yin, multfilm, kundalik hayot).\n"
+    "3. Aniq, bosqichma-bosqich ko'rsatma ber — o'quvchi nimani qilishini tushunsin.\n"
+    "4. Bajarish mumkin bo'lgan hajmda bo'lsin (keyingi darsgacha ulgursin).\n"
+    "5. Natija qanday topshirilishini ayt (masalan: skrinshot, kod, havola, fayl — guruhga "
+    "#vazifa hashtagi bilan yuborilsin).\n\n"
+    "JAVOB FORMATI (qat'iy):\n"
+    "- Javobni IKKI tilda ber: AVVAL 🇺🇿 O'zbekcha, KEYIN 🇷🇺 Ruscha (to'liq tarjima).\n"
+    "- Faqat TOZA MATN. Markdown belgilaridan (**, ##, ```, *) MUTLAQO foydalanma.\n"
+    "- Quyidagi emoji-sarlavhali tuzilishdan foydalan:\n"
+    "  📚 Mavzu: <mavzu nomi>\n"
+    "  🎯 Vazifa: <nima qilish kerakligi, qisqa>\n"
+    "  📝 Bosqichlar: <1), 2), 3) ko'rinishida aniq qadamlar>\n"
+    "  ✅ Talablar: <vazifa to'liq sanaladigan shartlar>\n"
+    "  💡 Maslahat: <foydali maslahat yoki qiziqarli fakt>\n"
+    "  📤 Topshirish: <natijani qanday va qayerga yuborish>\n"
+    "- Ruscha qism uchun: 📚 Тема, 🎯 Задание, 📝 Шаги, ✅ Требования, 💡 Совет, 📤 Сдача.\n"
+    "- Samimiy, rag'batlantiruvchi ohang. Bolani 'dasturchi', 'qahramon' deb ata.\n"
+    "- Ortiqcha cho'zma — qisqa, aniq va amaliy bo'lsin."
+)
+
+
+async def generate_assignment(
+    *,
+    track_label: str,
+    module: str,
+    block: str,
+    lesson_name: str,
+    metodika: str,
+    academy: str,
+    group_name: str = "",
+    extra_note: str = "",
+) -> str:
+    """Dars mavzusi asosida 10-16 yosh uchun 2 tilli uy vazifasini generatsiya qiladi.
+
+    Telegram guruhga to'g'ridan-to'g'ri yuboriladigan toza matn qaytaradi.
+    Xato bo'lsa Exception ko'taradi (chaqiruvchi ushlab oladi).
+    """
+    client = _get_client()
+
+    context = (
+        f"Yo'nalish: {track_label}\n"
+        f"Modul: {module} · Blok: {block}\n"
+        f"Dars mavzusi: {lesson_name}\n"
+        f"Guruh: {group_name or '—'}\n\n"
+        "=== METODIKA (dars mazmuni) ===\n"
+        f"{(metodika or '—')[:2500]}\n\n"
+        "=== AKADEMIYA VAZIFASI (asl topshiriq) ===\n"
+        f"{(academy or '—')[:2500]}\n\n"
+        "Yuqoridagi mavzuni chuqur tahlil qilib, 10-16 yoshli o'quvchilar uchun "
+        "qiziqarli uy vazifasini tuz va yuqoridagi formatda 2 tilda javob ber."
+    )
+    if extra_note:
+        context += f"\n\nQo'shimcha (ustoz eslatmasi): {extra_note}"
+
+    response = await client.messages.create(
+        model=AI_MODEL,
+        max_tokens=AI_MAX_TOKENS,
+        system=[
+            {
+                "type": "text",
+                "text": ASSIGNMENT_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},  # barqaror prefiks — keshlanadi
+            }
+        ],
+        messages=[{"role": "user", "content": [{"type": "text", "text": context}]}],
+    )
+
+    text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text").strip()
+    try:
+        u = response.usage
+        logger.info(
+            "AI vazifa generatsiya | model=%s in=%s out=%s cache_read=%s | dars=%s",
+            AI_MODEL,
+            getattr(u, "input_tokens", "?"),
+            getattr(u, "output_tokens", "?"),
+            getattr(u, "cache_read_input_tokens", "?"),
+            lesson_name,
+        )
+    except Exception:
+        pass
+
+    if not text:
+        raise RuntimeError("AI bo'sh javob qaytardi")
+    return text

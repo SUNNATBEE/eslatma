@@ -788,6 +788,78 @@ async def check_homework_prompt(
     _mark_job("homework_prompt_before_end", ok=True, details="checked")
 
 
+async def send_lesson_topic_prompt(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+) -> None:
+    """
+    Dars tugagach (tugash vaqtidan +1 daqiqa) adminga "Dars vazifasini yarat" tugmasini yuboradi.
+    Tugma bosilsa handlers/lesson_topic.py oqimi ishga tushadi (modul → blok → dars → AI vazifa).
+    """
+    if await is_auto_messages_disabled(db):
+        return
+    if await db.get_setting("AUTO_MSG_GROUPS", "1") == "0":
+        return
+    # Bu avtohabarni alohida o'chirib qo'yish mumkin
+    if await db.get_setting("AUTO_MSG_LESSON_TASK", "1") == "0":
+        return
+
+    tz = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+    if now.weekday() == 6:  # Yakshanba
+        return
+
+    day_type = "ODD" if now.weekday() in (0, 2, 4) else "EVEN"
+    day_setting_key = "AUTO_MSG_ODD" if day_type == "ODD" else "AUTO_MSG_EVEN"
+    if await db.get_setting(day_setting_key, "1") == "0":
+        return
+
+    schedule = CLASS_SCHEDULE.get(day_type, {})
+    today_str = now.strftime("%Y-%m-%d")
+    sent = 0
+
+    for group_name, class_time_str in schedule.items():
+        if await db.get_setting(f"AUTO_MSG_GROUP:{group_name}", "1") == "0":
+            continue
+
+        end_time_str = _group_end_time(day_type, group_name, class_time_str)
+        end_hour, end_min = map(int, end_time_str.split(":"))
+        end_dt = now.replace(hour=end_hour, minute=end_min, second=0, microsecond=0)
+        prompt_dt = end_dt + timedelta(minutes=1)
+
+        key = f"lessontask:{group_name}:{today_str}"
+        if await _dedup_seen(db, key):
+            continue
+        # 2 daqiqalik oyna (scheduler 1 daqiqada ishlaydi)
+        if not (prompt_dt <= now < prompt_dt + timedelta(minutes=2)):
+            continue
+
+        text = (
+            f"📝 <b>Dars vazifasini yarataylik!</b>\n\n"
+            f"🏫 Guruh: <b>{group_name}</b>\n"
+            f"🕒 Dars tugadi: <b>{end_time_str}</b>\n\n"
+            f"Bugun qaysi modul, qaysi blok mavzusini o'tdingiz?\n"
+            f"Tanlang — AI o'sha mavzudan 10-16 yosh uchun vazifa tuzib beradi."
+        )
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="📝 Vazifa yaratish", callback_data=f"lt:start:{group_name}")]]
+        )
+        sent_any = False
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, text, parse_mode="HTML", reply_markup=kb)
+                sent_any = True
+                sent += 1
+            except Exception:
+                continue
+        if sent_any:
+            await _dedup_mark(db, key)
+            logger.info(f"Dars vazifa prompti yuborildi: {group_name} | {today_str}")
+
+    _mark_job("lesson_topic_prompt", ok=True, details=f"sent={sent}")
+
+
 async def expire_homeworks_at_class_start(
     bot: Bot,
     db: DatabaseService,
@@ -973,11 +1045,7 @@ async def send_student_homework_reminders(bot: Bot, db: DatabaseService, timezon
                 try:
                     await bot.send_message(
                         st.user_id,
-                        (
-                            "📝 <b>Uy vazifa nazorati</b>\n\n"
-                            f"Guruh: <b>{group_name}</b>\n"
-                            "Uyga vazifa qildingmi?"
-                        ),
+                        (f"📝 <b>Uy vazifa nazorati</b>\n\nGuruh: <b>{group_name}</b>\nUyga vazifa qildingmi?"),
                         parse_mode="HTML",
                         reply_markup=kb_homework_check(today_str),
                     )
@@ -1556,6 +1624,16 @@ ALL_AUTO_JOBS_META: dict[str, dict[str, object]] = {
         "toggle_key": "AUTO_MSG_GROUPS",
         "audience": "adminlar",
     },
+    "lesson_topic_prompt": {
+        "name": "Dars vazifasi prompti (admin)",
+        "what": "Dars tugagach adminga 'Dars vazifasini yarat' tugmasi — AI mavzudan vazifa tuzadi",
+        "schedule_human": "Har 1 daqiqada (dars tugashi +1 daq)",
+        "frequency_per_day": "~1440 marta (kuniga)",
+        "trigger_type": "interval",
+        "editable": False,
+        "toggle_key": "AUTO_MSG_LESSON_TASK",
+        "audience": "adminlar",
+    },
     "homework_expire_at_class_start": {
         "name": "Eski uy vazifani o'chirish",
         "what": "Yangi dars boshlanganda eski uy vazifani arxivga ko'chiradi",
@@ -1753,6 +1831,17 @@ def setup_scheduler(
         args=[bot, db, timezone_str, webapp_url],
         id="homework_prompt_before_end",
         name="Dars tugashidan 2 daqiqa oldin uy vazifasi eslatmasi",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
+    # Dars tugagach adminga "Dars vazifasini yarat" prompti (har 1 daqiqada)
+    scheduler.add_job(
+        func=send_lesson_topic_prompt,
+        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="lesson_topic_prompt",
+        name="Dars vazifasi prompti (admin)",
         replace_existing=True,
         misfire_grace_time=60,
     )

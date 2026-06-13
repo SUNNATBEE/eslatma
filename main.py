@@ -57,6 +57,7 @@ from handlers import (
     curator_router,
     group_join_router,
     homework_ai_router,
+    lesson_topic_router,
     registration_router,
     school_router,
     student_router,
@@ -458,6 +459,7 @@ async def main() -> None:
     # auto_save_group barcha guruh xabarlarini yutib, #vazifa bu yerga yetib kelmaydi.
     dp.include_router(homework_ai_router)  # Guruhda AI uy vazifa tekshiruvi (#vazifa)
     dp.include_router(commands_router)  # /start, /panel, ...
+    dp.include_router(lesson_topic_router)  # /vazifa — dars mavzusidan AI uy vazifasi
     dp.include_router(group_join_router)  # Guruhga kirish arizasi (anketa + obuna gate)
     dp.include_router(curator_router)  # /curator + kurator relay chat
     dp.include_router(registration_router)  # Ro'yxatdan o'tish FSM
@@ -485,6 +487,7 @@ async def main() -> None:
         commands=[
             BotCommand(command="start", description="Botni boshlash"),
             BotCommand(command="panel", description="Admin panel"),
+            BotCommand(command="vazifa", description="Dars mavzusidan AI uy vazifasi"),
             BotCommand(command="list_groups", description="Guruhlar ro'yxati"),
             BotCommand(command="status", description="Bot holati"),
             BotCommand(command="test_send", description="Test xabar yuborish"),

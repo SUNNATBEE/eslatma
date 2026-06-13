@@ -20,6 +20,7 @@ handlers/        — homework_ai, commands, registration, curator, student, atte
 webapp/          — 6 Mini App HTML (student, games, admin-mini, curator, guide, admin)
 ai_service.py    — Anthropic Claude wrapper (AI uy vazifa tahlili, lazy import)
 homework_extract.py — Telegram xabar → Claude content bloklari (rasm/zip/link/matn)
+curriculum.py    — Mavzular/ o'quv dasturi parser (track→modul→blok→dars), /vazifa uchun
 credentials.py   — MARS_CREDENTIALS {mars_id: {name,password,group}}, MARS_GROUPS
 class_schedule.py — CLASS_SCHEDULE {"ODD":{}, "EVEN":{}}
 keyboards.py     — InlineKeyboardMarkup builders
@@ -61,6 +62,12 @@ Health: `GET /health` → `OK ✅`. Readiness: `GET /ready` (JSON). Versiya: `GE
 ## AI Homework (`#vazifa`)
 Guruhda o'quvchi `#vazifa` + rasm/kod/zip/havola yuborsa → Claude tahlil → 2 tilli (UZ+RU) reply.
 Sozlash: BotFather privacy OFF + `ANTHROPIC_API_KEY`. Batafsil: `docs/AI_HOMEWORK.md`.
+
+## Dars vazifasi (`/vazifa`)
+Admin dars oxirida Modul→Blok→Mavzu tanlaydi → AI 10-16 yosh uchun 2 tilli vazifa tuzadi → preview→guruhga.
+Manba: `Mavzular/nbg` (beginner) + `Mavzular/nfMavzu` (frontend), `curriculum.py` parser.
+Avtomatik prompt: `scheduler.send_lesson_topic_prompt` (dars tugashi +1 daq). Batafsil: `docs/LESSON_TASK.md`.
+> ⚠️ `Mavzular/` git'ga commit qilinishi shart (runtime'da o'qiladi).
 
 ## Details
 → Batafsil arxitektura, model ro'yxati, referral flow: `CLAUDE-details.md`

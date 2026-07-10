@@ -69,5 +69,11 @@ Manba: `Mavzular/nbg` (beginner) + `Mavzular/nfMavzu` (frontend), `curriculum.py
 Avtomatik prompt: `scheduler.send_lesson_topic_prompt` (dars tugashi +1 daq). Batafsil: `docs/LESSON_TASK.md`.
 > ⚠️ `Mavzular/` git'ga commit qilinishi shart (runtime'da o'qiladi).
 
+## Bugungi mavzu (`/mavzu`)
+Se/Pa/Sh 16:30 da adminga "Bugun qaysi mavzuni o'tdingiz?" prompti → Modul→Blok→Mavzu →
+kanal videosi → guruh tanlash → guruhga 2 tilli uyga vazifa (mavzu + video havola).
+Kanal videolari `channel_videos` jadvalida: yangi postlar avtomatik (bot kanalda admin),
+eskilarini botga forward qilib qo'shiladi. Batafsil: `docs/TOPIC_DAY.md`.
+
 ## Details
 → Batafsil arxitektura, model ro'yxati, referral flow: `CLAUDE-details.md`

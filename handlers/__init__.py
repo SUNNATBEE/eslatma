@@ -13,11 +13,13 @@ from handlers.lesson_topic import router as lesson_topic_router
 from handlers.registration import router as registration_router
 from handlers.school import router as school_router
 from handlers.student import router as student_router
+from handlers.topic_day import router as topic_day_router
 
 __all__ = [
     "commands_router",
     "homework_ai_router",
     "lesson_topic_router",
+    "topic_day_router",
     "group_join_router",
     "curator_router",
     "registration_router",

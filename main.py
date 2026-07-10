@@ -61,6 +61,7 @@ from handlers import (
     registration_router,
     school_router,
     student_router,
+    topic_day_router,
 )
 from middleware import ButtonTrackingMiddleware, CallbackAnswerMiddleware, DatabaseMiddleware, TypingMiddleware
 from rate_limit import SlidingWindowLimiter
@@ -472,6 +473,7 @@ async def main() -> None:
     dp.include_router(homework_ai_router)  # Guruhda AI uy vazifa tekshiruvi (#vazifa)
     dp.include_router(commands_router)  # /start, /panel, ...
     dp.include_router(lesson_topic_router)  # /vazifa — dars mavzusidan AI uy vazifasi
+    dp.include_router(topic_day_router)  # /mavzu — bugungi mavzu + kanal videosi → guruhga uyga vazifa
     dp.include_router(group_join_router)  # Guruhga kirish arizasi (anketa + obuna gate)
     dp.include_router(curator_router)  # /curator + kurator relay chat
     dp.include_router(registration_router)  # Ro'yxatdan o'tish FSM

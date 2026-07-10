@@ -860,6 +860,48 @@ async def send_lesson_topic_prompt(
     _mark_job("lesson_topic_prompt", ok=True, details=f"sent={sent}")
 
 
+async def send_topic_day_prompt(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+) -> None:
+    """
+    Seshanba/Payshanba/Shanba 16:30 da adminga "Bugun qaysi mavzuni o'tdingiz?"
+    xabarini yuboradi. Tugma bosilsa handlers/topic_day.py oqimi ishga tushadi:
+    mavzu → kanal videosi → guruh tanlash → guruhga uyga vazifa.
+    """
+    if await is_auto_messages_disabled(db):
+        return
+    if await db.get_setting("AUTO_MSG_TOPIC_DAY", "1") == "0":
+        return
+
+    tz = pytz.timezone(timezone_str)
+    today_str = datetime.now(tz).strftime("%Y-%m-%d")
+    key = f"topicday:{today_str}"
+    if await _dedup_seen(db, key):
+        return
+
+    text = (
+        "📚 <b>Bugun qaysi mavzuni o'tdingiz?</b>\n\n"
+        "Mavzuni tanlang — keyin kanaldagi video darsni va guruhni tanlaysiz, "
+        "bot guruhga uyga vazifa xabarini yuboradi."
+    )
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="📖 Mavzu tanlash", callback_data="td:start")]]
+    )
+    sent = 0
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, text, parse_mode="HTML", reply_markup=kb)
+            sent += 1
+        except Exception:
+            continue
+    if sent:
+        await _dedup_mark(db, key)
+        logger.info(f"Bugungi mavzu prompti yuborildi: {sent} ta admin | {today_str}")
+    _mark_job("topic_day_prompt", ok=True, details=f"sent={sent}")
+
+
 async def expire_homeworks_at_class_start(
     bot: Bot,
     db: DatabaseService,
@@ -1575,6 +1617,12 @@ SCHEDULED_JOBS_REGISTRY: dict[str, dict[str, object]] = {
         "default_minute": 50,
         "default_dow": "",
     },
+    "topic_day_prompt": {
+        "name": "Bugungi mavzu prompti (Se/Pa/Sh 16:30)",
+        "default_hour": 16,
+        "default_minute": 30,
+        "default_dow": "tue,thu,sat",
+    },
 }
 
 _VALID_DOWS = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
@@ -1723,6 +1771,16 @@ ALL_AUTO_JOBS_META: dict[str, dict[str, object]] = {
         "editable": True,
         "toggle_key": None,
         "audience": "o'quvchilar",
+    },
+    "topic_day_prompt": {
+        "name": "Bugungi mavzu prompti (admin)",
+        "what": "Adminga 'Bugun qaysi mavzuni o'tdingiz?' — mavzu, kanal videosi va guruh tanlanadi",
+        "schedule_human": "Se/Pa/Sh 16:30",
+        "frequency_per_day": "Haftada 3 marta",
+        "trigger_type": "cron",
+        "editable": True,
+        "toggle_key": "AUTO_MSG_TOPIC_DAY",
+        "audience": "adminlar",
     },
 }
 
@@ -1932,6 +1990,17 @@ def setup_scheduler(
         name="SQLite backup daily",
         replace_existing=True,
         misfire_grace_time=1200,
+    )
+
+    # Bugungi mavzu prompti (Seshanba/Payshanba/Shanba 16:30)
+    scheduler.add_job(
+        func=send_topic_day_prompt,
+        trigger=CronTrigger(day_of_week="tue,thu,sat", hour=16, minute=30, timezone=timezone_str),
+        args=[bot, db, timezone_str],
+        id="topic_day_prompt",
+        name="Bugungi mavzu prompti (Se/Pa/Sh 16:30)",
+        replace_existing=True,
+        misfire_grace_time=600,
     )
 
     # Haftalik streak bonusi (har Dushanba 09:00)

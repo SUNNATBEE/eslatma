@@ -562,6 +562,26 @@ class GroupCurrentTask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class ChannelVideo(Base):
+    """Video darslar kanalidagi postlar ro'yxati.
+
+    Bot kanalda admin bo'lgani uchun yangi video postlar channel_post orqali
+    avtomatik saqlanadi. Eski videolarni admin botga forward qilib qo'shadi.
+    "Bugungi mavzu" oqimida (handlers/topic_day.py) shu ro'yxatdan video tanlanadi.
+    """
+
+    __tablename__ = "channel_videos"
+    __table_args__ = (UniqueConstraint("chat_id", "message_id", name="uq_channel_video"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    channel_username: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    channel_title: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    title: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    posted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 # ─── XP Darajalar jadvali ─────────────────────────────────────────────────────
 
 # Level oshganda beriladigan bonus XP
@@ -815,6 +835,52 @@ class DatabaseService:
         """Guruhning joriy uy vazifasini qaytaradi (yo'q bo'lsa None)."""
         async with self.session_factory() as session:
             return await session.get(GroupCurrentTask, group_name)
+
+    # ── Kanal videolari (video darslar) ──────────────────────────────────────
+
+    async def save_channel_video(
+        self,
+        chat_id: int,
+        message_id: int,
+        title: str,
+        channel_username: str = "",
+        channel_title: str = "",
+    ) -> bool:
+        """Kanal videosini saqlaydi (upsert). Yangi qo'shilgan bo'lsa True."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(ChannelVideo).where(
+                    ChannelVideo.chat_id == chat_id,
+                    ChannelVideo.message_id == message_id,
+                )
+            )
+            existing: ChannelVideo | None = result.scalar_one_or_none()
+            if existing:
+                if title:
+                    existing.title = title[:300]
+                if channel_username:
+                    existing.channel_username = channel_username[:100]
+                if channel_title:
+                    existing.channel_title = channel_title[:200]
+                await session.commit()
+                return False
+            session.add(
+                ChannelVideo(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    title=(title or "")[:300],
+                    channel_username=(channel_username or "")[:100],
+                    channel_title=(channel_title or "")[:200],
+                )
+            )
+            await session.commit()
+            return True
+
+    async def get_channel_videos(self, limit: int = 60) -> list["ChannelVideo"]:
+        """Saqlangan kanal videolari (eng yangisi birinchi)."""
+        async with self.session_factory() as session:
+            result = await session.execute(select(ChannelVideo).order_by(ChannelVideo.message_id.desc()).limit(limit))
+            return list(result.scalars().all())
 
     # ── CREATE / UPDATE ────────────────────────────────────────────────────────
 

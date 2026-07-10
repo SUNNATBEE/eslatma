@@ -1642,8 +1642,15 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         cfg = SCHEDULED_JOBS_REGISTRY[job_id]
         is_weekly = bool(cfg.get("default_dow"))
         if is_weekly:
-            if dow not in _VALID_DOWS:
-                return json_err("day_of_week kerak (mon..sun)", code="validation_error", status=400)
+            # Bitta yoki vergul bilan bir nechta kun: "mon" yoki "tue,thu,sat"
+            parts = [p.strip() for p in dow.split(",") if p.strip()]
+            if not parts or any(p not in _VALID_DOWS for p in parts):
+                return json_err(
+                    "day_of_week kerak (mon..sun, vergul bilan bir nechta)",
+                    code="validation_error",
+                    status=400,
+                )
+            dow = ",".join(parts)
         else:
             dow = ""
         await db.set_setting(f"SCHED:{job_id}:HOUR", str(hour))

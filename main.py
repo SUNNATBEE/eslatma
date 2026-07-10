@@ -384,7 +384,7 @@ def _make_api_app(bot: Bot, db: DatabaseService) -> web.Application:
 
             return _handler
 
-        for _fname in ["student.html", "admin.html", "admin-mini.html", "curator.html", "guide.html", "games.html"]:
+        for _fname in ["student.html", "admin-mini.html", "curator.html", "guide.html", "games.html"]:
             _fpath = os.path.join(webapp_dir, _fname)
             if os.path.isfile(_fpath):
                 app.router.add_get(f"/{_fname}", _html_file_handler(_fpath))

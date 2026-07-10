@@ -619,8 +619,6 @@ def _apply_xp_multiplier(level: int, amount: int) -> int:
     return amount
 
 
-XP_WEEKLY_BONUS: int = 100  # Haftalik 7-kun streak bonusi
-
 XP_LEVELS: list[tuple[int, int, str]] = [
     (0, 1, "Yangi boshlovchi"),
     (100, 2, "O'quvchi"),
@@ -1737,14 +1735,6 @@ class DatabaseService:
                 session.add(ButtonStat(button_name=button_name, count=1, last_used=datetime.now()))
             await session.commit()
 
-    async def get_button_stats(self, limit: int = 30) -> list["ButtonStat"]:
-        """Eng ko'p ishlatilgan tugmalar ro'yxatini qaytaradi."""
-        from sqlalchemy import desc
-
-        async with self.session_factory() as session:
-            result = await session.execute(select(ButtonStat).order_by(desc(ButtonStat.count)).limit(limit))
-            return list(result.scalars().all())
-
     # ── CURATOR LAST ACTIVE ────────────────────────────────────────────────────
 
     async def update_curator_last_active(self, telegram_id: int) -> None:
@@ -2781,14 +2771,6 @@ class DatabaseService:
                     Student.user_id.is_not(None),
                 )
             )
-            return list(result.scalars().all())
-
-    # ── WEEKLY BONUS CHECK ────────────────────────────────────────────────────────
-
-    async def get_students_with_7day_streak(self) -> list["Student"]:
-        """7 kun ketma-ket streak bo'lgan o'quvchilar (haftalik bonus uchun)."""
-        async with self.session_factory() as session:
-            result = await session.execute(select(Student).where(Student.streak_days >= 7))
             return list(result.scalars().all())
 
     # ── XP RESET ──────────────────────────────────────────────────────────────────

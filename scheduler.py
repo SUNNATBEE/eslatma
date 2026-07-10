@@ -350,67 +350,6 @@ async def send_daily_reminders(
     logger.info("=" * 55)
 
 
-# ─── Test: bitta guruhga dars eslatmasi ──────────────────────────────────────
-
-
-async def send_daily_reminder_to_group(
-    bot: Bot,
-    db: DatabaseService,
-    timezone_str: str,
-    group_name: str,
-) -> tuple[int, int] | None:
-    """Admin mini app orqali bitta guruhga test yuborish.
-    Returns (message_id, chat_id) on success, None on failure."""
-    from sqlalchemy import select
-
-    from database import Group
-
-    try:
-        info = get_tomorrow_info(timezone_str)
-
-        # Guruhni nomiga qarab topamiz
-        async with db.session_factory() as session:
-            result = await session.execute(select(Group).where(Group.name == group_name))
-            group = result.scalar_one_or_none()
-
-        if not group:
-            logger.warning(f"TEST SEND: Guruh topilmadi: '{group_name}'")
-            return None
-
-        text = build_reminder_message(info, group.audience)
-        sent = await bot.send_message(
-            chat_id=group.chat_id,
-            text=f"🧪 <b>TEST</b>\n\n{text}",
-            parse_mode="HTML",
-        )
-        # Xabar ID sini saqlaymiz (keyinchalik o'chirish uchun)
-        await db.save_message_id(group.chat_id, sent.message_id)
-        logger.info(f"TEST SEND: '{group_name}' ({group.chat_id}) → msg_id={sent.message_id}")
-
-        # Uy vazifasi mavjud bo'lsa ham yuboramiz
-        hw = await db.get_homework(group.name)
-        if hw:
-            try:
-                await bot.copy_message(
-                    chat_id=group.chat_id,
-                    from_chat_id=hw.from_chat_id,
-                    message_id=hw.message_id,
-                )
-                logger.info(f"TEST SEND: Uy vazifasi yuborildi → '{group_name}'")
-                total_students, dm_sent = await _send_homework_group_and_dm_reminders(
-                    bot, db, group.name, group.chat_id
-                )
-                logger.info(f"TEST SEND: Homework reminder → students={total_students}, dm={dm_sent}")
-            except Exception as hw_err:
-                logger.warning(f"TEST SEND: Uy vazifasi yuborib bo'lmadi: {hw_err}")
-
-        return (sent.message_id, group.chat_id)
-
-    except Exception as e:
-        logger.exception(f"TEST SEND: Xato: {e}")
-        return None
-
-
 # ─── Avto-xabar dedup (restartga chidamli) ──────────────────────────────────
 #
 # Eslatmalar takror yuborilmasligi uchun "yuborildi" holatini DB'da (BotSetting)
@@ -1291,173 +1230,6 @@ async def run_sqlite_backup_job(bot: Bot, db: DatabaseService, timezone_str: str
         _mark_job("sqlite_backup_daily", ok=False, details=f"err:{e}")
 
 
-# ─── Kunlik reyting (Top-10) — rejalashtiruvchida alohida ishga tushirilmaydi;
-#     avtomatik xabar: send_leaderboard_broadcast (haftalik).
-
-_RANK_ICONS = {1: "🥇", 2: "🥈", 3: "🥉", 4: "4️⃣", 5: "5️⃣"}
-
-
-async def send_daily_leaderboard(
-    bot: Bot,
-    db: DatabaseService,
-    timezone_str: str,
-) -> None:
-    """
-    (Qo'lda/chaqiruv uchun) Top 10 o'quvchiga reyting xabari.
-    Avtomatik reja: `send_leaderboard_broadcast` (haftasiga 1 marta) ishlatiladi.
-    Barcha aktiv STUDENT guruhlarga yuboriladi (ota-ona guruhlari o'tkazib yuboriladi).
-    """
-    tz = pytz.timezone(timezone_str)
-    date_str = datetime.now(tz).strftime("%d.%m.%Y")
-
-    try:
-        leaders = await db.get_global_leaderboard(limit=10)
-    except Exception as e:
-        logger.error(f"DAILY LEADERBOARD: leaderboard xatosi: {e}")
-        return
-
-    if not leaders:
-        logger.info("DAILY LEADERBOARD: o'quvchilar yo'q — o'tkazib yuborildi")
-        return
-
-    # Top-10 satrlarini qurish
-    rows = []
-    for i, s in enumerate(leaders[:10], start=1):
-        icon = _RANK_ICONS.get(i, f"{i}.")
-        group = f" ({s.group_name})" if s.group_name else ""
-        xp = s.xp or 0
-        rows.append(f"{icon} <b>{s.full_name}</b>{group} — <b>{xp} XP</b>")
-
-    top_line = "\n".join(rows)
-
-    text = (
-        f"🏆 <b>TOP 10 — Global reyting</b>\n"
-        f"📅 {date_str}\n\n"
-        f"{top_line}\n\n"
-        f"🔥 Sen ham bu ro'yxatda bo'lishing mumkin!\n"
-        f"💪 XP yig' va tepaga chiq! 🚀"
-    )
-
-    # Faqat aktiv O'QUVCHI guruhlariga yuboramiz (ota-ona guruhlar emas)
-    groups = await db.get_all_groups()
-    ok, fail = 0, 0
-    for group in groups:
-        if not group.is_active:
-            continue
-        if group.audience != AudienceType.STUDENT:
-            logger.debug(f"DAILY LEADERBOARD: '{group.name}' — PARENT guruh, o'tkazib yuborildi")
-            continue
-        try:
-            await bot.send_message(
-                chat_id=group.chat_id,
-                text=text,
-                parse_mode="HTML",
-            )
-            ok += 1
-        except Exception as e:
-            fail += 1
-            logger.warning(f"DAILY LEADERBOARD: '{group.name}' ({group.chat_id}): {e}")
-
-    logger.info(f"DAILY LEADERBOARD: {ok} guruhga yuborildi, {fail} xato | {date_str}")
-
-
-# ─── Haftalik global reyting broadcast ──────────────────────────────────────
-
-
-async def send_leaderboard_broadcast(
-    bot: Bot,
-    db: DatabaseService,
-    webapp_url: str,
-    timezone_str: str,
-) -> None:
-    """
-    Haftasiga 1 marta barcha aktiv o'quvchi guruhlariga global top-5 reyting yuboradi
-    (reja: dushanba 21:05, TIMEZONE).
-    Faqat AudienceType.STUDENT guruhlarga yuboriladi (PARENT guruhlar o'tkazib yuboriladi).
-    Xabarda botga o'tish tugmasi bo'ladi.
-    """
-    if await is_auto_messages_disabled(db):
-        return
-    tz = pytz.timezone(timezone_str)
-    date_str = datetime.now(tz).strftime("%d.%m.%Y")
-
-    try:
-        leaders = await db.get_global_leaderboard(limit=10)
-    except Exception as e:
-        logger.error(f"LEADERBOARD BROADCAST: leaderboard xatosi: {e}")
-        return
-
-    if not leaders:
-        logger.info("LEADERBOARD BROADCAST: o'quvchilar yo'q — o'tkazib yuborildi")
-        return
-
-    # Top-5 satrlarini qurish
-    rows = []
-    for i, s in enumerate(leaders[:5], start=1):
-        icon = _RANK_ICONS.get(i, f"{i}.")
-        group = f" ({s.group_name})" if s.group_name else ""
-        xp = s.xp or 0
-        rows.append(f"{icon} <b>{s.full_name}</b>{group} — <b>{xp} XP</b>")
-
-    total = await db.get_students_count() if hasattr(db, "get_students_count") else len(leaders)
-    top_line = "\n".join(rows)
-    leader = leaders[0]
-    leader_xp = leader.xp or 0
-    runner_up_xp = leaders[1].xp if len(leaders) > 1 and leaders[1].xp is not None else 0
-    gap_text = (
-        f"⚔️ 1-o'rin uchun farq atigi <b>{leader_xp - runner_up_xp} XP</b>!"
-        if len(leaders) > 1
-        else f"⚔️ Taxtda faqat <b>{leader.full_name}</b> — sen qo'rqitolasan!"
-    )
-    challenge_lines = "⚡ XP formula:\n• Har kuni kir ✅\n• Davomat belgila 📋\n• Vazifani bajir 📝\n• O'yin o'yna 🎮"
-
-    text = (
-        f"🚀 <b>Haftalik reyting challenge</b> — {date_str}\n\n"
-        f"{top_line}\n\n"
-        f"👑 Lider: <b>{leader.full_name}</b> — <b>{leader_xp} XP</b>\n"
-        f"{gap_text}\n"
-        f"👥 {total} ta o'quvchi\n\n"
-        f"{challenge_lines}\n\n"
-        f"🏁 TOP ga chiq — botda o'rningni tekshir! 👇"
-    )
-
-    bot_info = await bot.get_me()
-    bot_url = f"https://t.me/{bot_info.username}?start=leaderboard"
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🤖 Botga o'tish va o'rnimni ko'rish",
-                    url=bot_url,
-                )
-            ],
-        ]
-    )
-
-    # Faqat aktiv O'QUVCHI guruhlariga yuboramiz (ota-ona guruhlar emas)
-    groups = await db.get_all_groups()
-    ok, fail = 0, 0
-    for group in groups:
-        if not group.is_active:
-            continue
-        if group.audience != AudienceType.STUDENT:
-            logger.debug(f"LEADERBOARD BROADCAST: '{group.name}' — PARENT guruh, o'tkazib yuborildi")
-            continue
-        try:
-            await bot.send_message(
-                chat_id=group.chat_id,
-                text=text,
-                parse_mode="HTML",
-                reply_markup=kb,
-            )
-            ok += 1
-        except Exception as e:
-            fail += 1
-            logger.warning(f"LEADERBOARD BROADCAST: '{group.name}' ({group.chat_id}): {e}")
-
-    logger.info(f"LEADERBOARD BROADCAST: {ok} guruhga yuborildi, {fail} xato | {date_str}")
-
-
 # ─── 7 kun nofaol o'quvchilarni o'chirish ────────────────────────────────────
 
 
@@ -1534,47 +1306,6 @@ async def send_streak_reminders(bot: Bot, db: DatabaseService, timezone_str: str
         logger.exception(f"STREAK REMINDER: Xato: {e}")
 
 
-# ─── Haftalik 7-kun streak bonusi: Dushanba 09:00 ────────────────────────────
-
-
-async def send_weekly_streak_bonus(bot: Bot, db: DatabaseService, webapp_url: str) -> None:
-    """
-    Har Dushanba 09:00 da: 7+ kun ketma-ket streak bo'lgan
-    o'quvchilarga +100 XP bonus beradi.
-    """
-    if await is_auto_messages_disabled(db):
-        return
-    from database import XP_WEEKLY_BONUS
-
-    try:
-        students = await db.get_students_with_7day_streak()
-        awarded = 0
-        for student in students:
-            if not student.user_id:
-                continue
-            try:
-                await db.add_xp(student.user_id, XP_WEEKLY_BONUS, "weekly_streak_bonus")
-                updated = await db.get_student(student.user_id)
-            except Exception:
-                continue
-            # SCH-002: ko'p-DM siklida flood throttle + 429 handling
-            if await _safe_send_dm(
-                bot,
-                student.user_id,
-                text=(
-                    f"🎉 <b>7 kun streak — BONUS!</b>\n\n"
-                    f"Zo'rsan! 7 kun ketma-ket kirding! 🔥\n"
-                    f"<b>+{XP_WEEKLY_BONUS} XP</b> oldin! 🚀\n\n"
-                    f"⭐ Jami: <b>{updated.xp if updated else '?'} XP</b>"
-                ),
-                parse_mode="HTML",
-            ):
-                awarded += 1
-        logger.info(f"WEEKLY BONUS: {awarded} ta o'quvchiga +{XP_WEEKLY_BONUS} XP berildi")
-    except Exception as e:
-        logger.exception(f"WEEKLY BONUS: Xato: {e}")
-
-
 # ─── Reschedule helper ───────────────────────────────────────────────────────
 
 
@@ -1598,18 +1329,6 @@ SCHEDULED_JOBS_REGISTRY: dict[str, dict[str, object]] = {
         "default_hour": 21,
         "default_minute": 0,
         "default_dow": "",
-    },
-    "weekly_leaderboard_broadcast": {
-        "name": "Haftalik global reyting (TOP-5)",
-        "default_hour": 21,
-        "default_minute": 5,
-        "default_dow": "mon",
-    },
-    "weekly_streak_bonus": {
-        "name": "Haftalik 7-kun streak bonusi",
-        "default_hour": 9,
-        "default_minute": 0,
-        "default_dow": "mon",
     },
     "sqlite_backup_daily": {
         "name": "SQLite kunlik backup",
@@ -1702,16 +1421,6 @@ ALL_AUTO_JOBS_META: dict[str, dict[str, object]] = {
         "toggle_key": None,
         "audience": "tizim",
     },
-    "weekly_leaderboard_broadcast": {
-        "name": "Haftalik global reyting",
-        "what": "Barcha aktiv o'quvchi guruhlariga TOP-5 reyting xabari",
-        "schedule_human": "Dushanba 21:05",
-        "frequency_per_day": "Haftada 1 marta",
-        "trigger_type": "cron",
-        "editable": True,
-        "toggle_key": None,
-        "audience": "guruhlar",
-    },
     "streak_reminder": {
         "name": "Streak eslatmasi",
         "what": "Bugun Mini Appga kirmagan o'quvchilarga streak yo'qolish ogohlantirishi",
@@ -1761,16 +1470,6 @@ ALL_AUTO_JOBS_META: dict[str, dict[str, object]] = {
         "editable": True,
         "toggle_key": None,
         "audience": "tizim",
-    },
-    "weekly_streak_bonus": {
-        "name": "Haftalik 7-kun streak bonusi",
-        "what": "7+ kun streak bo'lgan o'quvchilarga +100 XP bonus",
-        "schedule_human": "Dushanba 09:00",
-        "frequency_per_day": "Haftada 1 marta",
-        "trigger_type": "cron",
-        "editable": True,
-        "toggle_key": None,
-        "audience": "o'quvchilar",
     },
     "topic_day_prompt": {
         "name": "Bugungi mavzu prompti (admin)",
@@ -1837,6 +1536,33 @@ def reschedule_reminder(hour: int, minute: int) -> None:
     reschedule_job_by_id("daily_lesson_reminder", hour, minute, "")
 
 
+# ─── Minutlik ishlar dispatcheri ─────────────────────────────────────────────
+
+
+async def run_minute_jobs(
+    bot: Bot,
+    db: DatabaseService,
+    timezone_str: str,
+    webapp_url: str = "",
+) -> None:
+    """
+    Har 1 daqiqada ishlaydigan barcha ishlar — bitta jobda.
+    Alohida 5 ta interval job o'rniga bitta trigger: DB va scheduler yuki kamayadi.
+    Har bir ish alohida try/except da — biri yiqilsa qolganlari ishlayveradi.
+    """
+    for func, args in (
+        (check_homework_prompt, (bot, db, timezone_str, webapp_url)),
+        (send_lesson_topic_prompt, (bot, db, timezone_str)),
+        (expire_homeworks_at_class_start, (bot, db, timezone_str, webapp_url)),
+        (send_homework_deadline_reminders, (bot, db, timezone_str)),
+        (send_student_homework_reminders, (bot, db, timezone_str)),
+    ):
+        try:
+            await func(*args)
+        except Exception as e:
+            logger.exception(f"minute_jobs: {func.__name__} xato: {e}")
+
+
 # ─── Scheduler setup ─────────────────────────────────────────────────────────
 
 
@@ -1882,35 +1608,13 @@ def setup_scheduler(
         misfire_grace_time=60,
     )
 
-    # Uy vazifasi qo'shish eslatmasi (har 1 daqiqada)
+    # Minutlik ishlar — 5 ta ish bitta jobda (har 1 daqiqada)
     scheduler.add_job(
-        func=check_homework_prompt,
+        func=run_minute_jobs,
         trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
         args=[bot, db, timezone_str, webapp_url],
-        id="homework_prompt_before_end",
-        name="Dars tugashidan 2 daqiqa oldin uy vazifasi eslatmasi",
-        replace_existing=True,
-        misfire_grace_time=60,
-    )
-
-    # Dars tugagach adminga "Dars vazifasini yarat" prompti (har 1 daqiqada)
-    scheduler.add_job(
-        func=send_lesson_topic_prompt,
-        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
-        args=[bot, db, timezone_str],
-        id="lesson_topic_prompt",
-        name="Dars vazifasi prompti (admin)",
-        replace_existing=True,
-        misfire_grace_time=60,
-    )
-
-    # Yangi dars boshlanganda eski uy vazifasini o'chirish (har 1 daqiqada)
-    scheduler.add_job(
-        func=expire_homeworks_at_class_start,
-        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
-        args=[bot, db, timezone_str, webapp_url],
-        id="homework_expire_at_class_start",
-        name="Dars boshlanganda eski uy vazifasini o'chirish",
+        id="minute_jobs",
+        name="Minutlik ishlar dispatcheri",
         replace_existing=True,
         misfire_grace_time=60,
     )
@@ -1926,17 +1630,6 @@ def setup_scheduler(
         misfire_grace_time=300,
     )
 
-    # Global reyting broadcast — haftasiga 1 marta (dushanba 21:05)
-    scheduler.add_job(
-        func=send_leaderboard_broadcast,
-        trigger=CronTrigger(day_of_week="mon", hour=21, minute=5, timezone=timezone_str),
-        args=[bot, db, webapp_url, timezone_str],
-        id="weekly_leaderboard_broadcast",
-        name="Haftalik global reyting (TOP-5)",
-        replace_existing=True,
-        misfire_grace_time=300,
-    )
-
     # Streak eslatmasi (har kuni 19:00)
     scheduler.add_job(
         func=send_streak_reminders,
@@ -1946,28 +1639,6 @@ def setup_scheduler(
         name="Streak eslatmasi (19:00)",
         replace_existing=True,
         misfire_grace_time=300,
-    )
-
-    # Homework deadline reminder (har 1 daqiqa)
-    scheduler.add_job(
-        func=send_homework_deadline_reminders,
-        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
-        args=[bot, db, timezone_str],
-        id="homework_deadline_reminders",
-        name="Homework deadline reminder",
-        replace_existing=True,
-        misfire_grace_time=60,
-    )
-
-    # Student homework nazorat flow (dars vaqtiga bog'liq)
-    scheduler.add_job(
-        func=send_student_homework_reminders,
-        trigger=IntervalTrigger(minutes=1, timezone=timezone_str),
-        args=[bot, db, timezone_str],
-        id="student_homework_reminders",
-        name="Student homework flow reminders",
-        replace_existing=True,
-        misfire_grace_time=60,
     )
 
     # Lesson summary to admins
@@ -2003,22 +1674,10 @@ def setup_scheduler(
         misfire_grace_time=600,
     )
 
-    # Haftalik streak bonusi (har Dushanba 09:00)
-    scheduler.add_job(
-        func=send_weekly_streak_bonus,
-        trigger=CronTrigger(day_of_week="mon", hour=9, minute=0, timezone=timezone_str),
-        args=[bot, db, webapp_url],
-        id="weekly_streak_bonus",
-        name="Haftalik 7-kun streak bonusi",
-        replace_existing=True,
-        misfire_grace_time=600,
-    )
-
     _scheduler_ref = scheduler
     logger.info(
         f"Scheduler sozlandi: "
         f"har kuni {SEND_HOUR:02d}:{SEND_MINUTE:02d} (dars eslatmasi) + "
-        f"har 10 daqiqada dars/davomat eslatmasi + "
-        f"har Dushanba 21:05 haftalik global reyting ({timezone_str})"
+        f"har 10 daqiqada dars/davomat eslatmasi ({timezone_str})"
     )
     return scheduler

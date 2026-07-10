@@ -87,6 +87,7 @@ CHANNEL_LINK: str = os.getenv("CHANNEL_LINK", "https://t.me/sunnatbee_lessons")
 # yoqilgan va bot admin bo'lsa ishlaydi.
 JOIN_GATE_ENABLED: bool = os.getenv("JOIN_GATE_ENABLED", "1").lower() in ("1", "true", "yes")
 
+
 # "Bot orqali kirish" (Yo'l B) — anketa tugagach bot shu guruhga bir martalik
 # taklif havolasi yuboradi. Bo'sh bo'lsa, bot a'zo bo'lgan yagona guruh ishlatiladi.
 def _parse_int_or_none(raw: str) -> int | None:
@@ -135,8 +136,7 @@ def _parse_required_channels(raw: str) -> list[dict]:
 # Default — foydalanuvchi bergan havolalar (yopiq guruhni faqat chat_id bilan
 # tekshirish mumkin, shuning uchun u tugma sifatida qoladi).
 _DEFAULT_CHANNELS = (
-    "@aidevix::AIDEVIX kanal::https://t.me/aidevix;"
-    "::AIDEVIX yopiq guruh::https://t.me/+SRuA2QBbLmo3MDgy"
+    "@aidevix::AIDEVIX kanal::https://t.me/aidevix;::AIDEVIX yopiq guruh::https://t.me/+SRuA2QBbLmo3MDgy"
 )
 REQUIRED_CHANNELS: list[dict] = _parse_required_channels(os.getenv("REQUIRED_CHANNELS", _DEFAULT_CHANNELS))
 

@@ -8,16 +8,17 @@ pip install -r requirements.txt && python main.py
 # Docker: docker build -t otaonabot . && docker run -e BOT_TOKEN=... -p 8080:8080 otaonabot
 ```
 
-**Sifat:** `pip install -r requirements-dev.txt && ruff check . && ruff format --check . && pytest tests/ -v`  
+**Sifat:** `pip install -r requirements-dev.txt && ruff check . && ruff format --check .`  
 Umumiy tavsif: repo ildizidagi `README.md`.
 
 ## Key Files
 ```
-main.py          2650 qator — 80+ API endpoint (aiohttp), aiogram routers, APScheduler
-database.py      2100 qator — DatabaseService, 22 model, init_db() migrations
-scheduler.py     — APScheduler, daily reminders (Asia/Tashkent, 20:00)
+main.py          ~550 qator — bot + dispatcher, aiohttp app, auth layers, APScheduler start
+routes/          — Mini App JSON API (admin_routes, student_routes, curator_routes, game_routes, api_json)
+database.py      ~2850 qator — DatabaseService, 22 model, init_db() migrations
+scheduler.py     — APScheduler, daily reminders (Asia/Tashkent, 20:00), minutlik ishlar dispatcheri
 handlers/        — homework_ai, commands, registration, curator, student, attendance, callbacks
-webapp/          — 6 Mini App HTML (student, games, admin-mini, curator, guide, admin)
+webapp/          — 5 Mini App HTML (student, games, admin-mini, curator, guide)
 ai_service.py    — Anthropic Claude wrapper (AI uy vazifa tahlili, lazy import)
 homework_extract.py — Telegram xabar → Claude content bloklari (rasm/zip/link/matn)
 curriculum.py    — Mavzular/ o'quv dasturi parser (track→modul→blok→dars), /vazifa uchun

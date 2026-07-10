@@ -53,13 +53,6 @@ def _overview_cron_schedule_human(hour: int, minute: int, dow: str, *, is_weekly
     return f"Har kuni {hm}"
 
 
-def _merge_known_credentials(static_credentials: dict[str, dict], db_credentials: list) -> dict[str, dict]:
-    merged = {mars_id: {"name": cred["name"], "group": cred["group"]} for mars_id, cred in static_credentials.items()}
-    for cred in db_credentials:
-        merged[cred.mars_id] = {"name": cred.name, "group": cred.group_name}
-    return merged
-
-
 def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     """Admin va mini-admin endpointlarini ro'yxatdan o'tkazadi."""
     bot = ctx["bot"]
@@ -245,41 +238,6 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
             }
         )
 
-    async def api_admin_all_students(request: web.Request) -> web.Response:
-        """MARS_CREDENTIALS dagi barcha o'quvchilar — admin uchun."""
-        user_id = _mini_admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        from credentials import MARS_CREDENTIALS
-
-        all_credentials = _merge_known_credentials(
-            MARS_CREDENTIALS,
-            await db.get_all_student_credentials(),
-        )
-        today = datetime.now(tz).strftime("%Y-%m-%d")
-        registered = await db.get_all_students()
-        att_recs = await db.get_attendance_by_date(today)
-        reg_map = {s.mars_id: s for s in registered if s.mars_id}
-        att_map = {r.user_id: r.status for r in att_recs}
-        result = []
-        for mars_id, cred in all_credentials.items():
-            reg = reg_map.get(mars_id)
-            result.append(
-                {
-                    "mars_id": mars_id,
-                    "full_name": cred["name"],
-                    "group_name": cred["group"],
-                    "registered": reg is not None,
-                    "user_id": reg.user_id if reg else None,
-                    "username": reg.telegram_username if reg else None,
-                    "phone": reg.phone_number if reg else None,
-                    "last_active": reg.last_active.strftime("%d.%m.%Y %H:%M") if reg and reg.last_active else None,
-                    "att_today": att_map.get(reg.user_id) if reg else None,
-                }
-            )
-        result.sort(key=lambda x: (x["group_name"], x["full_name"]))
-        return web.json_response({"students": result})
-
     async def api_admin_groups(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
         if not user_id:
@@ -455,101 +413,6 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         task.add_done_callback(_broadcast_tasks.discard)
         return json_ok(queued=len(chat_ids))
 
-    async def api_admin_auto_msg_preview(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        import pytz as _pytz
-
-        from database import GroupType
-        from scheduler import build_reminder_message, get_tomorrow_info
-
-        _tz = _pytz.timezone(TIMEZONE)
-        info = get_tomorrow_info(TIMEZONE)
-        h = await db.get_setting("SEND_HOUR", str(SEND_HOUR))
-        m = await db.get_setting("SEND_MINUTE", str(SEND_MINUTE))
-        global_on = await db.get_setting("AUTO_MSG_GROUPS", "1") == "1"
-        day_key = "AUTO_MSG_ODD" if info.group_type == GroupType.ODD else "AUTO_MSG_EVEN"
-        day_on = await db.get_setting(day_key, "1") == "1"
-        groups = await db.get_groups_by_type(info.group_type)
-        will_send, will_skip = [], []
-        for g in groups:
-            msg = build_reminder_message(info, g.audience)
-            grp_on = await db.get_setting(f"AUTO_MSG_GROUP:{g.name}", "1") == "1"
-            if not global_on:
-                reason = "Umumiy guruh xabari o'chirilgan"
-            elif not day_on:
-                reason = f"{'Toq' if info.group_type == GroupType.ODD else 'Juft'} kun o'chirilgan"
-            elif not grp_on:
-                reason = "Bu guruh uchun avto xabar o'chirilgan"
-            else:
-                reason = None
-            entry = {"group_name": g.name, "audience": g.audience.value, "message": msg}
-            if reason:
-                entry["reason_off"] = reason
-                will_skip.append(entry)
-            else:
-                will_send.append(entry)
-        return web.json_response(
-            {
-                "tomorrow": info.date_str,
-                "weekday": info.weekday_uz,
-                "day_type": info.group_type.value,
-                "send_time": f"{int(h):02d}:{int(m):02d}",
-                "global_on": global_on,
-                "day_on": day_on,
-                "will_send": will_send,
-                "will_skip": will_skip,
-            }
-        )
-
-    async def api_admin_auto_msg_get(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        from sqlalchemy import select
-
-        from database import CuratorSession
-
-        groups = await db.get_all_groups()
-        per_group = {}
-        for g in groups:
-            per_group[g.name] = await db.get_setting(f"AUTO_MSG_GROUP:{g.name}", "1") == "1"
-        async with db.session_factory() as _sess:
-            _res = await _sess.execute(select(CuratorSession))
-            curator_sessions = list(_res.scalars().all())
-        per_curator = {}
-        for cs in curator_sessions:
-            per_curator[str(cs.telegram_id)] = await db.get_setting(f"AUTO_MSG_CURATOR:{cs.telegram_id}", "1") == "1"
-        return web.json_response(
-            {
-                "groups": await db.get_setting("AUTO_MSG_GROUPS", "1") == "1",
-                "students": await db.get_setting("AUTO_MSG_STUDENTS", "1") == "1",
-                "curators": await db.get_setting("AUTO_MSG_CURATORS", "1") == "1",
-                "odd": await db.get_setting("AUTO_MSG_ODD", "1") == "1",
-                "even": await db.get_setting("AUTO_MSG_EVEN", "1") == "1",
-                "per_group": per_group,
-                "per_curator": per_curator,
-            }
-        )
-
-    async def api_admin_auto_msg_set(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        try:
-            body = await request.json()
-        except Exception:
-            return json_err("Bad JSON", code="bad_json", status=400)
-        for key in ("groups", "students", "curators", "odd", "even"):
-            if key in body:
-                await db.set_setting(f"AUTO_MSG_{key.upper()}", "1" if body[key] else "0")
-        for group_name, enabled in body.get("per_group", {}).items():
-            await db.set_setting(f"AUTO_MSG_GROUP:{group_name}", "1" if enabled else "0")
-        for curator_id, enabled in body.get("per_curator", {}).items():
-            await db.set_setting(f"AUTO_MSG_CURATOR:{curator_id}", "1" if enabled else "0")
-        return web.json_response({"ok": True})
-
     async def api_admin_reminder_get(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
         if not user_id:
@@ -582,117 +445,6 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
 
         reschedule_reminder(hour, minute)
         return web.json_response({"ok": True, "hour": hour, "minute": minute})
-
-    async def api_admin_inactive(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        try:
-            days = int(request.rel_url.query.get("days", "7"))
-        except (ValueError, TypeError):
-            days = 7
-        inactive = await db.get_inactive_students(days=days)
-        return web.json_response(
-            {
-                "days": days,
-                "students": [
-                    {
-                        "user_id": s.user_id,
-                        "full_name": s.full_name,
-                        "group_name": s.group_name,
-                        "username": s.telegram_username or "",
-                        "last_active": s.last_active.strftime("%d.%m.%Y %H:%M") if s.last_active else None,
-                    }
-                    for s in inactive
-                ],
-            }
-        )
-
-    async def api_admin_test_send(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        try:
-            body = await request.json()
-        except Exception:
-            body = {}
-        group_name = body.get("group_name")
-        try:
-            from scheduler import send_daily_reminder_to_group, send_daily_reminders
-
-            if group_name and group_name != "all":
-                result = await send_daily_reminder_to_group(
-                    bot=bot, db=db, timezone_str=TIMEZONE, group_name=group_name
-                )
-                if result:
-                    message_id, chat_id = result
-                    return web.json_response(
-                        {
-                            "ok": True,
-                            "target": group_name,
-                            "message_id": message_id,
-                            "chat_id": chat_id,
-                        }
-                    )
-                else:
-                    return web.json_response(
-                        {"error": f"Guruh topilmadi yoki xabar yuborib bo'lmadi: '{group_name}'"},
-                        status=400,
-                    )
-            else:
-                asyncio.create_task(send_daily_reminders(bot=bot, db=db, timezone_str=TIMEZONE))
-                return web.json_response({"ok": True, "target": "all"})
-        except Exception as e:
-            return json_err(str(e), code="internal_error", status=500)
-
-    async def api_admin_delete_message(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        try:
-            body = await request.json()
-        except Exception:
-            body = {}
-        chat_id = body.get("chat_id")
-        message_id = body.get("message_id")
-        if not chat_id or not message_id:
-            return json_err("chat_id va message_id kerak", code="validation_error", status=400)
-        try:
-            await bot.delete_message(chat_id=int(chat_id), message_id=int(message_id))
-            return web.json_response({"ok": True})
-        except Exception as e:
-            return json_err(str(e), code="internal_error", status=500)
-
-    async def api_admin_test_leaderboard(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        try:
-            from scheduler import send_leaderboard_broadcast
-
-            asyncio.create_task(
-                send_leaderboard_broadcast(bot=bot, db=db, webapp_url=WEBAPP_URL, timezone_str=TIMEZONE)
-            )
-            return web.json_response({"ok": True})
-        except Exception as e:
-            return json_err(str(e), code="internal_error", status=500)
-
-    async def api_admin_delete_test_messages(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        groups = await db.get_groups_with_message()
-        deleted, errors = 0, 0
-        for group in groups:
-            if not group.last_message_id:
-                continue
-            try:
-                await bot.delete_message(chat_id=group.chat_id, message_id=group.last_message_id)
-                deleted += 1
-            except Exception:
-                errors += 1
-            await db.clear_message_id(group.chat_id)
-        return web.json_response({"ok": True, "deleted": deleted, "errors": errors})
 
     async def api_admin_curator_stats(request: web.Request) -> web.Response:
         user_id = _mini_admin_auth(request)
@@ -728,22 +480,6 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
                     }
                 )
         return web.json_response(result)
-
-    async def api_admin_button_stats(request: web.Request) -> web.Response:
-        user_id = _admin_auth(request)
-        if not user_id:
-            return json_err("Unauthorized", code="unauthorized", status=401)
-        stats = await db.get_button_stats(limit=30)
-        return web.json_response(
-            [
-                {
-                    "button_name": s.button_name,
-                    "count": s.count,
-                    "last_used": s.last_used.isoformat() if s.last_used else None,
-                }
-                for s in stats
-            ]
-        )
 
     # ── Admin Referral ────────────────────────────────────────────────────────
 
@@ -1203,9 +939,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
                 if remaining:
                     mention_lines += f"... va yana {remaining} ta\n"
                 _no_mentions_warn = "⚠️ Belgilanadigan foydalanuvchi topilmadi"
-                mentions_block = (
-                    ("<b>Belgilanganlar:</b>" + chr(10) + mention_lines) if mentions else _no_mentions_warn
-                )
+                mentions_block = ("<b>Belgilanganlar:</b>" + chr(10) + mention_lines) if mentions else _no_mentions_warn
                 reminder_group_text = (
                     f"🔔 <b>Uy vazifa eslatmasi</b>\n\n"
                     f"🏫 Guruh: <b>{group_name}</b>\n"
@@ -1314,10 +1048,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
                 )
                 chat_sent = True
             except (TelegramBadRequest, TelegramForbiddenError) as e:
-                warning = (
-                    f"'{group_name}' Telegram guruhiga yuborib bo'lmadi ({e}). "
-                    f"Vazifa admin chatga saqlandi."
-                )
+                warning = f"'{group_name}' Telegram guruhiga yuborib bo'lmadi ({e}). Vazifa admin chatga saqlandi."
             except Exception as e:
                 return json_err(str(e), code="internal_error", status=500)
 
@@ -1510,8 +1241,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
 
         if not verified:
             return json_err(
-                "Mos kandidatlar bor, lekin ularning hech biri yaroqli emas. "
-                "Botni guruhga qaytadan qo'shing.",
+                "Mos kandidatlar bor, lekin ularning hech biri yaroqli emas. Botni guruhga qaytadan qo'shing.",
                 code="not_found",
                 status=404,
             )
@@ -1667,9 +1397,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
         if job_id == "daily_lesson_reminder":
             await db.set_setting("SEND_HOUR", str(hour))
             await db.set_setting("SEND_MINUTE", str(minute))
-        return web.json_response(
-            {"ok": ok, "job_id": job_id, "hour": hour, "minute": minute, "day_of_week": dow}
-        )
+        return web.json_response({"ok": ok, "job_id": job_id, "hour": hour, "minute": minute, "day_of_week": dow})
 
     async def api_admin_scheduled_jobs_reset(request: web.Request) -> web.Response:
         """Bitta scheduled job vaqtini default qiymatga qaytaradi."""
@@ -1727,9 +1455,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
                 toggle_enabled = (await db.get_setting(toggle_key, "1")) == "1"
             schedule_human = str(meta["schedule_human"])
             if job_id in SCHEDULED_JOBS_REGISTRY and current_h is not None and current_m is not None:
-                schedule_human = _overview_cron_schedule_human(
-                    current_h, current_m, current_dow, is_weekly=is_weekly
-                )
+                schedule_human = _overview_cron_schedule_human(current_h, current_m, current_dow, is_weekly=is_weekly)
             items.append(
                 {
                     "job_id": job_id,
@@ -1830,7 +1556,6 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     app.router.add_get("/api/admin/me", api_admin_me)
     app.router.add_get("/api/admin/stats", api_admin_stats)
     app.router.add_get("/api/admin/students", api_admin_students)
-    app.router.add_get("/api/admin/all-students", api_admin_all_students)
     app.router.add_get("/api/admin/attendance", api_admin_attendance)
     app.router.add_get("/api/admin/groups", api_admin_groups)
     app.router.add_get("/api/admin/groups-detail", api_admin_groups_detail)
@@ -1845,16 +1570,7 @@ def setup_admin_routes(app: web.Application, ctx: dict) -> None:
     app.router.add_get("/api/admin/auto-messages-overview", api_admin_auto_messages_overview)
     app.router.add_post("/api/admin/auto-messages/master-toggle", api_admin_auto_messages_master_toggle)
     app.router.add_post("/api/admin/auto-messages/toggle", api_admin_auto_messages_toggle)
-    app.router.add_get("/api/admin/auto-msg", api_admin_auto_msg_get)
-    app.router.add_post("/api/admin/auto-msg", api_admin_auto_msg_set)
-    app.router.add_get("/api/admin/auto-msg-preview", api_admin_auto_msg_preview)
-    app.router.add_get("/api/admin/inactive", api_admin_inactive)
-    app.router.add_post("/api/admin/test-send", api_admin_test_send)
-    app.router.add_post("/api/admin/test-leaderboard", api_admin_test_leaderboard)
-    app.router.add_post("/api/admin/delete-message", api_admin_delete_message)
-    app.router.add_post("/api/admin/delete-test-messages", api_admin_delete_test_messages)
     app.router.add_get("/api/admin/curator-stats", api_admin_curator_stats)
-    app.router.add_get("/api/admin/button-stats", api_admin_button_stats)
     app.router.add_get("/api/admin/join-applicants", api_admin_join_applicants)
     app.router.add_get("/api/admin/referral-students", api_admin_referral_students)
     app.router.add_post("/api/admin/referral-students/{id}/approve", api_admin_referral_approve)

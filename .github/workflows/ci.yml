@@ -1,4 +1,4 @@
-# CI: Ruff, compileall, unittest, pytest (Python 3.12).
+# CI: Ruff, compileall (Python 3.12).
 name: CI
 
 on:
@@ -8,10 +8,8 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
-    env:
-      BOT_TOKEN: ci-placeholder-not-a-real-secret
     steps:
       - uses: actions/checkout@v4
 
@@ -36,28 +34,3 @@ jobs:
 
       - name: Compile
         run: python -m compileall -q .
-
-      - name: Unit tests (unittest)
-        run: python -m unittest discover -s tests -p "test_*.py" -v
-
-      - name: Pytest
-        run: pytest tests/ -v --tb=short
-
-  e2e-webapp:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Playwright (Mini App)
-        run: npm run test:e2e

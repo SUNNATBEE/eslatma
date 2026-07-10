@@ -98,17 +98,13 @@ def _subs_keyboard() -> InlineKeyboardMarkup:
             rows.append([InlineKeyboardButton(text=f"📢 {ch['label']}", url=ch["link"])])
     if INSTAGRAM_LINK:
         rows.append([InlineKeyboardButton(text="📸 Instagram", url=INSTAGRAM_LINK)])
-    rows.append(
-        [InlineKeyboardButton(text="✅ Tekshirish / Проверить", callback_data="joingate:verify")]
-    )
+    rows.append([InlineKeyboardButton(text="✅ Tekshirish / Проверить", callback_data="joingate:verify")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _start_keyboard(chat_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="✍️ Boshlash / Начать", callback_data=f"joingate:start:{chat_id}")]
-        ]
+        inline_keyboard=[[InlineKeyboardButton(text="✍️ Boshlash / Начать", callback_data=f"joingate:start:{chat_id}")]]
     )
 
 
@@ -132,18 +128,9 @@ _Q_INTERESTS = (
     "<i>🇺🇿 Masalan: dasturlash, rasm chizish, ingliz tili\n"
     "🇷🇺 Например: программирование, рисование, английский</i>"
 )
-_ERR_NAME = (
-    "🇺🇿 Iltimos, ism va familiyangizni to'liq yozing.\n"
-    "🇷🇺 Пожалуйста, напишите имя и фамилию полностью."
-)
-_ERR_AGE = (
-    "❌ 🇺🇿 Faqat raqam yozing (masalan: 12).\n"
-    "🇷🇺 Напишите только число (например: 12)."
-)
-_ERR_INTERESTS = (
-    "🇺🇿 Iltimos, qiziqishlaringizni yozing.\n"
-    "🇷🇺 Пожалуйста, напишите ваши увлечения."
-)
+_ERR_NAME = "🇺🇿 Iltimos, ism va familiyangizni to'liq yozing.\n🇷🇺 Пожалуйста, напишите имя и фамилию полностью."
+_ERR_AGE = "❌ 🇺🇿 Faqat raqam yozing (masalan: 12).\n🇷🇺 Напишите только число (например: 12)."
+_ERR_INTERESTS = "🇺🇿 Iltimos, qiziqishlaringizni yozing.\n🇷🇺 Пожалуйста, напишите ваши увлечения."
 _SUBS_PROMPT = (
     "✅ <b>Anketa to'ldirildi! / Анкета заполнена!</b>\n\n"
     "🇺🇿 Endi quyidagi kanal(lar)ga obuna bo'ling va «Tekshirish» tugmasini bosing.\n"
@@ -435,9 +422,7 @@ async def on_member_joined(event: ChatMemberUpdated, bot: Bot, db: DatabaseServi
     markup = None
     if VIDEO_LESSONS_LINK:
         markup = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="🎬 Video darsliklar / Видеоуроки", url=VIDEO_LESSONS_LINK)]
-            ]
+            inline_keyboard=[[InlineKeyboardButton(text="🎬 Video darsliklar / Видеоуроки", url=VIDEO_LESSONS_LINK)]]
         )
     try:
         await bot.send_message(event.chat.id, text, reply_markup=markup)

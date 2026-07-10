@@ -18,12 +18,6 @@ def kb_admin_panel() -> InlineKeyboardMarkup:
                 web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/admin-mini.html"),
             )
         )
-        builder.row(
-            InlineKeyboardButton(
-                text="🖥 Admin Panel (eski)",
-                web_app=WebAppInfo(url=f"{WEBAPP_URL.rstrip('/')}/webapp/admin.html"),
-            )
-        )
     builder.row(
         InlineKeyboardButton(text="📋 Guruhlar", callback_data="admin:list:all"),
         InlineKeyboardButton(text="➕ Qo'shish", callback_data="admin:add_start"),
@@ -60,7 +54,6 @@ def kb_admin_panel() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🔔 Avto xabarlar", callback_data="admin:auto_msg"),
     )
     builder.row(
-        InlineKeyboardButton(text="🏆 Test Reyting", callback_data="admin:test_leaderboard"),
         InlineKeyboardButton(text="🧹 Dublikatlar", callback_data="admin:cleanup_duplicates"),
     )
     return builder.as_markup()

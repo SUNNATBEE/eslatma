@@ -27,6 +27,7 @@ callback_data sxemasi (ro'yxatlar FSM state'da, callback'da indekslar):
   td:back:<step> — orqaga (tracks|modules|blocks|lessons|videos)
 """
 
+import asyncio
 import html
 import logging
 
@@ -96,27 +97,70 @@ async def on_channel_video(msg: Message, db: DatabaseService) -> None:
         logger.info("Kanal videosi saqlandi: '%s' (%s/%s)", _video_title_from_message(msg), msg.chat.id, msg.message_id)
 
 
+# Ommaviy forward (100 tagacha birdan) — har videoga alohida javob o'rniga
+# forwardlar to'xtagach BITTA umumiy hisobot yuboriladi (debounce).
+_backfill_stats: dict[int, dict] = {}  # user_id → {"new", "dup", "hidden", "task"}
+_BACKFILL_SUMMARY_DELAY = 2.5  # soniya — oxirgi forwarddan keyin kutish
+
+
+async def _send_backfill_summary(user_id: int, msg: Message) -> None:
+    """Forward oqimi to'xtagach umumiy hisobot yuboradi."""
+    await asyncio.sleep(_BACKFILL_SUMMARY_DELAY)
+    stats = _backfill_stats.pop(user_id, None)
+    if not stats:
+        return
+    lines: list[str] = []
+    if stats["new"]:
+        lines.append(f"✅ <b>{stats['new']} ta</b> yangi video ro'yxatga qo'shildi.")
+    if stats["dup"]:
+        lines.append(f"ℹ️ {stats['dup']} ta video allaqachon ro'yxatda edi.")
+    if stats["hidden"]:
+        lines.append(
+            f"⚠️ {stats['hidden']} ta forwardda kanal ma'lumoti yashirilgan — "
+            'forward qilishda "Hide sender name" ni o\'chirib qayta yuboring.'
+        )
+    if lines:
+        lines.append("\n📖 Ro'yxatni ko'rish/ishlatish: /mavzu")
+        try:
+            await msg.answer("\n".join(lines))
+        except Exception:
+            pass
+
+
 @router.message(F.chat.type == "private", F.forward_origin, F.video | F.document)
 async def on_forwarded_channel_video(msg: Message, db: DatabaseService) -> None:
-    """Admin kanaldagi eski videoni botga forward qilsa — ro'yxatga qo'shiladi."""
+    """Admin kanaldagi eski videoni botga forward qilsa — ro'yxatga qo'shiladi.
+
+    Ko'p videoni birdan forward qilish mumkin (Telegram'da 100 tagacha belgilab) —
+    bot hammasini saqlab, oxirida bitta umumiy hisobot yuboradi.
+    """
     if not _is_admin(msg.from_user.id):
         return
+    if not _is_video_message(msg):
+        return
+
+    user_id = msg.from_user.id
+    stats = _backfill_stats.setdefault(user_id, {"new": 0, "dup": 0, "hidden": 0, "task": None})
+
     origin = msg.forward_origin
     origin_chat = getattr(origin, "chat", None)
-    if origin_chat is None or origin_chat.type != "channel" or not _is_video_message(msg):
-        return
-    title = _video_title_from_message(msg)
-    is_new = await db.save_channel_video(
-        chat_id=origin_chat.id,
-        message_id=getattr(origin, "message_id", 0) or 0,
-        title=title,
-        channel_username=origin_chat.username or "",
-        channel_title=origin_chat.title or "",
-    )
-    if is_new:
-        await msg.reply(f"✅ Video ro'yxatga qo'shildi:\n📺 <b>{html.escape(title)}</b>")
+    if origin_chat is None or origin_chat.type != "channel":
+        stats["hidden"] += 1
     else:
-        await msg.reply("ℹ️ Bu video allaqachon ro'yxatda.")
+        is_new = await db.save_channel_video(
+            chat_id=origin_chat.id,
+            message_id=getattr(origin, "message_id", 0) or 0,
+            title=_video_title_from_message(msg),
+            channel_username=origin_chat.username or "",
+            channel_title=origin_chat.title or "",
+        )
+        stats["new" if is_new else "dup"] += 1
+
+    # Debounce: har yangi forwardda taymerni qayta boshlaymiz
+    task = stats.get("task")
+    if task and not task.done():
+        task.cancel()
+    stats["task"] = asyncio.create_task(_send_backfill_summary(user_id, msg))
 
 
 # ─── Klaviaturalar ────────────────────────────────────────────────────────────
